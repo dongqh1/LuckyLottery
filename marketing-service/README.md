@@ -1,0 +1,111 @@
+# LuckyHub
+
+LuckyHub 是基于 Java 17、Spring Boot、MyBatis-Plus、MySQL 和 Redis 的抽奖营销服务。
+
+## 本地启动
+
+1. 将 `.env.example` 复制为 `.env`，填写数据库、Redis、JWT 和 OSS 配置。
+2. 启动依赖：
+
+```powershell
+docker compose up -d
+```
+
+3. 运行测试：
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-Maven.ps1 test
+```
+
+4. 启动应用：
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-Maven.ps1 spring-boot:run
+```
+
+Swagger UI 地址为 `http://localhost:8080/swagger-ui.html`。
+
+奖品管理和阿里云 OSS 的配置、权限及调用示例见
+[`docs/prize-management-api.md`](docs/prize-management-api.md)。
+
+OSS 图片上传的完整调用链、源码解析和排错案例见
+[`docs/LuckyHub-OSS图片上传实现详解.md`](docs/LuckyHub-OSS图片上传实现详解.md)。
+
+活动管理接口、状态流转和权限说明见
+[`docs/activity-management-api.md`](docs/activity-management-api.md)。
+
+从创建活动请求开始的完整执行流程和源码教学见
+[`docs/LuckyHub-活动管理实现详解.md`](docs/LuckyHub-活动管理实现详解.md)。
+
+活动状态定时任务从应用启动、Spring 调度、事务到 MySQL 批量更新的详细执行流程见
+[`docs/LuckyHub-活动状态定时任务实现详解.md`](docs/LuckyHub-活动状态定时任务实现详解.md)。
+
+抽奖与权益的七个接口、权限、请求响应、错误码和 Postman 示例见
+[`docs/lottery-api.md`](docs/lottery-api.md)。
+
+从 `POST /api/lottery/draws` 开始，逐层讲解 JWT、幂等、Redis Lua、分布式锁、
+MySQL 原子库存、事务、Outbox、Redis Stream、权益履约和超时对账的教学文档见
+[`docs/LuckyHub-抽奖核心流程实现详解.md`](docs/LuckyHub-抽奖核心流程实现详解.md)。
+
+围绕 `eligibilityService.load(activityId)`，按照执行流程详细讲解抽奖资格配置快照、
+Java `record`、十连抽配置复用和 MySQL 最终库存判断的教学文档见
+[`docs/LuckyHub-抽奖资格快照EligibilitySnapshot详解.md`](docs/LuckyHub-抽奖资格快照EligibilitySnapshot详解.md)。
+
+迷你商城、积分、优惠券、会员和物流的已批准总体设计见
+[`docs/superpowers/specs/2026-08-08-lottery-mini-mall-design.md`](docs/superpowers/specs/2026-08-08-lottery-mini-mall-design.md)。
+
+阶段 1–6 的完成路线、恢复检查和下一目标决策入口见
+[`docs/LuckyHub-迷你商城下一阶段执行总路线.md`](docs/LuckyHub-迷你商城下一阶段执行总路线.md)。
+
+阶段 1 商品、统一奖励与渠道库存的详细实施记录见
+[`docs/superpowers/plans/2026-08-08-catalog-reward-channel-inventory.md`](docs/superpowers/plans/2026-08-08-catalog-reward-channel-inventory.md)。
+
+阶段 2 积分账户、不可变积分流水和积分兑换的已完成实施记录见
+[`docs/superpowers/plans/2026-08-08-points-account-redemption.md`](docs/superpowers/plans/2026-08-08-points-account-redemption.md)。
+
+阶段 2 的 7 个接口、权限、请求响应、错误码、幂等规则和 PowerShell 示例见
+[`docs/points-redemption-api.md`](docs/points-redemption-api.md)。
+
+阶段 3 优惠券、会员、现金订单和模拟支付 API、状态、权限与完整调用示例见
+[`docs/coupon-membership-order-api.md`](docs/coupon-membership-order-api.md)。
+
+阶段 3 的已完成实施记录见
+[`docs/superpowers/plans/2026-08-08-coupon-membership-cash-order.md`](docs/superpowers/plans/2026-08-08-coupon-membership-cash-order.md)。
+
+阶段 4 统一异步履约、四套模拟供应方、故障注入、人工操作和 PowerShell 示例见
+[`docs/fulfillment-gateway-api.md`](docs/fulfillment-gateway-api.md)。
+
+阶段 4 的已完成设计与实施记录见
+[`docs/superpowers/specs/2026-08-09-unified-fulfillment-gateways-design.md`](docs/superpowers/specs/2026-08-09-unified-fulfillment-gateways-design.md) 和
+[`docs/superpowers/plans/2026-08-09-unified-fulfillment-gateways.md`](docs/superpowers/plans/2026-08-09-unified-fulfillment-gateways.md)。
+
+阶段 5 抽奖统一奖励、五类奖励时间线、权益查询字段和幂等安全说明见
+[`docs/lottery-reward-fulfillment-api.md`](docs/lottery-reward-fulfillment-api.md)。
+
+阶段 6 三种实物来源、地址、领取、模拟物流、用户/管理员查询和可执行脱敏示例见
+[`docs/physical-shipping-api.md`](docs/physical-shipping-api.md)。
+
+阶段 6 的最终交付证据和面向新接手者的通俗说明见
+[`docs/progress/阶段6-任务9-阶段交付完成介绍.md`](docs/progress/阶段6-任务9-阶段交付完成介绍.md) 和
+[`docs/progress/阶段6-最终交付通俗总结.md`](docs/progress/阶段6-最终交付通俗总结.md)。
+
+当前数据库迁移已到 V17。可运行产物使用以下命令生成和启动：
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-Maven.ps1 package '-DskipTests'
+java -jar .\target\luckyhub-0.0.1-SNAPSHOT.jar
+```
+
+正式空库交付检查：
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Verify-Phase6FreshMigration.ps1
+```
+
+例如在新电脑上启动 MySQL 与 Redis、准备空数据库环境后，脚本会从 V1 迁移到 V17 并核对 48 张业务表；再启动上述 JAR，访问 `/v3/api-docs` 可以看到阶段 6 的地址、实物领取、物流查询、轨迹回调、管理员和模拟物流接口。真实快递、退款、退货和售后仍不在当前交付范围内。
+
+阶段 1 的 11 个接口、权限、请求响应、错误码、数据模型和 PowerShell 示例见
+[`docs/catalog-reward-inventory-api.md`](docs/catalog-reward-inventory-api.md)。
+
+当前开发进度、已完成模块和下一步任务见
+[`docs/LuckyHub-开发进度交接总结.md`](docs/LuckyHub-开发进度交接总结.md)。
