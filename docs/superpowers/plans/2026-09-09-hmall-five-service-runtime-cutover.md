@@ -28,7 +28,7 @@
 - Modify: `hm-api/pom.xml`
 - Test: `tests/test_hm_api_contract.py`
 
-- [ ] **Step 1: Run the existing contract test and confirm the intended failure**
+- [x] **Step 1: Run the existing contract test and confirm the intended failure**
 
 Run:
 
@@ -38,7 +38,7 @@ python -m unittest tests.test_hm_api_contract.HmApiContractTest.test_hm_api_is_a
 
 Expected: FAIL because `hm-api/pom.xml` still contains `knife4j-openapi2-spring-boot-starter`.
 
-- [ ] **Step 2: Remove the Knife4j dependency from `hm-api`**
+- [x] **Step 2: Remove the Knife4j dependency from `hm-api`**
 
 After the edit, the dependencies block must contain only this direct dependency:
 
@@ -51,7 +51,7 @@ After the edit, the dependencies block must contain only this direct dependency:
 </dependencies>
 ```
 
-- [ ] **Step 3: Verify the full `hm-api` contract**
+- [x] **Step 3: Verify the full `hm-api` contract**
 
 Run:
 
@@ -62,7 +62,7 @@ mvn -B -ntp -pl hm-api -am test
 
 Expected: both commands PASS.
 
-- [ ] **Step 4: Commit only the contract cleanup**
+- [x] **Step 4: Commit only the contract cleanup**
 
 ```powershell
 git add -- hm-api/pom.xml
