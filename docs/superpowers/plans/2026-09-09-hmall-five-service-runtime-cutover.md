@@ -380,7 +380,7 @@ git commit -m "feat: move user administration into user service"
 - Create: `trade-service/src/test/java/com/dongqh/tradeservice/service/impl/OrderStatusQueryTest.java`
 - Create: `pay-service/src/test/java/com/dongqh/payservice/service/impl/PayStatusQueryTest.java`
 
-- [ ] **Step 1: Add failing frontend/status ownership tests**
+- [x] **Step 1: Add failing frontend/status ownership tests**
 
 Assert that `pay.html` contains neither `"/order/status/" + id` nor `"/pay/status/" + id`, and that it uses `this.order.id` and `this.payOrderNo`. Assert owned routes:
 
@@ -391,9 +391,9 @@ Assert that `pay.html` contains neither `"/order/status/" + id` nor `"/pay/statu
 
 under `/orders` and `/pay-orders`, respectively.
 
-- [ ] **Step 2: Add service tests for ownership and authorization**
+- [x] **Step 2: Add service tests for ownership and authorization**
 
-Trade status query must select by both order id and `UserContext.getUser()` and return the order status. Pay status query must select by both pay-order id and `UserContext.getUser()` and return `PayStatus.getValue()`; missing records raise `NotFoundException`.
+Trade status query must select by both order id and `UserContext.getUser()` and return the order status. Pay status query must select by both pay-order id and `UserContext.getUser()` and return the stored `PayStatus` value; missing records raise the shared `BadRequestException` because this Java 11 baseline does not define a `NotFoundException`.
 
 Run:
 
@@ -404,11 +404,11 @@ mvn -B -ntp -pl trade-service,pay-service -am -Dtest=OrderStatusQueryTest,PaySta
 
 Expected: FAIL on absent APIs and the stale frontend paths.
 
-- [ ] **Step 3: Implement thin owned status endpoints**
+- [x] **Step 3: Implement thin owned status endpoints**
 
 Add `Integer queryOrderStatus(Long orderId)` to `IOrderService` and `Integer queryPayStatus(Long payOrderId)` to `IPayOrderService`. Reuse the existing service databases and user context; do not create an aggregator or expose payment persistence through `hm-api`.
 
-- [ ] **Step 4: Correct frontend polling identifiers and paths**
+- [x] **Step 4: Correct frontend polling identifiers and paths**
 
 Use:
 
@@ -420,7 +420,7 @@ location.href = "/paysuccess.html?orderId=" + this.order.id;
 
 Balance payment behavior remains unchanged.
 
-- [ ] **Step 5: Verify trade, pay, and frontend contracts**
+- [x] **Step 5: Verify trade, pay, and frontend contracts**
 
 ```powershell
 python -m unittest tests.test_split_frontend_api_contract -v
@@ -429,7 +429,7 @@ mvn -B -ntp -pl trade-service,pay-service -am test
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit payment status compatibility**
+- [x] **Step 6: Commit payment status compatibility**
 
 ```powershell
 git add -- tests/test_split_frontend_api_contract.py trade-service/src/main/java/com/dongqh/tradeservice/controller/OrderController.java trade-service/src/main/java/com/dongqh/tradeservice/service/IOrderService.java trade-service/src/main/java/com/dongqh/tradeservice/service/impl/OrderServiceImpl.java pay-service/src/main/java/com/dongqh/payservice/controller/PayController.java pay-service/src/main/java/com/dongqh/payservice/service/IPayOrderService.java pay-service/src/main/java/com/dongqh/payservice/service/impl/PayOrderServiceImpl.java nginx/html/hmall-portal/pay.html trade-service/src/test/java/com/dongqh/tradeservice/service/impl/OrderStatusQueryTest.java pay-service/src/test/java/com/dongqh/payservice/service/impl/PayStatusQueryTest.java

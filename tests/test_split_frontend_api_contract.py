@@ -36,6 +36,21 @@ class SplitFrontendApiContractTest(unittest.TestCase):
             with self.subTest(route=route):
                 self.assertIn(route, controller)
 
+    def test_trade_and_pay_own_the_status_routes_used_by_checkout(self):
+        trade = read(
+            "trade-service/src/main/java/com/dongqh/tradeservice/controller/OrderController.java"
+        )
+        pay = read(
+            "pay-service/src/main/java/com/dongqh/payservice/controller/PayController.java"
+        )
+        checkout = read("nginx/html/hmall-portal/pay.html")
+        self.assertIn('@GetMapping("/{orderId}/status")', trade)
+        self.assertIn('@GetMapping("/{payOrderId}/status")', pay)
+        self.assertIn('"/orders/" + this.order.id + "/status"', checkout)
+        self.assertIn('"/pay-orders/" + this.payOrderNo + "/status"', checkout)
+        self.assertNotIn('"/order/status/" + id', checkout)
+        self.assertNotIn('"/pay/status/" + id', checkout)
+
 
 if __name__ == "__main__":
     unittest.main()
