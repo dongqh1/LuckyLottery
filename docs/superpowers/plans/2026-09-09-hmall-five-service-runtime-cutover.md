@@ -450,7 +450,7 @@ git commit -m "fix: route payment status through owning services"
 - Create: `trade-service/Dockerfile`
 - Create: `pay-service/Dockerfile`
 
-- [ ] **Step 1: Change the Dockerfile contract to require all five split images**
+- [x] **Step 1: Change the Dockerfile contract to require all five split images**
 
 Replace the monolith-only test with:
 
@@ -462,7 +462,7 @@ def test_split_services_are_built_in_java_11_multistage_images(self):
 
 Add all five Dockerfiles to `RequiredFilesContractTest`.
 
-- [ ] **Step 2: Run the Dockerfile tests and confirm all five files are missing**
+- [x] **Step 2: Run the Dockerfile tests and confirm all five files are missing**
 
 ```powershell
 python -m unittest tests.test_infrastructure_contract.DockerfileContractTest tests.test_infrastructure_contract.RequiredFilesContractTest -v
@@ -470,7 +470,7 @@ python -m unittest tests.test_infrastructure_contract.DockerfileContractTest tes
 
 Expected: FAIL listing the five absent Dockerfiles.
 
-- [ ] **Step 3: Exclude build products and create a consistent root-reactor multistage Dockerfile per service**
+- [x] **Step 3: Exclude build products and create a consistent root-reactor multistage Dockerfile per service**
 
 Create `.dockerignore` first:
 
@@ -516,7 +516,7 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 
 Do not copy `marketing-service` or the monolith into these images. Ports are 8081 through 8085 in item/cart/user/trade/pay order.
 
-- [ ] **Step 4: Verify contracts and build one representative image before all images**
+- [x] **Step 4: Verify contracts and build one representative image before all images**
 
 ```powershell
 python -m unittest tests.test_infrastructure_contract.DockerfileContractTest tests.test_infrastructure_contract.RequiredFilesContractTest -v
@@ -525,7 +525,7 @@ docker build -f item-service/Dockerfile -t hmall-item-service:test .
 
 Expected: PASS. If Docker is unavailable, record that limitation and still run `mvn -B -ntp -pl item-service,cart-service,user-service,trade-service,pay-service -am package -DskipTests`.
 
-- [ ] **Step 5: Commit the five images and their contract**
+- [x] **Step 5: Commit the five images and their contract**
 
 ```powershell
 git add -- tests/test_infrastructure_contract.py .dockerignore item-service/Dockerfile cart-service/Dockerfile user-service/Dockerfile trade-service/Dockerfile pay-service/Dockerfile

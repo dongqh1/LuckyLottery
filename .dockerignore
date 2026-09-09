@@ -1,0 +1,10 @@
+.git
+.idea
+.pytest_cache
+.codex-progress
+.superpowers
+.hermes
+.env
+**/target
+**/*.log
+logs
