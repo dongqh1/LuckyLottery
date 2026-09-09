@@ -172,7 +172,7 @@ git commit -m "config: standardize split service environments"
 - Create: `item-service/src/test/java/com/dongqh/itemservice/service/impl/ItemSearchServiceImplTest.java`
 - Create: `tests/test_split_frontend_api_contract.py`
 
-- [ ] **Step 1: Add a frontend-to-service ownership contract**
+- [x] **Step 1: Add a frontend-to-service ownership contract**
 
 Create `tests/test_split_frontend_api_contract.py` with a helper that reads UTF-8 files and these assertions:
 
@@ -185,7 +185,7 @@ def test_item_service_owns_every_search_route_used_by_frontend(self):
     self.assertIn('@PostMapping("/filters")', controller)
 ```
 
-- [ ] **Step 2: Add failing Java tests for query behavior**
+- [x] **Step 2: Add failing Java tests for query behavior**
 
 The test class must mock `IItemService` and verify:
 
@@ -203,7 +203,7 @@ mvn -B -ntp -pl item-service -am -Dtest=ItemSearchServiceImplTest -Dsurefire.fai
 
 Expected: Python FAIL because the controller is absent; Maven FAIL because the test references an absent service.
 
-- [ ] **Step 3: Implement a small search service using the existing item table**
+- [x] **Step 3: Implement a small search service using the existing item table**
 
 The interface is:
 
@@ -217,7 +217,7 @@ public interface ItemSearchService {
 
 The implementation must use `IItemService.lambdaQuery()`, always apply `Item::getStatus = 1`, use `between` only when both price bounds are non-null, sort through `query.toMpPage("update_time", false)`, and never introduce Elasticsearch or a duplicate catalog store in this phase.
 
-- [ ] **Step 4: Expose the three routes from a thin controller**
+- [x] **Step 4: Expose the three routes from a thin controller**
 
 ```java
 @RestController
@@ -243,7 +243,7 @@ public class SearchController {
 }
 ```
 
-- [ ] **Step 5: Verify search contracts and item-service tests**
+- [x] **Step 5: Verify search contracts and item-service tests**
 
 ```powershell
 python -m unittest tests.test_split_frontend_api_contract -v
@@ -252,7 +252,7 @@ mvn -B -ntp -pl item-service -am test
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the search cutover**
+- [x] **Step 6: Commit the search cutover**
 
 ```powershell
 git add -- item-service/src/main/java/com/dongqh/itemservice/controller/SearchController.java item-service/src/main/java/com/dongqh/itemservice/service/ItemSearchService.java item-service/src/main/java/com/dongqh/itemservice/service/impl/ItemSearchServiceImpl.java item-service/src/test/java/com/dongqh/itemservice/service/impl/ItemSearchServiceImplTest.java tests/test_split_frontend_api_contract.py
