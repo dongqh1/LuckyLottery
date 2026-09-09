@@ -85,7 +85,7 @@ git commit -m "refactor: keep hm-api as pure feign contracts"
 - Modify: `.env.example`
 - Modify: `compose.yaml`
 
-- [ ] **Step 1: Change the database profile test from literal passwords to environment contracts**
+- [x] **Step 1: Change the database profile test from literal passwords to environment contracts**
 
 Replace `test_service_profiles_use_isolated_databases_and_literal_passwords` with assertions that each service uses its own variable in both profiles:
 
@@ -108,7 +108,7 @@ def test_service_profiles_use_isolated_databases_and_environment_passwords(self)
 
 Also change `test_compose_runs_all_three_migrations_with_yaml_credentials` so it requires `${HM_*_DB_PASSWORD:?set ... in .env}` rather than the current literal development values.
 
-- [ ] **Step 2: Run the focused test and confirm it fails on hard-coded user/trade/pay credentials**
+- [x] **Step 2: Run the focused test and confirm it fails on hard-coded user/trade/pay credentials**
 
 ```powershell
 python -m unittest tests.test_user_trade_pay_database_split -v
@@ -116,7 +116,7 @@ python -m unittest tests.test_user_trade_pay_database_split -v
 
 Expected: FAIL for user, trade, and pay profile/Compose credentials.
 
-- [ ] **Step 3: Parameterize all three service profiles**
+- [x] **Step 3: Parameterize all three service profiles**
 
 Use the following pattern, substituting `USER`, `TRADE`, or `PAY`:
 
@@ -132,7 +132,7 @@ hm:
 
 Local profiles must retain both optional `.env` imports and use `${HM_USER_DB_PORT:13307}` with host `127.0.0.1`. Add those imports to trade and pay local profiles, where they are currently absent.
 
-- [ ] **Step 4: Add all service credentials and Nacos client credentials to `.env.example`**
+- [x] **Step 4: Add all service credentials and Nacos client credentials to `.env.example`**
 
 ```properties
 HM_USER_DB_PASSWORD=change-user-db-password
@@ -144,7 +144,7 @@ NACOS_PASSWORD=nacos
 
 In `compose.yaml`, make the schema initializer consume all five database passwords using required environment substitutions.
 
-- [ ] **Step 5: Verify profiles and resolved Compose syntax**
+- [x] **Step 5: Verify profiles and resolved Compose syntax**
 
 ```powershell
 python -m unittest tests.test_user_trade_pay_database_split -v
@@ -153,7 +153,7 @@ docker compose --env-file .env.example -f compose.yaml config --quiet
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit only configuration standardization**
+- [x] **Step 6: Commit only configuration standardization**
 
 ```powershell
 git add -- tests/test_user_trade_pay_database_split.py user-service/src/main/resources/application-dev.yaml user-service/src/main/resources/application-local.yaml trade-service/src/main/resources/application-dev.yaml trade-service/src/main/resources/application-local.yaml pay-service/src/main/resources/application-dev.yaml pay-service/src/main/resources/application-local.yaml .env.example compose.yaml
@@ -293,7 +293,8 @@ Test with a mocked `UserMapper`/spy service that:
 - paged results never expose password or balance;
 - create requires username, phone, and nonblank password, hashes the password with `PasswordEncoder`, defaults status to `NORMAL`, and defaults role to `USER`;
 - update ignores a null/blank password and never overwrites the stored hash with blank text;
-- status accepts only `0` or `1` via `UserStatus.of`;
+- status accepts the service-native values `0`/`1` and maps the legacy admin UI value `2` to `FROZEN`;
+- every administration operation verifies that the current authenticated user has role `ADMIN`;
 - delete rejects the currently authenticated user and deletes exactly one other user.
 
 Run:

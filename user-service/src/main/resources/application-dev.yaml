@@ -1,0 +1,7 @@
+hm:
+  db:
+    host: ${HM_USER_DB_HOST:mysql}
+    port: ${HM_USER_DB_PORT:3306}
+    database: hm_user
+    username: hm_user_app
+    password: ${HM_USER_DB_PASSWORD:change-user-db-password}

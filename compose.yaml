@@ -1,0 +1,199 @@
+name: ${COMPOSE_PROJECT_NAME:-hmall-lottery}
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-13307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/conf/hm.cnf:/etc/mysql/conf.d/hm.cnf:ro
+      - ./mysql/init/hmall.sql:/docker-entrypoint-initdb.d/001_hmall.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=TCP -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  schema-init:
+    image: mysql:8.4
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_PASSWORD: ${LUCKYHUB_DB_PASSWORD:?set LUCKYHUB_DB_PASSWORD in .env}
+      HM_ITEM_DB_PASSWORD: ${HM_ITEM_DB_PASSWORD:-change-item-db-password}
+      HM_CART_DB_PASSWORD: ${HM_CART_DB_PASSWORD:-change-cart-db-password}
+      HM_USER_DB_PASSWORD: ${HM_USER_DB_PASSWORD:?set HM_USER_DB_PASSWORD in .env}
+      HM_TRADE_DB_PASSWORD: ${HM_TRADE_DB_PASSWORD:?set HM_TRADE_DB_PASSWORD in .env}
+      HM_PAY_DB_PASSWORD: ${HM_PAY_DB_PASSWORD:?set HM_PAY_DB_PASSWORD in .env}
+      NACOS_DB_PASSWORD: ${NACOS_DB_PASSWORD:?set NACOS_DB_PASSWORD in .env}
+    volumes:
+      - ./mysql/migrations/V001__hmall_marketing_integration.sql:/migrations/V001__hmall_marketing_integration.sql:ro
+      - ./mysql/migrations/V002__hmall_order_membership_pricing.sql:/migrations/V002__hmall_order_membership_pricing.sql:ro
+      - ./mysql/migrations/V003__hmall_order_coupon_pricing.sql:/migrations/V003__hmall_order_coupon_pricing.sql:ro
+      - ./mysql/migrations/V004__create_item_service_database.sql:/migrations/V004__create_item_service_database.sql:ro
+      - ./mysql/migrations/V005__create_cart_service_database.sql:/migrations/V005__create_cart_service_database.sql:ro
+      - ./mysql/migrations/V006__create_user_service_database.sql:/migrations/V006__create_user_service_database.sql:ro
+      - ./mysql/migrations/V007__create_trade_service_database.sql:/migrations/V007__create_trade_service_database.sql:ro
+      - ./mysql/migrations/V008__create_pay_service_database.sql:/migrations/V008__create_pay_service_database.sql:ro
+      - ./mysql/nacos.sql:/migrations/nacos.sql:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        password_hex="$$(printf '%s' "$$MYSQL_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @luckyhub_password = CONVERT(X'$${password_hex}' USING utf8mb4)" \
+          < /migrations/V001__hmall_marketing_integration.sql
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          < /migrations/V002__hmall_order_membership_pricing.sql
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          < /migrations/V003__hmall_order_coupon_pricing.sql
+        item_password_hex="$$(printf '%s' "$$HM_ITEM_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @hm_item_password = CONVERT(X'$${item_password_hex}' USING utf8mb4)" \
+          < /migrations/V004__create_item_service_database.sql
+        cart_password_hex="$$(printf '%s' "$$HM_CART_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @hm_cart_password = CONVERT(X'$${cart_password_hex}' USING utf8mb4)" \
+          < /migrations/V005__create_cart_service_database.sql
+        user_password_hex="$$(printf '%s' "$$HM_USER_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @hm_user_password = CONVERT(X'$${user_password_hex}' USING utf8mb4)" \
+          < /migrations/V006__create_user_service_database.sql
+        trade_password_hex="$$(printf '%s' "$$HM_TRADE_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @hm_trade_password = CONVERT(X'$${trade_password_hex}' USING utf8mb4)" \
+          < /migrations/V007__create_trade_service_database.sql
+        pay_password_hex="$$(printf '%s' "$$HM_PAY_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @hm_pay_password = CONVERT(X'$${pay_password_hex}' USING utf8mb4)" \
+          < /migrations/V008__create_pay_service_database.sql
+        nacos_password_hex="$$(printf '%s' "$$NACOS_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        exec mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @nacos_db_password = CONVERT(X'$${nacos_password_hex}' USING utf8mb4)" \
+          < /migrations/nacos.sql
+
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    restart: unless-stopped
+    env_file:
+      - ./mysql/nacos/custom.env
+    environment:
+      MYSQL_SERVICE_PASSWORD: ${NACOS_DB_PASSWORD:?set NACOS_DB_PASSWORD in .env}
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?set NACOS_AUTH_TOKEN in .env}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:?set NACOS_AUTH_IDENTITY_KEY in .env}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:?set NACOS_AUTH_IDENTITY_VALUE in .env}
+      TZ: Asia/Shanghai
+    ports:
+      - "${NACOS_PORT:-18848}:8848"
+      - "${NACOS_GRPC_PORT:-19848}:9848"
+    volumes:
+      - nacos-logs:/home/nacos/logs
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8848/nacos/v1/console/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  mall-service:
+    build:
+      context: ./mall-backend
+      dockerfile: hm-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      HM_DB_HOST: mysql
+      HM_DB_PORT: "3306"
+      HM_DB_PW: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: "6379"
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+      MARKETING_BASE_URL: http://marketing-service:8080
+      TZ: Asia/Shanghai
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  marketing-service:
+    build:
+      context: ./marketing-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: luckyhub
+      MYSQL_USER: luckyhub
+      MYSQL_PASSWORD: ${LUCKYHUB_DB_PASSWORD:?set LUCKYHUB_DB_PASSWORD in .env}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+      HMALL_BASE_URL: http://mall-service:8080
+      BCRYPT_STRENGTH: ${BCRYPT_STRENGTH:-12}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-720000}
+      SHIPPING_ADDRESS_KEY: ${SHIPPING_ADDRESS_KEY:?set SHIPPING_ADDRESS_KEY in .env}
+      SHIPPING_CALLBACK_SECRET: ${SHIPPING_CALLBACK_SECRET:?set SHIPPING_CALLBACK_SECRET in .env}
+      OSS_ENABLED: ${OSS_ENABLED:-false}
+      OSS_REGION: ${OSS_REGION:-}
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-}
+      OSS_BUCKET: ${OSS_BUCKET:-}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
+      TZ: Asia/Shanghai
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      mall-service:
+        condition: service_started
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PORTAL_PORT:-18080}:18080"
+      - "${ADMIN_PORT:-18081}:18081"
+    depends_on:
+      mall-service:
+        condition: service_started
+      marketing-service:
+        condition: service_started
+
+volumes:
+  mysql-data:
+  redis-data:
+  nacos-logs:

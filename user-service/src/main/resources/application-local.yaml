@@ -1,0 +1,14 @@
+spring:
+  config:
+    # IDEA 默认不会加载根目录 .env；同时兼容以仓库根目录或模块目录作为工作目录。
+    import:
+      - "optional:file:.env[.properties]"
+      - "optional:file:../.env[.properties]"
+
+hm:
+  db:
+    host: 127.0.0.1
+    port: ${HM_USER_DB_PORT:13307}
+    database: hm_user
+    username: hm_user_app
+    password: ${HM_USER_DB_PASSWORD:change-user-db-password}

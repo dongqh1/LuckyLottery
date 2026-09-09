@@ -1,0 +1,13 @@
+spring:
+  config:
+    import:
+      - "optional:file:.env[.properties]"
+      - "optional:file:../.env[.properties]"
+
+hm:
+  db:
+    host: 127.0.0.1
+    port: ${HM_PAY_DB_PORT:13307}
+    database: hm_pay
+    username: hm_pay_app
+    password: ${HM_PAY_DB_PASSWORD:change-pay-db-password}

@@ -1,0 +1,7 @@
+hm:
+  db:
+    host: ${HM_TRADE_DB_HOST:mysql}
+    port: ${HM_TRADE_DB_PORT:3306}
+    database: hm_trade
+    username: hm_trade_app
+    password: ${HM_TRADE_DB_PASSWORD:change-trade-db-password}
