@@ -274,7 +274,7 @@ git commit -m "feat: move product search into item service"
 - Modify: `user-service/src/main/java/com/dongqh/userservice/service/impl/UserServiceImpl.java`
 - Create: `user-service/src/test/java/com/dongqh/userservice/service/impl/UserAdminServiceTest.java`
 
-- [ ] **Step 1: Extend the route ownership contract**
+- [x] **Step 1: Extend the route ownership contract**
 
 Add assertions for the exact management routes used by `nginx/html/hmall-admin/users.html`:
 
@@ -286,7 +286,7 @@ def test_user_service_owns_every_user_route_used_by_frontend(self):
         self.assertIn(route, controller)
 ```
 
-- [ ] **Step 2: Write failing service tests**
+- [x] **Step 2: Write failing service tests**
 
 Test with a mocked `UserMapper`/spy service that:
 
@@ -306,7 +306,7 @@ mvn -B -ntp -pl user-service -am -Dtest=UserAdminServiceTest -Dsurefire.failIfNo
 
 Expected: FAIL because DTOs and methods do not yet exist.
 
-- [ ] **Step 3: Add purpose-specific DTOs rather than exposing `User`**
+- [x] **Step 3: Add purpose-specific DTOs rather than exposing `User`**
 
 `UserAdminFormDTO` fields: `id`, `username`, `password`, `phone`, `role`, `status`.
 
@@ -314,7 +314,7 @@ Expected: FAIL because DTOs and methods do not yet exist.
 
 `UserPageQuery` extends `PageQuery` and adds optional `key`, `status`, and `role`.
 
-- [ ] **Step 4: Add service operations**
+- [x] **Step 4: Add service operations**
 
 Add these signatures to `IUserService`:
 
@@ -328,7 +328,7 @@ void updateStatus(Long id, Integer status);
 
 Use MyBatis-Plus queries and updates inside `UserServiceImpl`; do not add a second user store or copy these endpoints back into `marketing-service`.
 
-- [ ] **Step 5: Add the five controller endpoints**
+- [x] **Step 5: Add the five controller endpoints**
 
 ```java
 @GetMapping("/page")
@@ -347,7 +347,7 @@ public void deleteUser(@PathVariable Long id)
 public void updateStatus(@PathVariable Long id, @PathVariable Integer status)
 ```
 
-- [ ] **Step 6: Verify the user module**
+- [x] **Step 6: Verify the user module**
 
 ```powershell
 python -m unittest tests.test_split_frontend_api_contract -v
@@ -356,7 +356,7 @@ mvn -B -ntp -pl user-service -am test
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit user administration**
+- [x] **Step 7: Commit user administration**
 
 ```powershell
 git add -- tests/test_split_frontend_api_contract.py user-service/src/main/java/com/dongqh/userservice/domain/dto/UserAdminFormDTO.java user-service/src/main/java/com/dongqh/userservice/domain/query/UserPageQuery.java user-service/src/main/java/com/dongqh/userservice/domain/vo/UserAdminVO.java user-service/src/main/java/com/dongqh/userservice/controller/UserController.java user-service/src/main/java/com/dongqh/userservice/service/IUserService.java user-service/src/main/java/com/dongqh/userservice/service/impl/UserServiceImpl.java user-service/src/test/java/com/dongqh/userservice/service/impl/UserAdminServiceTest.java

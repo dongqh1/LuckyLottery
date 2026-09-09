@@ -22,6 +22,20 @@ class SplitFrontendApiContractTest(unittest.TestCase):
         self.assertIn('@GetMapping("/suggestion")', controller)
         self.assertIn('@PostMapping("/filters")', controller)
 
+    def test_user_service_owns_every_user_route_used_by_frontend(self):
+        controller = read(
+            "user-service/src/main/java/com/dongqh/userservice/controller/UserController.java"
+        )
+        for route in (
+            '@GetMapping("/page")',
+            "@PostMapping",
+            "@PutMapping",
+            '@DeleteMapping("/{id}")',
+            '@PutMapping("/status/{id}/{status}")',
+        ):
+            with self.subTest(route=route):
+                self.assertIn(route, controller)
+
 
 if __name__ == "__main__":
     unittest.main()
