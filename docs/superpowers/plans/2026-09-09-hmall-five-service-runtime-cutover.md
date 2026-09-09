@@ -545,7 +545,7 @@ git commit -m "build: containerize five hmall services"
 - Modify: `marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallCatalogClient.java`
 - Modify: `marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallAddressClient.java`
 
-- [ ] **Step 1: Replace the old Compose expectations with split-service expectations**
+- [x] **Step 1: Replace the old Compose expectations with split-service expectations**
 
 The expected default service set becomes:
 
@@ -568,7 +568,7 @@ Add assertions that every split service:
 
 Assert `mall-service` exists only in `docker compose --profile rollback config`, not in the default resolved service set.
 
-- [ ] **Step 2: Replace Nginx's catch-all monolith test with explicit ownership**
+- [x] **Step 2: Replace Nginx's catch-all monolith test with explicit ownership**
 
 Test both portal and admin server blocks for these mappings:
 
@@ -583,7 +583,7 @@ Test both portal and admin server blocks for these mappings:
 
 Also assert there is no default `proxy_pass http://mall-service:8080`.
 
-- [ ] **Step 3: Run the infrastructure tests and confirm they fail against the monolith topology**
+- [x] **Step 3: Run the infrastructure tests and confirm they fail against the monolith topology**
 
 ```powershell
 python -m unittest tests.test_infrastructure_contract.ComposeContractTest tests.test_infrastructure_contract.NginxRoutingContractTest -v
@@ -591,7 +591,7 @@ python -m unittest tests.test_infrastructure_contract.ComposeContractTest tests.
 
 Expected: FAIL because Compose and Nginx still use `mall-service`.
 
-- [ ] **Step 4: Define all five services in `compose.yaml`**
+- [x] **Step 4: Define all five services in `compose.yaml`**
 
 Use root build context for each service. Each service gets its database password, Nacos configuration, timezone, and dependency conditions. Services that make Feign calls must reach Nacos by service name. Keep `mall-service` with:
 
@@ -601,7 +601,7 @@ profiles: ["rollback"]
 
 The default Nginx service must not depend on the rollback-only monolith.
 
-- [ ] **Step 5: Point marketing integration at service-owned endpoints**
+- [x] **Step 5: Point marketing integration at service-owned endpoints**
 
 Replace `HMALL_BASE_URL: http://mall-service:8080` with the two named base URLs LuckyHub currently calls:
 
@@ -612,11 +612,11 @@ HMALL_USER_BASE_URL: http://user-service:8083
 
 Replace the single `luckyhub.integration.hmall.base-url` property with `catalog-base-url` and `address-base-url`. Change `HttpHmallCatalogClient` to inject `${luckyhub.integration.hmall.catalog-base-url:http://localhost:8081}` and `HttpHmallAddressClient` to inject `${luckyhub.integration.hmall.address-base-url:http://localhost:8083}`. Keep their package-private constructors unchanged so existing unit tests still inject explicit base URLs. Do not migrate these adapters to Feign in this phase; that belongs to the LuckyHub extraction plan.
 
-- [ ] **Step 6: Add explicit Nginx locations in longest-prefix order**
+- [x] **Step 6: Add explicit Nginx locations in longest-prefix order**
 
 Factor shared proxy headers into an include only if it reduces duplication without changing behavior. Every `/api/...` route strips `/api` before forwarding. Keep the marketing rewrite unchanged.
 
-- [ ] **Step 7: Verify both default and rollback Compose configurations**
+- [x] **Step 7: Verify both default and rollback Compose configurations**
 
 ```powershell
 python -m unittest tests.test_infrastructure_contract -v
@@ -627,7 +627,7 @@ nginx -t -c (Resolve-Path 'nginx/nginx.conf').Path
 
 Expected: Python and Compose checks PASS. If host Nginx is unavailable, validate through the image in Task 8 instead of claiming the host command passed.
 
-- [ ] **Step 8: Commit the runtime cutover**
+- [x] **Step 8: Commit the runtime cutover**
 
 ```powershell
 git add -- tests/test_infrastructure_contract.py compose.yaml nginx/nginx.conf marketing-service/src/main/resources/application.yaml marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallCatalogClient.java marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallAddressClient.java

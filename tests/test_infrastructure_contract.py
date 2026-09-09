@@ -18,7 +18,7 @@ def read(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
 
 
-def compose_config() -> dict:
+def compose_config(*profiles: str) -> dict:
     command = [
         "docker",
         "compose",
@@ -26,10 +26,10 @@ def compose_config() -> dict:
         str(ROOT / ".env.example"),
         "-f",
         str(COMPOSE_FILE),
-        "config",
-        "--format",
-        "json",
     ]
+    for profile in profiles:
+        command.extend(["--profile", profile])
+    command.extend(["config", "--format", "json"])
     result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
     if result.returncode != 0:
         raise AssertionError(f"docker compose config failed:\n{result.stdout}\n{result.stderr}")
@@ -68,15 +68,20 @@ class ComposeContractTest(unittest.TestCase):
     def setUpClass(cls):
         cls.config = compose_config()
         cls.services = cls.config["services"]
+        cls.rollback_services = compose_config("rollback")["services"]
 
-    def test_compose_defines_the_complete_stack(self):
+    def test_compose_defines_the_split_services_as_the_default_stack(self):
         self.assertEqual(
             {
                 "mysql",
                 "redis",
                 "schema-init",
                 "nacos",
-                "mall-service",
+                "item-service",
+                "cart-service",
+                "user-service",
+                "trade-service",
+                "pay-service",
                 "marketing-service",
                 "nginx",
             },
@@ -84,6 +89,11 @@ class ComposeContractTest(unittest.TestCase):
         )
         self.assertEqual("mysql:8.4", self.services["mysql"]["image"])
         self.assertTrue(self.services["redis"]["image"].startswith("redis:7.4"))
+
+    def test_monolith_is_available_only_in_the_rollback_profile(self):
+        self.assertNotIn("mall-service", self.services)
+        self.assertIn("mall-service", self.rollback_services)
+        self.assertEqual(["rollback"], self.rollback_services["mall-service"]["profiles"])
 
     def test_mysql_keeps_seed_and_persistent_data(self):
         mounts = self.services["mysql"]["volumes"]
@@ -164,23 +174,54 @@ class ComposeContractTest(unittest.TestCase):
         self.assertIn(9848, published.values())
         self.assertIn("healthcheck", service)
 
-    def test_app_services_build_and_wait_for_schema(self):
-        mall = self.services["mall-service"]
+    def test_split_services_build_from_the_root_and_wait_for_schema_and_nacos(self):
+        expected = {
+            "item-service": ("item-service/Dockerfile", "HM_ITEM_DB_PASSWORD"),
+            "cart-service": ("cart-service/Dockerfile", "HM_CART_DB_PASSWORD"),
+            "user-service": ("user-service/Dockerfile", "HM_USER_DB_PASSWORD"),
+            "trade-service": ("trade-service/Dockerfile", "HM_TRADE_DB_PASSWORD"),
+            "pay-service": ("pay-service/Dockerfile", "HM_PAY_DB_PASSWORD"),
+        }
+        for name, (dockerfile, password_name) in expected.items():
+            with self.subTest(service=name):
+                service = self.services[name]
+                self.assertEqual(
+                    "service_completed_successfully",
+                    service["depends_on"]["schema-init"]["condition"],
+                )
+                self.assertEqual("service_healthy", service["depends_on"]["nacos"]["condition"])
+                self.assertEqual(
+                    dockerfile,
+                    service["build"]["dockerfile"].replace("\\", "/"),
+                )
+                self.assertEqual(ROOT, Path(service["build"]["context"]).resolve())
+                self.assertIn(password_name, service["environment"])
+
+    def test_marketing_waits_for_its_infrastructure_and_hmall_owners(self):
         marketing = self.services["marketing-service"]
-        self.assertEqual("service_completed_successfully", mall["depends_on"]["schema-init"]["condition"])
         self.assertEqual("service_completed_successfully", marketing["depends_on"]["schema-init"]["condition"])
         self.assertEqual("service_healthy", marketing["depends_on"]["redis"]["condition"])
-        self.assertTrue(mall["build"]["dockerfile"].replace("\\", "/").endswith("hm-service/Dockerfile"))
+        self.assertIn("item-service", marketing["depends_on"])
+        self.assertIn("user-service", marketing["depends_on"])
         self.assertTrue(marketing["build"]["dockerfile"].replace("\\", "/").endswith("Dockerfile"))
         self.assertEqual("mysql", marketing["environment"]["MYSQL_HOST"])
         self.assertEqual("redis", marketing["environment"]["REDIS_HOST"])
+        self.assertEqual("http://item-service:8081", marketing["environment"]["HMALL_ITEM_BASE_URL"])
+        self.assertEqual("http://user-service:8083", marketing["environment"]["HMALL_USER_BASE_URL"])
 
     def test_nginx_exposes_portal_and_admin(self):
         nginx = self.services["nginx"]
         published = {int(port["published"]): int(port["target"]) for port in nginx["ports"]}
         self.assertEqual(18080, published[18080])
         self.assertEqual(18081, published[18081])
-        self.assertIn("mall-service", nginx["depends_on"])
+        for dependency in (
+            "item-service",
+            "cart-service",
+            "user-service",
+            "trade-service",
+            "pay-service",
+        ):
+            self.assertIn(dependency, nginx["depends_on"])
         self.assertIn("marketing-service", nginx["depends_on"])
 
 
@@ -409,13 +450,48 @@ class NginxRoutingContractTest(unittest.TestCase):
         )
         self.assertGreaterEqual(len(re.findall(r"proxy_pass\s+http://marketing-service:8080;", self.conf)), 2)
 
-    def test_other_api_routes_strip_api_prefix_and_use_mall(self):
-        self.assertGreaterEqual(len(re.findall(r"location\s+/api/", self.conf)), 2)
+    def test_hmall_api_routes_are_sent_to_the_service_that_owns_them(self):
+        routes = {
+            "items": "item-service:8081",
+            "search": "item-service:8081",
+            "carts": "cart-service:8082",
+            "users": "user-service:8083",
+            "addresses": "user-service:8083",
+            "orders": "trade-service:8084",
+            "pay-orders": "pay-service:8085",
+        }
+        for path, upstream in routes.items():
+            with self.subTest(path=path):
+                self.assertGreaterEqual(
+                    len(re.findall(rf"location\s+\^~\s+/api/{re.escape(path)}", self.conf)),
+                    2,
+                )
+                self.assertGreaterEqual(
+                    len(re.findall(rf"proxy_pass\s+http://{re.escape(upstream)};", self.conf)),
+                    2,
+                )
         self.assertGreaterEqual(
             len(re.findall(r"rewrite\s+\^/api/\(\.\*\)\$\s+/\$1\s+break;", self.conf)),
             2,
         )
-        self.assertGreaterEqual(len(re.findall(r"proxy_pass\s+http://mall-service:8080;", self.conf)), 2)
+        self.assertNotIn("proxy_pass http://mall-service:8080", self.conf)
+
+
+class MarketingHmallAdapterContractTest(unittest.TestCase):
+    def test_catalog_and_address_adapters_have_independent_owner_urls(self):
+        application = read("marketing-service/src/main/resources/application.yaml")
+        catalog = read(
+            "marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallCatalogClient.java"
+        )
+        address = read(
+            "marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallAddressClient.java"
+        )
+        self.assertIn("catalog-base-url: ${HMALL_ITEM_BASE_URL:http://localhost:8081}", application)
+        self.assertIn("address-base-url: ${HMALL_USER_BASE_URL:http://localhost:8083}", application)
+        self.assertIn("luckyhub.integration.hmall.catalog-base-url", catalog)
+        self.assertIn("luckyhub.integration.hmall.address-base-url", address)
+        self.assertNotIn("luckyhub.integration.hmall.base-url", catalog)
+        self.assertNotIn("luckyhub.integration.hmall.base-url", address)
 
 
 if __name__ == "__main__":

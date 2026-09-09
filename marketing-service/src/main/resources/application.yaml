@@ -1,6 +1,6 @@
 spring:
   application:
-    name: luckyhub
+    name: hmall-marketing
   config:
     import: optional:file:.env[.properties]
   datasource:
@@ -36,6 +36,10 @@ springdoc:
     path: /swagger-ui.html
 
 luckyhub:
+  integration:
+    hmall:
+      catalog-base-url: ${HMALL_ITEM_BASE_URL:http://localhost:8081}
+      address-base-url: ${HMALL_USER_BASE_URL:http://localhost:8083}
   shipping:
     address-key: ${SHIPPING_ADDRESS_KEY}
     address-key-version: v1
@@ -80,6 +84,8 @@ luckyhub:
     access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
     public-base-url: ${OSS_PUBLIC_BASE_URL:}
   security:
+    hmall-jwt:
+      public-key: classpath:hmall-public.pem
     password:
       bcrypt-strength: ${BCRYPT_STRENGTH:12}
     jwt:

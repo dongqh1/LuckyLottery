@@ -124,6 +124,7 @@ services:
       start_period: 30s
 
   mall-service:
+    profiles: ["rollback"]
     build:
       context: ./mall-backend
       dockerfile: hm-service/Dockerfile
@@ -143,6 +144,109 @@ services:
       redis:
         condition: service_healthy
 
+  item-service:
+    build:
+      context: .
+      dockerfile: item-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      HM_ITEM_DB_HOST: mysql
+      HM_ITEM_DB_PORT: "3306"
+      HM_ITEM_DB_PASSWORD: ${HM_ITEM_DB_PASSWORD:?set HM_ITEM_DB_PASSWORD in .env}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      TZ: Asia/Shanghai
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+
+  cart-service:
+    build:
+      context: .
+      dockerfile: cart-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      HM_CART_DB_HOST: mysql
+      HM_CART_DB_PORT: "3306"
+      HM_CART_DB_PASSWORD: ${HM_CART_DB_PASSWORD:?set HM_CART_DB_PASSWORD in .env}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      TZ: Asia/Shanghai
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      HM_USER_DB_HOST: mysql
+      HM_USER_DB_PORT: "3306"
+      HM_USER_DB_PASSWORD: ${HM_USER_DB_PASSWORD:?set HM_USER_DB_PASSWORD in .env}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      MARKETING_BASE_URL: http://marketing-service:8080
+      TZ: Asia/Shanghai
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+
+  trade-service:
+    build:
+      context: .
+      dockerfile: trade-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      HM_TRADE_DB_HOST: mysql
+      HM_TRADE_DB_PORT: "3306"
+      HM_TRADE_DB_PASSWORD: ${HM_TRADE_DB_PASSWORD:?set HM_TRADE_DB_PASSWORD in .env}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      MARKETING_BASE_URL: http://marketing-service:8080
+      TZ: Asia/Shanghai
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+
+  pay-service:
+    build:
+      context: .
+      dockerfile: pay-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      HM_PAY_DB_HOST: mysql
+      HM_PAY_DB_PORT: "3306"
+      HM_PAY_DB_PASSWORD: ${HM_PAY_DB_PASSWORD:?set HM_PAY_DB_PASSWORD in .env}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      MARKETING_BASE_URL: http://marketing-service:8080
+      TZ: Asia/Shanghai
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+
   marketing-service:
     build:
       context: ./marketing-service
@@ -157,7 +261,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
-      HMALL_BASE_URL: http://mall-service:8080
+      HMALL_ITEM_BASE_URL: http://item-service:8081
+      HMALL_USER_BASE_URL: http://user-service:8083
       BCRYPT_STRENGTH: ${BCRYPT_STRENGTH:-12}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-720000}
@@ -176,7 +281,9 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-      mall-service:
+      item-service:
+        condition: service_started
+      user-service:
         condition: service_started
 
   nginx:
@@ -188,7 +295,15 @@ services:
       - "${PORTAL_PORT:-18080}:18080"
       - "${ADMIN_PORT:-18081}:18081"
     depends_on:
-      mall-service:
+      item-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      trade-service:
+        condition: service_started
+      pay-service:
         condition: service_started
       marketing-service:
         condition: service_started
