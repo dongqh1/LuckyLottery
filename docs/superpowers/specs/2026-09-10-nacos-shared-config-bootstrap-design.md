@@ -6,14 +6,14 @@
 
 ## 范围
 
-本次只修改五个拆分后的商城业务服务及一份 Nacos 共享日志配置。
+本次只修改五个拆分后的商城业务服务、Nacos 共享日志配置，以及为兼容 Windows 默认字符集而必须调整的 Nacos 共享 Swagger 占位符。
 
 不修改：
 
 - `hm-gateway`；
 - Spring Boot 4 的 `marketing-service`；
 - 旧单体 `mall-backend/hm-service`；
-- 三份共享配置中除 `shared.logger.yaml` 日志包范围以外的内容。
+- `shared.jdbc.yaml` 及两份共享配置中未明确列出的其他内容。
 
 ## 当前状态
 
@@ -96,6 +96,22 @@ logging:
 
 其余日志格式和文件路径保持不变。发布前读取旧内容，发布后重新读取并校验 Data ID、Group 和目标属性，避免误改其他配置。
 
+Spring Cloud Alibaba 2021.0.4.0 的 Nacos YAML 解析器会使用 JVM 默认字符集把远端字符串转换为字节。在 Windows/GBK 环境中，`shared.swagger.yaml` 的中文默认值会导致 SnakeYAML 解码失败。五个服务已经各自提供标题和描述，因此将：
+
+```yaml
+title: ${hm.swagger.title:黑马商城接口文档}
+description: ${hm.swagger.description:黑马商城接口文档描述}
+```
+
+调整为纯 ASCII 占位符：
+
+```yaml
+title: ${hm.swagger.title}
+description: ${hm.swagger.description}
+```
+
+这不会改变五个服务最终展示的中文内容，并可避免要求 Windows 开发者额外设置 `-Dfile.encoding=UTF-8`。
+
 ## 配置加载流程
 
 1. JVM 环境变量或默认值确定 Nacos 地址与凭据。
@@ -137,6 +153,7 @@ logging:
 - 五个服务均通过 Bootstrap 成功加载三份 Nacos 共享配置；
 - 本地重复公共配置已删除，服务专属配置仍完整；
 - Nacos 共享日志包范围覆盖 `com.dongqh`；
+- Nacos 共享 Swagger 配置不含会触发 Windows/GBK 解码缺陷的非 ASCII 默认值；
 - 自动化测试通过；
 - 五个服务重新构建后能在现有 Compose 环境正常启动并注册到 Nacos；
 - 最终报告逐文件列出项目改动，并单独列出 Nacos 远端变更和验证结果。
