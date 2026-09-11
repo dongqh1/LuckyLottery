@@ -35,6 +35,39 @@ MANAGED_PLUGINS = {
     ("org.springframework.boot", "spring-boot-maven-plugin"),
     ("org.apache.maven.plugins", "maven-compiler-plugin"),
 }
+ROOT_MANAGED_DEPENDENCIES = {
+    ("org.springframework.cloud", "spring-cloud-dependencies"):
+        ("${spring-cloud.version}", "pom", "import"),
+    ("com.alibaba.cloud", "spring-cloud-alibaba-dependencies"):
+        ("${spring-cloud-alibaba.version}", "pom", "import"),
+    ("com.baomidou", "mybatis-plus-spring-boot4-starter"):
+        ("${mybatis-plus.version}", None, None),
+    ("com.baomidou", "mybatis-plus-jsqlparser"):
+        ("${mybatis-plus.version}", None, None),
+    ("org.springdoc", "springdoc-openapi-starter-webmvc-ui"):
+        ("${springdoc.version}", None, None),
+}
+ROOT_PARENT = ("com.dongqh", "hmall-lottery", "1.0.0-SNAPSHOT", "../pom.xml")
+HMALL_PARENT = ("com.heima", "hmall", "1.0.0", "../mall-backend/pom.xml")
+MODULE_PARENT_CHAINS = {
+    "mall-backend/pom.xml": ROOT_PARENT,
+    "marketing-service/pom.xml": ROOT_PARENT,
+    "item-service/pom.xml": HMALL_PARENT,
+    "hm-api/pom.xml": HMALL_PARENT,
+    "hm-gateway/pom.xml": HMALL_PARENT,
+    "cart-service/pom.xml": HMALL_PARENT,
+    "user-service/pom.xml": HMALL_PARENT,
+    "trade-service/pom.xml": HMALL_PARENT,
+    "pay-service/pom.xml": HMALL_PARENT,
+    "mall-backend/hm-common/pom.xml": ("com.heima", "hmall", "1.0.0", "../pom.xml"),
+    "mall-backend/hm-service/pom.xml": ("com.heima", "hmall", "1.0.0", "../pom.xml"),
+}
+AUTO_CONFIGURATIONS = (
+    "com.hmall.common.config.MyBatisConfig",
+    "com.hmall.common.config.MvcConfig",
+    "com.hmall.common.config.JsonConfig",
+    "com.hmall.common.swagger.OpenApiAutoConfiguration",
+)
 
 
 def read(path: str) -> str:
@@ -45,6 +78,20 @@ def active_paths(pattern: str):
     return (
         path for path in ROOT.rglob(pattern)
         if path.relative_to(ROOT).parts[0] not in SCRATCH_DIRS
+    )
+
+
+def parent_coordinates(project):
+    parent = project.find("m:parent", NS)
+    if parent is None:
+        return None
+    relative_path = parent.find("m:relativePath", NS)
+    resolved_relative_path = "../pom.xml" if relative_path is None else (relative_path.text or "").strip()
+    return (
+        parent.findtext("m:groupId", namespaces=NS),
+        parent.findtext("m:artifactId", namespaces=NS),
+        parent.findtext("m:version", namespaces=NS),
+        resolved_relative_path,
     )
 
 
@@ -61,8 +108,51 @@ class Java17Boot4UpgradeContractTest(unittest.TestCase):
         self.assertEqual(len(modules), len(set(modules)), "root pom.xml contains duplicate modules")
         self.assertEqual(list(MODULES), modules)
 
+    def test_module_parent_chain_is_exact(self):
+        violations = []
+        for path, expected in MODULE_PARENT_CHAINS.items():
+            actual = parent_coordinates(ET.parse(ROOT / path).getroot())
+            if actual != expected:
+                violations.append(f"{path}: expected parent {expected}, found {actual}")
+        self.assertEqual([], violations)
+
     def test_platform_versions_are_single_sourced(self):
         violations = []
+        root = ET.parse(ROOT / "pom.xml").getroot()
+        for name, expected in ROOT_PLATFORM_PROPERTIES.items():
+            actual = root.findtext(f"m:properties/m:{name}", namespaces=NS)
+            if actual != expected:
+                violations.append(f"pom.xml: expected {name}={expected}, found {actual}")
+
+        managed_dependencies = root.findall("m:dependencyManagement/m:dependencies/m:dependency", NS)
+        managed_coordinates = [
+            (
+                dependency.findtext("m:groupId", namespaces=NS),
+                dependency.findtext("m:artifactId", namespaces=NS),
+            )
+            for dependency in managed_dependencies
+        ]
+        if len(managed_coordinates) != len(set(managed_coordinates)):
+            violations.append("pom.xml: dependencyManagement contains duplicate coordinates")
+        for coordinates, expected in ROOT_MANAGED_DEPENDENCIES.items():
+            matches = [
+                dependency for dependency, actual in zip(managed_dependencies, managed_coordinates)
+                if actual == coordinates
+            ]
+            if len(matches) != 1:
+                violations.append(
+                    f"pom.xml: dependencyManagement must contain {coordinates} exactly once; found {len(matches)}"
+                )
+                continue
+            dependency = matches[0]
+            actual = (
+                dependency.findtext("m:version", namespaces=NS),
+                dependency.findtext("m:type", namespaces=NS),
+                dependency.findtext("m:scope", namespaces=NS),
+            )
+            if actual != expected:
+                violations.append(f"pom.xml: managed dependency {coordinates} expected {expected}, found {actual}")
+
         for pom in active_paths("pom.xml"):
             if pom == ROOT / "pom.xml":
                 continue
@@ -102,14 +192,6 @@ class Java17Boot4UpgradeContractTest(unittest.TestCase):
                     violations.append(f"{relative}: contains obsolete dependency {obsolete}")
         self.assertEqual([], violations)
 
-        root = ET.parse(ROOT / "pom.xml").getroot()
-        for name, expected in ROOT_PLATFORM_PROPERTIES.items():
-            self.assertEqual(
-                expected,
-                root.findtext(f"m:properties/m:{name}", namespaces=NS),
-                f"root pom.xml must own {name}",
-            )
-
     def test_java_ee_imports_use_jakarta(self):
         offenders = []
         for java in active_paths("*.java"):
@@ -136,8 +218,12 @@ class Java17Boot4UpgradeContractTest(unittest.TestCase):
         imports = "mall-backend/hm-common/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"
         self.assertTrue((ROOT / imports).is_file())
         source = read(imports)
-        for name in ("MyBatisConfig", "MvcConfig", "JsonConfig", "OpenApiAutoConfiguration"):
-            self.assertIn(name, source)
+        registrations = []
+        for line in source.splitlines():
+            registration = line.split("#", 1)[0].strip()
+            if registration:
+                registrations.append(registration)
+        self.assertEqual(list(AUTO_CONFIGURATIONS), registrations)
 
 
 if __name__ == "__main__":
