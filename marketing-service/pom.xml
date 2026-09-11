@@ -3,10 +3,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>com.dongqh</groupId>
+        <artifactId>hmall-lottery</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>com.dongqh</groupId>
     <artifactId>luckyhub</artifactId>
@@ -27,9 +27,6 @@
         <url/>
     </scm>
     <properties>
-        <java.version>17</java.version>
-        <mybatis-plus.version>3.5.17</mybatis-plus.version>
-        <springdoc.version>3.0.3</springdoc.version>
         <jjwt.version>0.13.0</jjwt.version>
         <aliyun-oss-v2.version>0.5.0</aliyun-oss-v2.version>
         <redisson.version>4.6.1</redisson.version>
@@ -66,12 +63,10 @@
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
-            <version>${mybatis-plus.version}</version>
         </dependency>
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-jsqlparser</artifactId>
-            <version>${mybatis-plus.version}</version>
         </dependency>
         <dependency>
             <groupId>com.aliyun</groupId>
@@ -102,7 +97,6 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>${springdoc.version}</version>
         </dependency>
 
         <dependency>
