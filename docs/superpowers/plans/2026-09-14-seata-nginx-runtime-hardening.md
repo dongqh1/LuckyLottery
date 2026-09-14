@@ -24,10 +24,12 @@
 **Files:**
 - Modify: `tests/test_seata_infrastructure_contract.py`
 - Modify: `seata/application.yml:85`
+- Modify: `mysql/seata/seata-tc.sql`
+- Modify: `README.md`
 
 **Interfaces:**
 - Consumes: MySQL account `seata_app@%` using `caching_sha2_password`.
-- Produces: JDBC URL with `allowPublicKeyRetrieval=true` and `useSSL=false`.
+- Produces: JDBC URL with `allowPublicKeyRetrieval=true` and `useSSL=false`, plus Seata 2.4 `vgroup_table` storage.
 
 - [ ] **Step 1: Add the failing JDBC authentication contract**
 
@@ -36,7 +38,10 @@ In `SeataRuntimeConfigurationContractTest.test_application_uses_container_dns_an
 ```python
 self.assertIn("allowPublicKeyRetrieval=true", application)
 self.assertIn("useSSL=false", application)
+self.assertIn("vgroup-table: vgroup_table", application)
 ```
+
+Also add `vgroup_table` to the expected idempotent TC table list and README documentation contract.
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
@@ -55,6 +60,8 @@ Change the active URL in `seata/application.yml` to:
 ```yaml
 url: jdbc:mysql://mysql:3306/seata?rewriteBatchedStatements=true&serverTimezone=Asia%2FShanghai&allowPublicKeyRetrieval=true&useSSL=false
 ```
+
+Add `vgroup-table: vgroup_table` beside the other Seata DB table mappings, and add the official Seata 2.4 idempotent `vgroup_table` definition to `mysql/seata/seata-tc.sql`. Document all five server tables in README.
 
 - [ ] **Step 4: Run focused tests and verify GREEN**
 
@@ -140,7 +147,7 @@ Under the Compose `nginx` service add:
 
 ```yaml
 healthcheck:
-  test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:18080/ && wget -q -O /dev/null http://127.0.0.1:18081/"]
+  test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:18080/ && wget -q -O /dev/null http://127.0.0.1:18081/items.html"]
   interval: 10s
   timeout: 5s
   retries: 6
@@ -186,9 +193,9 @@ Expected: Seata becomes healthy and the fresh logs contain no `Public Key Retrie
 
 - [ ] **Step 2: Verify Seata DB access and Nacos registration**
 
-Read secrets from `.env` into PowerShell variables without printing them. Query `information_schema.PROCESSLIST` for active `seata_app` connections, query the four TC tables, and inspect `/home/nacos/logs/naming-server.log` for the current `seata-server:8091` registration.
+Read secrets from `.env` into PowerShell variables without printing them. Query `information_schema.PROCESSLIST` for active `seata_app` connections, query the five TC tables, and inspect `/home/nacos/logs/naming-server.log` for the current `seata-server:8091` registration.
 
-Expected: active `seata_app` connections exist, all four tables exist with four distributed locks, and Nacos records the current Seata instance.
+Expected: active `seata_app` connections exist, all five tables exist, at least the four idempotent distributed-lock seeds exist (Seata may add runtime locks), and Nacos records the current Seata instance.
 
 - [ ] **Step 3: Verify Nginx starts while Marketing is absent**
 
@@ -199,7 +206,7 @@ docker compose --env-file .env up -d --build --no-deps --force-recreate nginx
 docker compose --env-file .env ps nginx
 ```
 
-Request `http://localhost:18080/` and `http://localhost:18081/`; both must return 200. Request a Marketing API path; it must return 502 while Nginx remains healthy.
+Resolve the actual published ports from the running container because `.env` may override the defaults. Request the Portal root and Admin `/items.html`; both must return 200. Request a Marketing API path; it must return 502 while Nginx remains healthy.
 
 - [ ] **Step 4: Restore Marketing and verify automatic proxy recovery**
 

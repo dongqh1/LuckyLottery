@@ -7,6 +7,7 @@
 ## 已确认根因
 
 - `seata_app` 使用 MySQL 8.4 默认的 `caching_sha2_password` 插件，但 Seata JDBC URL 禁用了 SSL 且未允许获取服务器公钥。连接池因此持续报告 `Public Key Retrieval is not allowed`。
+- 仓库沿用了旧版四表配置，缺少 Seata 2.4 要求的 `vgroup-table` 属性和 `vgroup_table`，配置提供器因此持续报告 `seata.store.db..vgroup-table`。
 - Nginx 配置中的静态 `proxy_pass` 会在启动阶段解析 Docker 服务名。`marketing-service` 已收到 SIGTERM 并正常停止，从 Docker DNS 消失，导致 Nginx 报 `host not found in upstream` 并以状态 1 退出。
 - 当前 Seata 健康检查只验证控制台端口，不能代表数据库存储可用；当前 Nginx 没有健康检查。
 
@@ -14,7 +15,7 @@
 
 ### Seata TC
 
-保留专用账号 `seata_app`、最小权限和 `caching_sha2_password`，不降级 MySQL 认证插件。在 JDBC URL 中显式加入 `allowPublicKeyRetrieval=true`，并继续禁用本地 Docker 网络中的 TLS。契约测试必须验证这两个参数同时存在，防止后续配置回退。
+保留专用账号 `seata_app`、最小权限和 `caching_sha2_password`，不降级 MySQL 认证插件。在 JDBC URL 中显式加入 `allowPublicKeyRetrieval=true`，并继续禁用本地 Docker 网络中的 TLS。补建 Seata 2.4 的 `vgroup_table` 并配置 `vgroup-table: vgroup_table`。契约测试必须验证这些参数和五表结构，防止后续配置回退。
 
 重建 TC 后，以新容器启动时间为边界检查日志，要求不再出现数据库认证、连接池初始化或 Seata DB 配置异常；同时验证 TC 表、`seata_app` 活跃连接和 Nacos 注册。
 
