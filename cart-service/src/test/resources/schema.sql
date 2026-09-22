@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS cart;
+
+CREATE TABLE cart (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
+    num INT NOT NULL DEFAULT 1,
+    name VARCHAR(256) NOT NULL,
+    spec VARCHAR(1024),
+    price INT NOT NULL,
+    image VARCHAR(256) DEFAULT '',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX key_user_item_id ON cart(user_id, item_id);

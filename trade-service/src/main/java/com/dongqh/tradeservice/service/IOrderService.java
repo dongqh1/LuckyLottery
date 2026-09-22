@@ -1,6 +1,6 @@
 package com.dongqh.tradeservice.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 import com.dongqh.hmapi.dto.OrderDetailDTO;
 import com.dongqh.hmapi.dto.OrderPaymentDTO;
 import com.dongqh.tradeservice.domain.dto.OrderFormDTO;
@@ -32,6 +32,9 @@ public interface IOrderService extends IService<Order> {
     OrderPaymentDTO queryOrderForPayment(Long orderId, Long userId);
 
     void markOrderPaySuccess(Long orderId, Long userId, Integer amount);
+
+    void markOrderPaySuccess(Long orderId, Long userId, Integer amount,
+                             java.time.LocalDateTime paidAt);
 
     void cancelOrder(Long orderId);
 

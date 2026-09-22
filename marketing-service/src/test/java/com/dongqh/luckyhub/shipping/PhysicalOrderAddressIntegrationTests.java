@@ -7,6 +7,8 @@ import com.dongqh.luckyhub.common.exception.BusinessException;
 import com.dongqh.luckyhub.inventory.channel.dto.AllocateChannelStockCommand;
 import com.dongqh.luckyhub.inventory.channel.dto.InitializeSkuStockCommand;
 import com.dongqh.luckyhub.inventory.channel.service.ChannelInventoryService;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressClient;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressView;
 import com.dongqh.luckyhub.order.dto.CreateCashOrderCommand;
 import com.dongqh.luckyhub.order.service.CashOrderService;
 import com.dongqh.luckyhub.points.dto.AdminPointsAdjustmentCommand;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +33,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class PhysicalOrderAddressIntegrationTests {
@@ -41,6 +45,7 @@ class PhysicalOrderAddressIntegrationTests {
     @Autowired ShippingAddressService addresses;
     @Autowired SysUserMapper users;
     @Autowired JdbcTemplate jdbc;
+    @MockitoBean HmallAddressClient hmallAddresses;
     private final List<Long> userIds = new ArrayList<>();
     private final List<Long> skuIds = new ArrayList<>();
     private final List<Long> productIds = new ArrayList<>();
@@ -72,6 +77,7 @@ class PhysicalOrderAddressIntegrationTests {
         long other = createUser();
         long ownerAddress = createAddress(owner);
         long otherAddress = createAddress(other);
+        when(hmallAddresses.getAddress(otherAddress)).thenReturn(null);
         long cashSku = createSku(ProductType.PHYSICAL, true, false);
         long pointsSku = createSku(ProductType.PHYSICAL, false, true);
         points.adjust(new AdminPointsAdjustmentCommand(owner, 1_000L, "SEED-PHYSICAL-" + suffix, "测试入账"));
@@ -155,8 +161,11 @@ class PhysicalOrderAddressIntegrationTests {
     }
 
     private long createAddress(long userId) {
-        return addresses.create(userId, new CreateShippingAddressCommand(
+        long addressId = addresses.create(userId, new CreateShippingAddressCommand(
                 "张三", "13812345678", "浙江省", "杭州市", "余杭区", "文一西路1号", false)).id();
+        when(hmallAddresses.getAddress(addressId)).thenReturn(new HmallAddressView(
+                addressId, "浙江省", "杭州市", "余杭区", "13812345678", "文一西路1号", "张三", 0, null));
+        return addressId;
     }
 
     private long createSku(ProductType type, boolean cash, boolean point) {
@@ -178,7 +187,7 @@ class PhysicalOrderAddressIntegrationTests {
     }
 
     private void assertAccessDenied(Runnable action) {
-        assertShippingError(action, ShippingErrorCode.ADDRESS_ACCESS_DENIED);
+        assertShippingError(action, ShippingErrorCode.ADDRESS_NOT_FOUND);
     }
 
     private void assertShippingError(Runnable action, ShippingErrorCode code) {

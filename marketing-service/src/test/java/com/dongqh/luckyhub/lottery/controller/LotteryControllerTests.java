@@ -77,7 +77,8 @@ class LotteryControllerTests {
         when(queryService.listActivities()).thenReturn(List.of(activity));
         when(queryService.listPrizes(8L)).thenReturn(List.of(
                 new com.dongqh.luckyhub.lottery.vo.LotteryPrizeView(
-                        3L, "幸运礼盒", com.dongqh.luckyhub.prize.enums.PrizeType.PHYSICAL, null, 1)));
+                        3L, "幸运礼盒", com.dongqh.luckyhub.prize.enums.PrizeType.PHYSICAL,
+                        null, 1, 1001L)));
         when(queryService.getActivity(8L)).thenReturn(activity);
         when(lotteryService.draw(any())).thenReturn(order);
         when(queryService.getDraw("req-1")).thenReturn(order);
@@ -98,6 +99,7 @@ class LotteryControllerTests {
         mockMvc.perform(get("/api/lottery/activities/8/prizes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].prizeName").value("幸运礼盒"))
+                .andExpect(jsonPath("$.data[0].hmallItemId").value(1001))
                 .andExpect(jsonPath("$.data[0].weight").doesNotExist())
                 .andExpect(jsonPath("$.data[0].remainingStock").doesNotExist());
         mockMvc.perform(post("/api/lottery/draws").contentType(MediaType.APPLICATION_JSON)

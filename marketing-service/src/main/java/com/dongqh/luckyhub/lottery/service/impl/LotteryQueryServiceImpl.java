@@ -183,7 +183,9 @@ public class LotteryQueryServiceImpl implements LotteryQueryService {
     private DrawOrderView toOrderView(LotteryDrawOrder order, List<LotteryDrawRecord> records) {
         List<DrawResultView> results = records.stream().map(record -> new DrawResultView(record.getId(), record.getSequenceNo(),
                 record.getResultType(), record.getPrizeId(), record.getPrizeName(), record.getPrizeType(),
-                record.getPrizeImageUrl(), record.getBenefitId())).toList();
+                record.getPrizeImageUrl(), record.getBenefitId(),
+                record.getRewardType() == com.dongqh.luckyhub.reward.enums.RewardType.PRODUCT
+                        ? record.getRewardTargetId() : null)).toList();
         return new DrawOrderView(order.getId(), order.getRequestId(), order.getActivityId(), order.getDrawCount(),
                 order.getDrawDate(), order.getStatus(), order.getFailReason(), order.getCompletedAt(), results);
     }

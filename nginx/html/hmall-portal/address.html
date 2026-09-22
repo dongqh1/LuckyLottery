@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <title>收货地址 - 黑马商城</title>
+  <link rel="stylesheet" type="text/css" href="./css/webbase.css">
+  <style>
+    [v-cloak] { display: none; }
+    .address-page { width: 1200px; margin: 28px auto 60px; }
+    .address-title { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e1251b; padding-bottom: 12px; }
+    .address-title h2 { font-size: 22px; color: #333; }
+    .address-layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; margin-top: 22px; }
+    .address-card { border: 1px solid #e5e5e5; padding: 18px; margin-bottom: 14px; background: #fff; }
+    .address-card.default { border-color: #e1251b; }
+    .address-card-head { display: flex; justify-content: space-between; margin-bottom: 12px; }
+    .default-badge { color: #e1251b; border: 1px solid #e1251b; padding: 2px 8px; margin-left: 8px; }
+    .address-detail { color: #666; line-height: 26px; }
+    .actions button { border: 0; background: transparent; color: #1677ff; cursor: pointer; margin-left: 12px; }
+    .address-form { border: 1px solid #e5e5e5; padding: 20px; background: #fafafa; }
+    .address-form h3 { margin-bottom: 18px; }
+    .field { margin-bottom: 13px; }
+    .field label { display: inline-block; width: 74px; color: #555; }
+    .field input[type=text] { width: 245px; height: 32px; border: 1px solid #ccc; padding: 0 8px; }
+    .form-actions { margin-top: 20px; padding-left: 78px; }
+    .primary { color: #fff; background: #e1251b; border: 0; padding: 9px 24px; cursor: pointer; }
+    .secondary { border: 1px solid #bbb; background: #fff; padding: 8px 20px; margin-left: 8px; cursor: pointer; }
+    .empty { padding: 60px 20px; text-align: center; color: #888; border: 1px dashed #ccc; }
+  </style>
+</head>
+<body>
+<div id="addressApp" v-cloak>
+  <top></top>
+  <main class="address-page">
+    <div class="address-title">
+      <h2>收货地址</h2>
+      <a href="/index.html">返回商城首页</a>
+    </div>
+    <div class="address-layout">
+      <section>
+        <div v-if="!addresses.length" class="empty">还没有收货地址，请先新增常用地址</div>
+        <article v-for="address in addresses" :key="address.id" class="address-card" :class="{default: address.isDefault === 1}">
+          <div class="address-card-head">
+            <strong>{{address.contact}} 收</strong>
+            <div class="actions">
+              <button v-if="address.isDefault !== 1" @click="makeDefault(address)">设为默认地址</button>
+              <button @click="edit(address)">编辑</button>
+              <button @click="remove(address)">删除</button>
+            </div>
+          </div>
+          <div class="address-detail">
+            {{address.province}} {{address.city}} {{address.town}} {{address.street}}
+            <span v-if="address.isDefault === 1" class="default-badge">默认地址</span><br>
+            联系电话：{{maskMobile(address.mobile)}}<span v-if="address.notes">　{{address.notes}}</span>
+          </div>
+        </article>
+      </section>
+      <aside class="address-form">
+        <h3>{{form.id ? '编辑收货地址' : '新增收货地址'}}</h3>
+        <div class="field"><label>收货人</label><input type="text" v-model.trim="form.contact" maxlength="32"></div>
+        <div class="field"><label>手机号</label><input type="text" v-model.trim="form.mobile" maxlength="11"></div>
+        <div class="field"><label>省份</label><input type="text" v-model.trim="form.province" maxlength="32"></div>
+        <div class="field"><label>城市</label><input type="text" v-model.trim="form.city" maxlength="32"></div>
+        <div class="field"><label>区县</label><input type="text" v-model.trim="form.town" maxlength="32"></div>
+        <div class="field"><label>详细地址</label><input type="text" v-model.trim="form.street" maxlength="128"></div>
+        <div class="field"><label>备注</label><input type="text" v-model.trim="form.notes" maxlength="64"></div>
+        <div class="field"><label></label><input type="checkbox" v-model="form.defaultChecked"> 设为默认地址</div>
+        <div class="form-actions">
+          <button class="primary" @click="save">保存地址</button>
+          <button v-if="form.id" class="secondary" @click="resetForm">取消</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/top.js"></script>
+<script>
+  new Vue({
+    el: "#addressApp",
+    data: {
+      addresses: [],
+      form: {}
+    },
+    created() {
+      if (!util.isLogin()) {
+        util.store.set("return-url", location.href)
+        location.href = "/login.html"
+        return
+      }
+      this.resetForm()
+      this.load()
+    },
+    methods: {
+      emptyForm() {
+        return { id: null, contact: "", mobile: "", province: "", city: "", town: "", street: "", notes: "", defaultChecked: false }
+      },
+      resetForm() {
+        this.form = this.emptyForm()
+      },
+      load() {
+        axios.get("/addresses").then(data => {
+          this.addresses = data || []
+        }).catch(() => alert("收货地址加载失败，请稍后重试"))
+      },
+      payload(address) {
+        return {
+          contact: address.contact,
+          mobile: address.mobile,
+          province: address.province,
+          city: address.city,
+          town: address.town,
+          street: address.street,
+          notes: address.notes || "",
+          isDefault: address.defaultChecked ? 1 : (address.isDefault === 1 ? 1 : 0)
+        }
+      },
+      valid() {
+        if (!this.form.contact || !this.form.mobile || !this.form.province || !this.form.city || !this.form.town || !this.form.street) {
+          alert("请完整填写收货人、手机号和地址信息")
+          return false
+        }
+        if (!/^1\d{10}$/.test(this.form.mobile)) {
+          alert("请输入正确的 11 位手机号")
+          return false
+        }
+        return true
+      },
+      save() {
+        if (!this.valid()) return
+        const request = this.form.id
+          ? axios.put(`/addresses/${this.form.id}`, this.payload(this.form))
+          : axios.post("/addresses", this.payload(this.form))
+        request.then(() => {
+          this.resetForm()
+          this.load()
+        }).catch(() => alert("地址保存失败，请稍后重试"))
+      },
+      edit(address) {
+        this.form = Object.assign({}, address, { defaultChecked: address.isDefault === 1 })
+        window.scrollTo(0, 0)
+      },
+      makeDefault(address) {
+        const request = Object.assign({}, address, { defaultChecked: true })
+        axios.put(`/addresses/${address.id}`, this.payload(request)).then(() => this.load())
+          .catch(() => alert("默认地址设置失败，请稍后重试"))
+      },
+      remove(address) {
+        if (!confirm(`确定删除 ${address.contact} 的收货地址吗？`)) return
+        axios.delete(`/addresses/${address.id}`).then(() => {
+          if (this.form.id === address.id) this.resetForm()
+          this.load()
+        }).catch(() => alert("地址删除失败，请稍后重试"))
+      },
+      maskMobile(mobile) {
+        return mobile ? mobile.substring(0, 3) + "****" + mobile.substring(7) : ""
+      }
+    }
+  })
+</script>
+</body>
+</html>

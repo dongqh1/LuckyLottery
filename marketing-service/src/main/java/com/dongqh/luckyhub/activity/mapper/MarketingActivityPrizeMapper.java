@@ -21,9 +21,11 @@ public interface MarketingActivityPrizeMapper extends BaseMapper<MarketingActivi
                    p.prize_name AS prize_name,
                    p.prize_type AS prize_type,
                    p.image_url AS image_url,
-                   ap.sort_order AS sort_order
+                   ap.sort_order AS sort_order,
+                   CASE WHEN rd.reward_type = 'PRODUCT' THEN rd.target_id END AS hmall_item_id
             FROM marketing_activity_prize ap
             JOIN marketing_prize p ON p.id = ap.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
             WHERE ap.activity_id = #{activityId}
               AND ap.remaining_stock > 0
               AND p.status = 1

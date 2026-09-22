@@ -13,6 +13,8 @@ public class OrderFormDTO {
     private Long addressId;
     @ApiModelProperty("支付类型")
     private Integer paymentType;
+    @ApiModelProperty("本次结算选择的用户优惠券id")
+    private Long couponId;
     @ApiModelProperty("下单商品列表")
     private List<OrderDetailDTO> details;
 }

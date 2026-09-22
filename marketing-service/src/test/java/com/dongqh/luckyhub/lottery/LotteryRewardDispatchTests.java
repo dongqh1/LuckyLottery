@@ -111,7 +111,7 @@ class LotteryRewardDispatchTests {
                 8L, RewardType.COUPON, "a".repeat(64));
     }
     private MessagingProperties properties() {
-        return new MessagingProperties(false, "redis", "s", "g", "test-consumer", 1,
-                Duration.ofMillis(10), Duration.ofMillis(20), Duration.ofSeconds(1));
+        return new MessagingProperties(
+                false, "test-consumer", Duration.ofSeconds(5), Duration.ofSeconds(1));
     }
 }

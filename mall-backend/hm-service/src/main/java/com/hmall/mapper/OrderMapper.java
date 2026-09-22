@@ -12,5 +12,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  * @since 2023-05-05
  */
 public interface OrderMapper extends BaseMapper<Order> {
+    @org.apache.ibatis.annotations.Select("SELECT * FROM `order` WHERE id = #{id} FOR UPDATE")
+    Order selectByIdForUpdate(@org.apache.ibatis.annotations.Param("id") Long id);
 
 }

@@ -26,6 +26,7 @@ public class ShippingOrder {
     private String sourceId;
     private Long targetUserId;
     private Long addressSnapshotId;
+    private Long hmallItemId;
     private String skuCode;
     private String productName;
     private String imageUrl;

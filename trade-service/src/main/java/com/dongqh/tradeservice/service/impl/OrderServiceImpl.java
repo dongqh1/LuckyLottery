@@ -3,14 +3,14 @@ package com.dongqh.tradeservice.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.dongqh.hmapi.client.CartClient;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.dongqh.hmapi.client.ItemClient;
 import com.dongqh.hmapi.client.PayClient;
 import com.dongqh.hmapi.client.UserClient;
 import com.dongqh.hmapi.dto.AddressDTO;
 import com.dongqh.hmapi.dto.ItemDTO;
 import com.dongqh.hmapi.dto.OrderDetailDTO;
+import com.dongqh.hmapi.dto.OrderCreatedMessage;
 import com.dongqh.hmapi.dto.OrderPaymentDTO;
 import com.dongqh.tradeservice.domain.dto.OrderFormDTO;
 import com.dongqh.tradeservice.domain.po.Order;
@@ -24,6 +24,7 @@ import com.dongqh.tradeservice.marketing.CouponCheckoutClient;
 import com.dongqh.tradeservice.marketing.CouponReservationView;
 import com.dongqh.tradeservice.marketing.MembershipBenefitClient;
 import com.dongqh.tradeservice.marketing.MembershipBenefitView;
+import com.dongqh.tradeservice.messaging.TradeOutboxService;
 import com.dongqh.tradeservice.service.IOrderDetailService;
 import com.dongqh.tradeservice.service.IOrderLogisticsService;
 import com.dongqh.tradeservice.service.IOrderService;
@@ -32,6 +33,8 @@ import com.hmall.common.domain.PageQuery;
 import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.common.utils.UserContext;
+import org.apache.seata.core.context.RootContext;
+import org.apache.seata.spring.annotation.GlobalTransactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -54,7 +58,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final ItemClient itemClient;
     private final PayClient payClient;
     private final IOrderDetailService detailService;
-    private final CartClient cartClient;
+    private final TradeOutboxService tradeOutboxService;
     private final UserClient userClient;
     private final IOrderLogisticsService logisticsService;
     private final MembershipBenefitClient membershipBenefitClient;
@@ -64,7 +68,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     public OrderServiceImpl(ItemClient itemClient,
                             PayClient payClient,
                             IOrderDetailService detailService,
-                            CartClient cartClient,
+                            TradeOutboxService tradeOutboxService,
                             UserClient userClient,
                             IOrderLogisticsService logisticsService,
                             MembershipBenefitClient membershipBenefitClient,
@@ -72,7 +76,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         this.itemClient = itemClient;
         this.payClient = payClient;
         this.detailService = detailService;
-        this.cartClient = cartClient;
+        this.tradeOutboxService = tradeOutboxService;
         this.userClient = userClient;
         this.logisticsService = logisticsService;
         this.membershipBenefitClient = membershipBenefitClient;
@@ -80,10 +84,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    @GlobalTransactional(name = "trade-create-order")
     @Transactional
     public Long createOrder(OrderFormDTO orderFormDTO) {
         Order order = new Order();
-        Long userId = 1L; // TODO 用户还没法从线程获得，需要后面的网关功能
+        Long userId = UserContext.getUser();
 
 
 
@@ -144,15 +149,17 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
             List<OrderDetail> details = buildDetails(order.getId(), items, itemNumMap);
             detailService.saveBatch(details);
-            cartClient.deleteCartItemByIds(itemIds);
             try {
                 itemClient.deductStock(detailDTOS);
             } catch (Exception e) {
                 throw new RuntimeException("库存不足！");
             }
+            List<Long> orderedItemIds = itemIds.stream().sorted().toList();
+            tradeOutboxService.append(new OrderCreatedMessage(
+                    UUID.randomUUID(), order.getId(), userId, orderedItemIds, LocalDateTime.now()));
             return order.getId();
         } catch (RuntimeException exception) {
-            if (coupon != null) {
+            if (coupon != null && !RootContext.inGlobalTransaction()) {
                 try {
                     couponCheckoutClient.release(coupon.getUserCouponId(), order.getId());
                 } catch (RuntimeException releaseFailure) {
@@ -178,18 +185,29 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     @Transactional
     public void markOrderPaySuccess(Long orderId, Long userId, Integer amount) {
-        if (orderId == null || userId == null || amount == null || amount <= 0) {
+        markOrderPaySuccess(orderId, userId, amount, LocalDateTime.now());
+    }
+
+    @Override
+    @Transactional
+    public void markOrderPaySuccess(Long orderId, Long userId, Integer amount,
+                                    LocalDateTime paidAt) {
+        if (orderId == null || userId == null || amount == null || amount <= 0 || paidAt == null) {
             throw new BadRequestException("订单支付参数不合法");
         }
-        boolean success = lambdaUpdate()
-                .set(Order::getStatus, 2)
-                .set(Order::getPayTime, LocalDateTime.now())
-                .eq(Order::getId, orderId)
-                .eq(Order::getUserId, userId)
-                .eq(Order::getTotalFee, amount)
-                .eq(Order::getStatus, 1)
-                .update();
-        if (!success) {
+        Order order = baseMapper.selectByIdForUpdate(orderId);
+        if (order == null || !userId.equals(order.getUserId()) || !amount.equals(order.getTotalFee())) {
+            throw new BadRequestException("订单状态或金额已发生变化");
+        }
+        if (Integer.valueOf(2).equals(order.getStatus())) {
+            return;
+        }
+        if (!Integer.valueOf(1).equals(order.getStatus())) {
+            throw new BadRequestException("订单状态或金额已发生变化");
+        }
+        order.setStatus(2);
+        order.setPayTime(paidAt);
+        if (baseMapper.updateById(order) != 1) {
             throw new BadRequestException("订单状态或金额已发生变化");
         }
     }
@@ -200,6 +218,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    @GlobalTransactional(name = "trade-apply-checkout-coupon")
     @Transactional
     public OrderVO applyCheckoutCoupon(Long orderId, Long couponId) {
         Order order = requireOwnedOrder(lockOrder(orderId));
@@ -216,8 +235,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         List<OrderDetailDTO> checkoutItems = validateCheckoutSnapshot(order);
         // Register BEFORE reserve: timeout may mean the remote side has already locked the coupon.
         // User identity is carried by the authenticated AuthorizationContext; orderId is sent explicitly.
-        CouponRollbackRelease release = new CouponRollbackRelease(couponId, orderId);
-        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+        CouponRollbackRelease release = RootContext.inGlobalTransaction()
+                ? null
+                : new CouponRollbackRelease(couponId, orderId);
+        if (release != null
+                && org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
             org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(release);
         }
         try {
@@ -237,7 +259,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             payClient.syncPendingAmount(orderId, order.getUserId(), order.getTotalFee());
             return BeanUtils.copyBean(order, OrderVO.class);
         } catch (RuntimeException | Error failure) {
-            try { release.release(); } catch (RuntimeException releaseFailure) { failure.addSuppressed(releaseFailure); }
+            if (release != null) {
+                try { release.release(); } catch (RuntimeException releaseFailure) { failure.addSuppressed(releaseFailure); }
+            }
             throw failure;
         }
     }
@@ -377,6 +401,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    @GlobalTransactional(name = "trade-cancel-order")
     @Transactional
     public void cancelOrder(Long orderId) {
         Order order = requireOwnedOrder(lockOrder(orderId));

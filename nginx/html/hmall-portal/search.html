@@ -113,7 +113,7 @@
           <span class="item-gray">最近1个月销量 :</span> <span class="item-sold" v-text="comment(item.sold)"></span>
         </div>
         <div class="buy-btn-box">
-          <div class="buy-btn" @click="toOrderConfirm(item.id)">
+          <div class="buy-btn" @click="toOrderConfirm(item)">
             <span >立刻购买</span>
           </div>
           <div class="buy-btn" @click="add2Cart(item)">
@@ -354,8 +354,13 @@
           return Math.floor(count / 10000) + "万+";
         }
       },
-      toOrderConfirm(id) {
-        location.href = "/order-confirm.html?id=" + id
+      toOrderConfirm(item) {
+        if(!util.isLogin()){
+          location.href = "/login.html";
+          return;
+        }
+        util.store.set("selectedCarts", [Object.assign({}, item, {itemId: item.id, num: 1})]);
+        location.href = "/order-confirm.html"
       },
       add2Cart(item) {
         let { id, ... param} = item;
@@ -364,6 +369,7 @@
         if(!util.isLogin()){
           // 未登录，跳转去登录页
           location.href = "/login.html"
+          return;
         }
         // 已登录
         axios.post("/carts", param)

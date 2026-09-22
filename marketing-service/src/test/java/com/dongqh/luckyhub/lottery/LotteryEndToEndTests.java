@@ -4,7 +4,6 @@ import com.dongqh.luckyhub.auth.context.LoginContext;
 import com.dongqh.luckyhub.auth.model.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.BusinessException;
 import com.dongqh.luckyhub.lottery.algorithm.DrawRandomSource;
-import com.dongqh.luckyhub.lottery.config.MessagingProperties;
 import com.dongqh.luckyhub.lottery.dto.DrawCommand;
 import com.dongqh.luckyhub.lottery.dto.DrawOrderQuery;
 import com.dongqh.luckyhub.lottery.entity.LotteryDrawOrder;
@@ -18,10 +17,7 @@ import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
 import com.dongqh.luckyhub.lottery.messaging.event.DrawConfirmedEvent;
 import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
 import com.dongqh.luckyhub.lottery.messaging.event.PrizeFulfillmentRequestedEvent;
-import com.dongqh.luckyhub.lottery.messaging.port.DrawEventPublisher;
-import com.dongqh.luckyhub.lottery.messaging.redis.RedisStreamDrawEventConsumer;
-import com.dongqh.luckyhub.lottery.messaging.redis.RedisStreamDrawEventPublisher;
-import com.dongqh.luckyhub.lottery.messaging.redis.RedisStreamInitializer;
+import com.dongqh.luckyhub.lottery.messaging.rabbit.RabbitDrawEventListener;
 import com.dongqh.luckyhub.lottery.model.NewDrawOrder;
 import com.dongqh.luckyhub.lottery.quota.DrawQuotaKeys;
 import com.dongqh.luckyhub.lottery.quota.DrawQuotaService;
@@ -40,8 +36,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.domain.Range;
-import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -54,11 +48,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,9 +63,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
+        "seata.enabled=false",
         "spring.task.scheduling.enabled=false",
         "luckyhub.lottery.reconcile-initial-delay=24h",
-        "luckyhub.messaging.consumer-initial-delay=24h",
+        "luckyhub.messaging.enabled=false",
         "luckyhub.lottery.outbox-initial-delay=24h",
         "luckyhub.activity.status-refresh-initial-delay=86400000"
 })
@@ -96,7 +91,6 @@ class LotteryEndToEndTests {
     private final List<Long> activityIds = new ArrayList<>();
     private final List<Long> prizeIds = new ArrayList<>();
     private final List<Long> insertedUserIds = new ArrayList<>();
-    private final List<String> streams = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -127,7 +121,6 @@ class LotteryEndToEndTests {
             jdbc.update("DELETE FROM marketing_activity WHERE id=?", activityId);
         }
         for (long prizeId : prizeIds) jdbc.update("DELETE FROM marketing_prize WHERE id=?", prizeId);
-        streams.forEach(redis::delete);
         for (long userId : insertedUserIds) {
             jdbc.update("DELETE FROM sys_user_role WHERE user_id=?", userId);
             jdbc.update("DELETE FROM sys_user WHERE id=?", userId);
@@ -237,7 +230,7 @@ class LotteryEndToEndTests {
         assertThat(jdbc.queryForObject("SELECT status FROM lottery_draw_order WHERE request_id=?", String.class, requestId))
                 .isEqualTo("FAILED");
         assertThat(count("lottery_draw_record", "request_id=?", requestId)).isZero();
-        deliverThroughRealStream(outbox("DRAW_RELEASE_REQUESTED", requestId));
+        deliverThroughRabbitListener(outbox("DRAW_RELEASE_REQUESTED", requestId));
         assertThat(reservationStatus(requestId)).isEqualTo("RELEASED");
         assertThat(quotaValue(activityId, USER_ID, LocalDate.now(SHANGHAI))).isEqualTo("0");
     }
@@ -265,7 +258,7 @@ class LotteryEndToEndTests {
     }
 
     @Test
-    void unavailableStreamLeavesOutboxRetryableThenRealRedisPublishMarksItSent() {
+    void unavailableBrokerLeavesOutboxRetryableThenConfirmedPublishMarksItSent() {
         long activityId = noWinActivity(100, 10);
         String requestId = requestId();
         lotteryService.draw(new DrawCommand(requestId, activityId, 1));
@@ -273,27 +266,23 @@ class LotteryEndToEndTests {
         MessageOutbox sentinel = insertSentinelOutbox();
         MessageOutboxMapper scopedMapper = scopedOutboxMapper(confirmed.getId());
         OutboxRelayService failing = new OutboxRelayService(
-                scopedMapper, ignored -> { throw new IllegalStateException("stream unavailable"); }, objectMapper, 100);
+                scopedMapper, ignored -> { throw new IllegalStateException("broker unavailable"); }, objectMapper, 100);
 
         failing.relayBatch();
 
         MessageOutbox failed = outboxMapper.selectById(confirmed.getId());
         assertThat(failed.getStatus()).isEqualTo(OutboxStatus.FAILED);
         assertThat(failed.getRetryCount()).isOne();
-        assertThat(failed.getLastError()).contains("stream unavailable");
+        assertThat(failed.getLastError()).contains("broker unavailable");
         failed.setNextRetryAt(LocalDateTime.now().minusSeconds(1));
         outboxMapper.updateById(failed);
-        MessagingProperties properties = uniqueMessagingProperties();
-        new RedisStreamInitializer(redis, properties).initialize();
-        DrawEventPublisher uniqueStreamPublisher = new RedisStreamDrawEventPublisher(redis, objectMapper, properties);
-        new OutboxRelayService(scopedMapper, uniqueStreamPublisher, objectMapper, 100).relayBatch();
+        AtomicReference<DrawEventEnvelope> published = new AtomicReference<>();
+        new OutboxRelayService(scopedMapper, published::set, objectMapper, 100).relayBatch();
 
         assertThat(outboxMapper.selectById(confirmed.getId()).getStatus()).isEqualTo(OutboxStatus.SENT);
         assertThat(outboxMapper.selectById(sentinel.getId()).getStatus()).isEqualTo(OutboxStatus.PENDING);
-        List<MapRecord<String, Object, Object>> records = redis.opsForStream()
-                .range(properties.lotteryStream(), Range.unbounded());
-        assertThat(records).anyMatch(record ->
-                confirmed.getEventId().equals(record.getValue().get("eventId")));
+        assertThat(published.get()).isNotNull();
+        assertThat(published.get().eventId().toString()).isEqualTo(confirmed.getEventId());
     }
 
     @Test
@@ -312,7 +301,7 @@ class LotteryEndToEndTests {
         assertThat(result.timedOut()).isOne();
         assertThat(jdbc.queryForObject("SELECT CONCAT(status, ':', fail_reason) FROM lottery_draw_order WHERE id=?", String.class, order.getId()))
                 .isEqualTo("FAILED:PROCESSING_TIMEOUT");
-        deliverThroughRealStream(outbox("DRAW_RELEASE_REQUESTED", requestId));
+        deliverThroughRabbitListener(outbox("DRAW_RELEASE_REQUESTED", requestId));
         assertThat(reservationStatus(requestId)).isEqualTo("RELEASED");
         assertThat(quotaValue(activityId, USER_ID, reservation.drawDate())).isEqualTo("0");
     }
@@ -443,31 +432,15 @@ class LotteryEndToEndTests {
         }
     }
 
-    private MessagingProperties uniqueMessagingProperties() {
-        String stream = "task15:stream:" + UUID.randomUUID();
-        streams.add(stream);
-        return new MessagingProperties(false, "redis-stream", stream,
-                "task15-group-" + UUID.randomUUID(), "task15-core-" + UUID.randomUUID(),
-                20, Duration.ofMillis(10), Duration.ofMillis(100), Duration.ofSeconds(30));
-    }
-
-    private void deliverThroughRealStream(MessageOutbox outbox) throws Exception {
-        MessagingProperties properties = uniqueMessagingProperties();
-        RedisStreamInitializer initializer = new RedisStreamInitializer(redis, properties);
-        RedisStreamDrawEventPublisher publisher =
-                new RedisStreamDrawEventPublisher(redis, objectMapper, properties);
-        RedisStreamDrawEventConsumer consumer =
-                new RedisStreamDrawEventConsumer(redis, objectMapper, consumeService, properties);
-        initializer.initialize();
+    private void deliverThroughRabbitListener(MessageOutbox outbox) throws Exception {
+        AtomicReference<DrawEventEnvelope> published = new AtomicReference<>();
         OutboxRelayService relay = new OutboxRelayService(
-                scopedOutboxMapper(outbox.getId()), publisher, objectMapper, 1);
+                scopedOutboxMapper(outbox.getId()), published::set, objectMapper, 1);
 
         assertThat(relay.relayBatch()).isOne();
         assertThat(outboxMapper.selectById(outbox.getId()).getStatus()).isEqualTo(OutboxStatus.SENT);
-
-        assertThat(consumer.pollOnce()).isOne();
-        assertThat(redis.opsForStream().pending(
-                properties.lotteryStream(), properties.lotteryGroup()).getTotalPendingMessages()).isZero();
+        assertThat(published.get()).isNotNull();
+        new RabbitDrawEventListener(consumeService).onMessage(published.get());
     }
 
     private MessageOutboxMapper scopedOutboxMapper(long trackedId) {

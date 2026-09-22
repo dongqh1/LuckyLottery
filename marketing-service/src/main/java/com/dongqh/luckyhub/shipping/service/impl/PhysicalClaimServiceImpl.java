@@ -86,7 +86,7 @@ public class PhysicalClaimServiceImpl implements PhysicalClaimService {
                 ShippingSourceType.LOTTERY_BENEFIT, sourceId);
         ShippingOrderView order = shippingOrders.create(new CreateShippingOrderCommand(
                 ShippingSourceType.LOTTERY_BENEFIT, sourceId, userId, snapshot.getId(),
-                product.skuCode(), product.productName(), draw.getPrizeImageUrl(),
+                product.itemId(), itemCode(product.itemId()), product.itemName(), product.itemImage(),
                 product.quantity(), requestId));
         if (benefits.markClaimed(benefitId, order.id(), now) != 1) {
             throw error(ShippingErrorCode.CLAIM_NOT_ALLOWED);
@@ -100,8 +100,8 @@ public class PhysicalClaimServiceImpl implements PhysicalClaimService {
         if (!Objects.equals(order.getTargetUserId(), benefit.getUserId())
                 || !Objects.equals(order.getClaimRequestId(), requestId)
                 || !Objects.equals(snapshot.getAddressId(), addressId)
-                || !Objects.equals(order.getSkuCode(), product.skuCode())
-                || !Objects.equals(order.getProductName(), product.productName())
+                || !Objects.equals(order.getSkuCode(), itemCode(product.itemId()))
+                || !Objects.equals(order.getProductName(), product.itemName())
                 || !Objects.equals(order.getQuantity(), product.quantity())) {
             throw error(ShippingErrorCode.SHIPPING_IDEMPOTENCY_CONFLICT);
         }
@@ -129,7 +129,7 @@ public class PhysicalClaimServiceImpl implements PhysicalClaimService {
         }
         try {
             ProductRewardPayload product = json.readValue(benefit.getRewardPayload(), ProductRewardPayload.class);
-            if (!Objects.equals(benefit.getRewardTargetId(), product.skuId())
+            if (!Objects.equals(benefit.getRewardTargetId(), product.itemId())
                     || benefit.getRewardQuantity() != product.quantity()
                     || !Objects.equals(benefit.getQuantity(), product.quantity())) {
                 throw error(invalidCode);
@@ -154,6 +154,10 @@ public class PhysicalClaimServiceImpl implements PhysicalClaimService {
             throw error(invalidCode);
         }
         return draw;
+    }
+
+    private String itemCode(long itemId) {
+        return "HMALL-ITEM-" + itemId;
     }
 
     private String normalizeRequest(ClaimPhysicalBenefitCommand command) {

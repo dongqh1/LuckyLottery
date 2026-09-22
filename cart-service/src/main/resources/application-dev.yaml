@@ -1,0 +1,7 @@
+hm:
+  db:
+    port: ${HM_CART_DB_PORT:3306}
+    host: ${HM_CART_DB_HOST:mysql}
+    database: hm_cart
+    username: hm_cart_app
+    password: ${HM_CART_DB_PASSWORD:change-cart-db-password}

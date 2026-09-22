@@ -35,7 +35,7 @@
         <p>支付金额：￥{{util.formatPrice(order.totalFee)}}元</p>
         <p>预计{{sendDate}}到达</p>
         <p class="button">
-          <a href="/myOrder.html" class="sui-btn btn-xlarge btn-danger">查看订单</a>&nbsp;&nbsp;&nbsp;&nbsp;
+          <a :href="'/order-detail.html?orderId=' + order.id" class="sui-btn btn-xlarge btn-danger">查看订单详情</a>&nbsp;&nbsp;&nbsp;&nbsp;
           <a href="/index.html" class="sui-btn btn-xlarge ">继续购物</a>
         </p>
       </div>

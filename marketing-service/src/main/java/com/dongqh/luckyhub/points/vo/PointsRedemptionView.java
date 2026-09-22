@@ -12,9 +12,12 @@ public record PointsRedemptionView(
         String redemptionNo,
         Long userId,
         Long skuId,
+        Long offerId,
+        Long hmallItemId,
         Integer quantity,
         Long unitPoints,
         Long totalPoints,
+        Integer cashPriceCent,
         String productCode,
         String productName,
         String skuCode,
@@ -37,8 +40,21 @@ public record PointsRedemptionView(
                                 PointsRedemptionStatus status, String reversalNo, String failureReason,
                                 ShippingAddressSnapshotView addressSnapshot, Long shippingOrderId,
                                 LocalDateTime createdAt, LocalDateTime updatedAt) {
-        this(id, redemptionNo, userId, skuId, quantity, unitPoints, totalPoints, productCode, productName,
+        this(id, redemptionNo, userId, skuId, null, null, quantity, unitPoints, totalPoints, null, productCode, productName,
                 skuCode, skuName, productType, imageUrl, status, reversalNo, failureReason, addressSnapshot,
                 shippingOrderId, null, null, createdAt, updatedAt);
+    }
+
+    public PointsRedemptionView(Long id, String redemptionNo, Long userId, Long skuId, Integer quantity,
+                                Long unitPoints, Long totalPoints, String productCode, String productName,
+                                String skuCode, String skuName, ProductType productType, String imageUrl,
+                                PointsRedemptionStatus status, String reversalNo, String failureReason,
+                                ShippingAddressSnapshotView addressSnapshot, Long shippingOrderId,
+                                String shippingNo, ShippingStatus shippingStatus,
+                                LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(id, redemptionNo, userId, skuId, null, null, quantity, unitPoints, totalPoints, null,
+                productCode, productName, skuCode, skuName, productType, imageUrl, status, reversalNo,
+                failureReason, addressSnapshot, shippingOrderId, shippingNo, shippingStatus,
+                createdAt, updatedAt);
     }
 }

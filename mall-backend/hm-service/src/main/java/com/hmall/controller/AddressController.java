@@ -13,7 +13,11 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,6 +43,9 @@ public class AddressController {
     public AddressDTO findAddressById(@ApiParam("地址id") @PathVariable("addressId") Long id) {
         // 1.根据id查询
         Address address = addressService.getById(id);
+        if (address == null) {
+            throw new BadRequestException("地址不存在");
+        }
         // 2.判断当前用户
         Long userId = UserContext.getUser();
         if(!address.getUserId().equals(userId)){
@@ -57,5 +64,43 @@ public class AddressController {
         }
         // 3.转vo
         return BeanUtils.copyList(list, AddressDTO.class);
+    }
+
+    @ApiOperation("新增收货地址")
+    @PostMapping
+    public Long addAddress(@RequestBody AddressDTO addressDTO) {
+        Address address = BeanUtils.copyBean(addressDTO, Address.class);
+        address.setId(null);
+        address.setUserId(UserContext.getUser());
+        addressService.save(address);
+        return address.getId();
+    }
+
+    @ApiOperation("修改收货地址")
+    @PutMapping("{addressId}")
+    public void updateAddress(@PathVariable("addressId") Long id, @RequestBody AddressDTO addressDTO) {
+        requireOwnedAddress(id);
+        Address address = BeanUtils.copyBean(addressDTO, Address.class);
+        address.setId(id);
+        address.setUserId(UserContext.getUser());
+        addressService.updateById(address);
+    }
+
+    @ApiOperation("删除收货地址")
+    @DeleteMapping("{addressId}")
+    public void deleteAddress(@PathVariable("addressId") Long id) {
+        requireOwnedAddress(id);
+        addressService.removeById(id);
+    }
+
+    private Address requireOwnedAddress(Long id) {
+        Address address = addressService.getById(id);
+        if (address == null) {
+            throw new BadRequestException("地址不存在");
+        }
+        if (!address.getUserId().equals(UserContext.getUser())) {
+            throw new BadRequestException("地址不属于当前登录用户");
+        }
+        return address;
     }
 }

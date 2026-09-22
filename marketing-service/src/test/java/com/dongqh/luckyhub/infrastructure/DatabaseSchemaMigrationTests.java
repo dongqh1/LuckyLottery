@@ -54,6 +54,7 @@ class DatabaseSchemaMigrationTests {
             "inventory_ledger",
             "points_account",
             "points_ledger",
+            "points_redemption_offer",
             "points_redemption_order",
             "coupon_template",
             "user_coupon",
@@ -64,6 +65,7 @@ class DatabaseSchemaMigrationTests {
             "mall_order",
             "payment_order",
             "fulfillment_task",
+            "fulfillment_outbox",
             "fulfillment_attempt",
             "fulfillment_quarantine",
             "sim_coupon_record",
@@ -79,7 +81,8 @@ class DatabaseSchemaMigrationTests {
             "shipping_address_snapshot",
             "shipping_order",
             "shipping_tracking_event",
-            "shipping_callback_receipt"
+            "shipping_callback_receipt",
+            "undo_log"
     );
 
     private static final Set<String> REQUIRED_UNIQUE_INDEXES = Set.of(

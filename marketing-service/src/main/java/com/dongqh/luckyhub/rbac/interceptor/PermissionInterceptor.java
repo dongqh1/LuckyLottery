@@ -4,6 +4,7 @@ import com.dongqh.luckyhub.auth.context.LoginContext;
 import com.dongqh.luckyhub.auth.model.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.ForbiddenException;
 import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
+import com.dongqh.luckyhub.rbac.service.RolePermissionResolver;
 import com.dongqh.luckyhub.rbac.service.UserPermissionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -30,12 +32,21 @@ public class PermissionInterceptor
 
     private final UserPermissionService
             userPermissionService;
+    private final RolePermissionResolver rolePermissionResolver;
 
+    @Autowired
     public PermissionInterceptor(
+            RolePermissionResolver rolePermissionResolver,
             UserPermissionService userPermissionService
     ) {
+        this.rolePermissionResolver = rolePermissionResolver;
         this.userPermissionService =
                 userPermissionService;
+    }
+
+    /** Compatibility constructor for original interceptor unit tests. */
+    public PermissionInterceptor(UserPermissionService userPermissionService) {
+        this(new RolePermissionResolver(), userPermissionService);
     }
 
     @Override
@@ -83,10 +94,16 @@ public class PermissionInterceptor
         LoginPrincipal principal =
                 LoginContext.require();
 
-        Set<String> permissionCodes =
-                userPermissionService.findPermissionCodes(
-                        principal.userId()
-                );
+        Set<String> permissionCodes;
+        if (principal.role() == null || principal.role().isBlank()) {
+            // Only legacy in-process LuckyHub identities take this path.
+            permissionCodes = userPermissionService.findPermissionCodes(
+                    principal.userId()
+            );
+        } else {
+            // Hmall user ids are intentionally never joined to LuckyHub RBAC tables.
+            permissionCodes = rolePermissionResolver.resolve(principal.role());
+        }
 
         String requiredPermission =
                 requirement.value();

@@ -1,0 +1,84 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: trade-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  config:
+    import:
+      - "optional:file:.env[.properties]"
+      - "optional:file:../.env[.properties]"
+      - "optional:nacos:shared.jdbc.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:shared.logger.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:shared.swagger.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:${spring.application.name}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      config:
+        group: DEFAULT_GROUP
+      discovery:
+        enabled: true
+        register-enabled: true
+        group: DEFAULT_GROUP
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: ${RABBITMQ_VHOST:/dongqh}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 2
+          initial-interval: 500ms
+          multiplier: 2
+          max-interval: 2s
+
+
+feign:
+  okhttp:
+    enabled: true
+
+hm:
+  swagger:
+    title: 黑马商城交易管理接口文档
+    description: 黑马商城交易管理接口文档
+    package: com.dongqh.tradeservice.controller
+  marketing:
+    base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+  messaging:
+    publisher-confirm-timeout: 5s
+    outbox-interval: 1s
+    outbox-initial-delay: 10s
+    outbox-batch-size: 100
+    outbox-lease: 30s
+seata:
+  enabled: ${SEATA_ENABLED:true}
+  application-id: ${spring.application.name}
+  tx-service-group: hmall_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      hmall_tx_group: default
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      group: DEFAULT_GROUP
+      namespace: ""
+      cluster: default
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}

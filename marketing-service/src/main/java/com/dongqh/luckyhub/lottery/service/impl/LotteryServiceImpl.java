@@ -27,6 +27,7 @@ import com.dongqh.luckyhub.lottery.service.DrawTransactionService;
 import com.dongqh.luckyhub.lottery.service.LotteryService;
 import com.dongqh.luckyhub.lottery.vo.DrawOrderView;
 import com.dongqh.luckyhub.lottery.vo.DrawResultView;
+import com.dongqh.luckyhub.reward.enums.RewardType;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,6 +109,10 @@ public class LotteryServiceImpl implements LotteryService {
                     throw error;
                 }
                 createdOrder[0] = processing;
+                DrawChanceReservationResult verifiedBonus = drawChanceService.reserve(
+                        new DrawChanceReservationCommand(command.requestId(), command.activityId(),
+                                userId, command.drawCount(), drawDate));
+                requireActiveBonusReservation(verifiedBonus);
                 return new LockedDraw(null, processing, reserved);
             });
             if (locked.existingView() != null) return locked.existingView();
@@ -175,7 +180,9 @@ public class LotteryServiceImpl implements LotteryService {
     private DrawOrderView fromExecution(LotteryDrawOrder order, DrawExecutionResult result) {
         List<DrawResultView> items = result.items().stream().map(item -> new DrawResultView(
                 item.recordId(), item.sequenceNo(), item.resultType(), item.prizeId(), item.prizeName(),
-                item.prizeType(), item.prizeImageUrl(), item.benefitId())).toList();
+                item.prizeType(), item.prizeImageUrl(), item.benefitId(),
+                item.rewardSnapshot() != null && item.rewardSnapshot().rewardType() == RewardType.PRODUCT
+                        ? item.rewardSnapshot().targetId() : null)).toList();
         return new DrawOrderView(order.getId(), order.getRequestId(), order.getActivityId(),
                 order.getDrawCount(), order.getDrawDate(), result.status(), null,
                 result.completedAt(), items);
@@ -184,7 +191,11 @@ public class LotteryServiceImpl implements LotteryService {
     private DrawResultView toView(LotteryDrawRecord record) {
         return new DrawResultView(record.getId(), record.getSequenceNo(), record.getResultType(),
                 record.getPrizeId(), record.getPrizeName(), record.getPrizeType(),
-                record.getPrizeImageUrl(), record.getBenefitId());
+                record.getPrizeImageUrl(), record.getBenefitId(), productItemId(record));
+    }
+
+    private Long productItemId(LotteryDrawRecord record) {
+        return record.getRewardType() == RewardType.PRODUCT ? record.getRewardTargetId() : null;
     }
 
     private void compensateIfNeeded(LotteryDrawOrder order, LocalDateTime occurredAt) {

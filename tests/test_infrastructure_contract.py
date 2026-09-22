@@ -52,8 +52,10 @@ class RequiredFilesContractTest(unittest.TestCase):
             "trade-service/Dockerfile",
             "pay-service/Dockerfile",
             "marketing-service/Dockerfile",
+            "hm-gateway/Dockerfile",
             "nginx/Dockerfile",
             "nginx/nginx.conf",
+            "scripts/Smoke-Test.ps1",
         ]
         missing = [path for path in required if not (ROOT / path).is_file()]
         self.assertEqual([], missing)
@@ -61,6 +63,65 @@ class RequiredFilesContractTest(unittest.TestCase):
     def test_original_hmall_seed_is_unchanged(self):
         digest = hashlib.sha256((ROOT / "mysql/init/hmall.sql").read_bytes()).hexdigest()
         self.assertEqual("969f73929b4ea80a14deaffe60786da9bfddb10ae82d6d8a1092f0ec16f37a36", digest)
+
+
+class SmokeScriptContractTest(unittest.TestCase):
+    def setUp(self):
+        path = ROOT / "scripts" / "Smoke-Test.ps1"
+        self.assertTrue(path.is_file(), "scripts/Smoke-Test.ps1 must exist")
+        self.script = path.read_text(encoding="utf-8")
+
+    def test_smoke_script_stops_on_http_failures_and_reports_each_boundary(self):
+        self.assertIn('$ErrorActionPreference = "Stop"', self.script)
+        self.assertIn("Invoke-RestMethod", self.script)
+        self.assertIn("MaxAttempts", self.script)
+        self.assertIn("RetryDelaySeconds", self.script)
+        self.assertIn("Start-Sleep", self.script)
+        self.assertIn("Portal static page", self.script)
+        self.assertIn("Admin static page", self.script)
+        self.assertIn('${admin}/items.html', self.script)
+        self.assertIn('Write-Host "PASS', self.script)
+
+    def test_smoke_script_authenticates_and_calls_every_owned_api(self):
+        for route in (
+            "/api/users/login",
+            "/api/search/list",
+            "/api/items/",
+            "/api/carts",
+            "/api/addresses",
+            "/api/orders/me",
+            "/api/marketing/memberships/me",
+        ):
+            with self.subTest(route=route):
+                self.assertIn(route, self.script)
+        self.assertIn("$login.token", self.script)
+        self.assertRegex(self.script, r"(?i)authorization")
+
+    def test_smoke_script_contains_no_infrastructure_secrets(self):
+        for secret_name in (
+            "MYSQL_ROOT_PASSWORD",
+            "REDIS_PASSWORD",
+            "JWT_SECRET",
+            "SHIPPING_ADDRESS_KEY",
+        ):
+            with self.subTest(secret_name=secret_name):
+                self.assertNotIn(secret_name, self.script)
+
+
+class RuntimeDocumentationContractTest(unittest.TestCase):
+    def test_readme_documents_split_start_smoke_test_and_rollback(self):
+        readme = read("README.md")
+        self.assertIn("docker compose --env-file .env up --build -d", readme)
+        self.assertIn(
+            r"pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Smoke-Test.ps1",
+            readme,
+        )
+        self.assertIn(
+            "docker compose --env-file .env --profile rollback up --build -d mall-service",
+            readme,
+        )
+        self.assertIn("五个拆分服务", readme)
+        self.assertIn("Nginx", readme)
 
 
 class ComposeContractTest(unittest.TestCase):
@@ -75,13 +136,16 @@ class ComposeContractTest(unittest.TestCase):
             {
                 "mysql",
                 "redis",
+                "rabbitmq",
                 "schema-init",
                 "nacos",
+                "seata-server",
                 "item-service",
                 "cart-service",
                 "user-service",
                 "trade-service",
                 "pay-service",
+                "hm-gateway",
                 "marketing-service",
                 "nginx",
             },
@@ -160,7 +224,7 @@ class ComposeContractTest(unittest.TestCase):
 
     def test_nacos_uses_mysql_auth_and_waits_for_schema(self):
         service = self.services["nacos"]
-        self.assertEqual("nacos/nacos-server:v2.2.3", service["image"])
+        self.assertEqual("nacos/nacos-server:v3.1.1", service["image"])
         self.assertEqual("service_completed_successfully", service["depends_on"]["schema-init"]["condition"])
         self.assertEqual("mysql", service["environment"]["MYSQL_SERVICE_HOST"])
         self.assertEqual("nacos", service["environment"]["MYSQL_SERVICE_DB_NAME"])
@@ -169,10 +233,14 @@ class ComposeContractTest(unittest.TestCase):
         self.assertIn("NACOS_AUTH_TOKEN", service["environment"])
         self.assertIn("NACOS_AUTH_IDENTITY_KEY", service["environment"])
         self.assertIn("NACOS_AUTH_IDENTITY_VALUE", service["environment"])
+        self.assertEqual("8080", str(service["environment"]["NACOS_CONSOLE_PORT"]))
         published = {int(port["published"]): int(port["target"]) for port in service["ports"]}
         self.assertIn(8848, published.values())
         self.assertIn(9848, published.values())
+        self.assertEqual(8080, published[18048])
         self.assertIn("healthcheck", service)
+        healthcheck = " ".join(service["healthcheck"]["test"])
+        self.assertIn("/v3/console/health/readiness", healthcheck)
 
     def test_split_services_build_from_the_root_and_wait_for_schema_and_nacos(self):
         expected = {
@@ -196,13 +264,20 @@ class ComposeContractTest(unittest.TestCase):
                 )
                 self.assertEqual(ROOT, Path(service["build"]["context"]).resolve())
                 self.assertIn(password_name, service["environment"])
+                self.assertIn("healthcheck", service)
+                self.assertIn(
+                    str({"item-service": 8081, "cart-service": 8082, "user-service": 8083,
+                         "trade-service": 8084, "pay-service": 8085}[name]),
+                    " ".join(service["healthcheck"]["test"]),
+                )
 
     def test_marketing_waits_for_its_infrastructure_and_hmall_owners(self):
         marketing = self.services["marketing-service"]
         self.assertEqual("service_completed_successfully", marketing["depends_on"]["schema-init"]["condition"])
         self.assertEqual("service_healthy", marketing["depends_on"]["redis"]["condition"])
-        self.assertIn("item-service", marketing["depends_on"])
-        self.assertIn("user-service", marketing["depends_on"])
+        self.assertEqual("service_healthy", marketing["depends_on"]["item-service"]["condition"])
+        self.assertEqual("service_healthy", marketing["depends_on"]["user-service"]["condition"])
+        self.assertIn("healthcheck", marketing)
         self.assertTrue(marketing["build"]["dockerfile"].replace("\\", "/").endswith("Dockerfile"))
         self.assertEqual("mysql", marketing["environment"]["MYSQL_HOST"])
         self.assertEqual("redis", marketing["environment"]["REDIS_HOST"])
@@ -214,6 +289,18 @@ class ComposeContractTest(unittest.TestCase):
         published = {int(port["published"]): int(port["target"]) for port in nginx["ports"]}
         self.assertEqual(18080, published[18080])
         self.assertEqual(18081, published[18081])
+        self.assertEqual("service_healthy", nginx["depends_on"]["hm-gateway"]["condition"])
+        self.assertEqual("service_healthy", nginx["depends_on"]["marketing-service"]["condition"])
+        self.assertIn("healthcheck", nginx)
+        healthcheck = " ".join(nginx["healthcheck"]["test"])
+        self.assertIn("127.0.0.1:18080", healthcheck)
+        self.assertIn("127.0.0.1:18081/items.html", healthcheck)
+
+    def test_gateway_joins_the_default_stack_and_waits_for_discovery_and_routes(self):
+        gateway = self.services["hm-gateway"]
+        self.assertEqual("hm-gateway/Dockerfile", gateway["build"]["dockerfile"].replace("\\", "/"))
+        self.assertEqual(ROOT, Path(gateway["build"]["context"]).resolve())
+        self.assertEqual("service_healthy", gateway["depends_on"]["nacos"]["condition"])
         for dependency in (
             "item-service",
             "cart-service",
@@ -221,8 +308,10 @@ class ComposeContractTest(unittest.TestCase):
             "trade-service",
             "pay-service",
         ):
-            self.assertIn(dependency, nginx["depends_on"])
-        self.assertIn("marketing-service", nginx["depends_on"])
+            self.assertEqual("service_healthy", gateway["depends_on"][dependency]["condition"])
+        self.assertEqual("nacos:8848", gateway["environment"]["NACOS_SERVER_ADDR"])
+        self.assertIn("healthcheck", gateway)
+        self.assertIn("8080", " ".join(gateway["healthcheck"]["test"]))
 
 
 class MigrationContractTest(unittest.TestCase):
@@ -292,10 +381,9 @@ class ItemDatabaseIsolationContractTest(unittest.TestCase):
         application = read("item-service/src/main/resources/application.yaml")
         dev = read("item-service/src/main/resources/application-dev.yaml")
         local = read("item-service/src/main/resources/application-local.yaml")
-        combined = "\n".join([application, dev, local])
-        self.assertIn("${hm.db.database}", application)
-        self.assertIn("${hm.db.username}", application)
-        self.assertIn("${hm.db.password}", application)
+        combined = "\n".join([dev, local])
+        self.assertIn("optional:nacos:shared.jdbc.yaml", application)
+        self.assertNotRegex(application, r"(?m)^\s{2}datasource:\s*$")
         self.assertIn("database: hm_item", combined)
         self.assertIn("username: hm_item_app", combined)
         self.assertNotRegex(application, r"(?m)^\s*username:\s*root\s*$")
@@ -383,6 +471,12 @@ class NacosDatabaseContractTest(unittest.TestCase):
         self.assertRegex(self.normalized, r"insert ignore into\s+`?roles`?")
         self.assertRegex(self.normalized, r"insert ignore into\s+`?users`?")
 
+    def test_nacos_31_schema_columns_are_present(self):
+        self.assertIn("config_info_gray", self.normalized)
+        self.assertIn("publish_type", self.normalized)
+        self.assertIn("gray_name", self.normalized)
+        self.assertIn("ext_info", self.normalized)
+
     def test_container_environment_does_not_use_root_or_a_lan_ip(self):
         environment = read("mysql/nacos/custom.env")
         self.assertIn("MYSQL_SERVICE_HOST=mysql", environment)
@@ -395,6 +489,7 @@ class NacosDatabaseContractTest(unittest.TestCase):
         example = read(".env.example")
         self.assertIn("NACOS_DB_PASSWORD", example)
         self.assertIn("NACOS_AUTH_TOKEN", example)
+        self.assertIn("NACOS_CONSOLE_PORT=18048", example)
 
 
 class DockerfileContractTest(unittest.TestCase):
@@ -402,25 +497,26 @@ class DockerfileContractTest(unittest.TestCase):
         dockerfile = read(path).lower()
         self.assertGreaterEqual(len(re.findall(r"(?m)^from\s+", dockerfile)), 2)
         self.assertRegex(dockerfile, rf"from\s+maven:[^\n]*temurin-{java_version}[^\n]*\s+as\s+build")
+        self.assertIn(f"from eclipse-temurin:{java_version}-jre", dockerfile)
         self.assertIn("mvn", dockerfile)
         self.assertIn("package", dockerfile)
         self.assertRegex(dockerfile, r"copy\s+--from=build")
         self.assertIn('entrypoint ["java", "-jar"', dockerfile)
 
-    def test_split_services_are_built_in_java_11_multistage_images(self):
+    def test_all_java_services_are_built_in_java_17_multistage_images(self):
         for service in ("item", "cart", "user", "trade", "pay"):
             with self.subTest(service=service):
                 self.assert_multistage_java_build(
-                    f"{service}-service/Dockerfile", "11"
+                    f"{service}-service/Dockerfile", "17"
                 )
+        self.assert_multistage_java_build("mall-backend/hm-service/Dockerfile", "17")
+        self.assert_multistage_java_build("marketing-service/Dockerfile", "17")
+        self.assert_multistage_java_build("hm-gateway/Dockerfile", "17")
 
     def test_build_context_excludes_secrets_and_build_products(self):
         dockerignore = read(".dockerignore")
         self.assertRegex(dockerignore, r"(?m)^\.env$")
         self.assertRegex(dockerignore, r"(?m)^\*\*/target$")
-
-    def test_marketing_service_is_built_in_a_java_17_multistage_image(self):
-        self.assert_multistage_java_build("marketing-service/Dockerfile", "17")
 
     def test_nginx_image_copies_config_and_both_frontends(self):
         dockerfile = read("nginx/Dockerfile").lower()
@@ -428,6 +524,15 @@ class DockerfileContractTest(unittest.TestCase):
         self.assertIn("copy nginx.conf /etc/nginx/nginx.conf", dockerfile)
         self.assertIn("copy html/hmall-portal", dockerfile)
         self.assertIn("copy html/hmall-admin", dockerfile)
+
+    def test_gateway_packages_only_the_jwt_verification_certificate(self):
+        resources = ROOT / "hm-gateway" / "src" / "main" / "resources"
+        self.assertTrue((resources / "hmall-public.pem").is_file())
+        self.assertFalse((resources / "hmall.jks").exists())
+        application = read("hm-gateway/src/main/resources/application.yaml")
+        self.assertIn("public-key-location: classpath:hmall-public.pem", application)
+        self.assertNotIn("password: hmall123", application)
+        self.assertNotRegex(application, r"(?m)^\s+alias:\s+hmall\s*$")
 
 
 class NginxRoutingContractTest(unittest.TestCase):
@@ -448,36 +553,81 @@ class NginxRoutingContractTest(unittest.TestCase):
             len(re.findall(r"rewrite\s+\^/api/marketing/\(\.\*\)\$\s+/api/\$1\s+break;", self.conf)),
             2,
         )
-        self.assertGreaterEqual(len(re.findall(r"proxy_pass\s+http://marketing-service:8080;", self.conf)), 2)
+        self.assertEqual(
+            2,
+            len(re.findall(r"proxy_pass\s+http://\$marketing_backend;", self.conf)),
+        )
 
-    def test_hmall_api_routes_are_sent_to_the_service_that_owns_them(self):
-        routes = {
-            "items": "item-service:8081",
-            "search": "item-service:8081",
-            "carts": "cart-service:8082",
-            "users": "user-service:8083",
-            "addresses": "user-service:8083",
-            "orders": "trade-service:8084",
-            "pay-orders": "pay-service:8085",
-        }
-        for path, upstream in routes.items():
-            with self.subTest(path=path):
-                self.assertGreaterEqual(
-                    len(re.findall(rf"location\s+\^~\s+/api/{re.escape(path)}", self.conf)),
-                    2,
-                )
-                self.assertGreaterEqual(
-                    len(re.findall(rf"proxy_pass\s+http://{re.escape(upstream)};", self.conf)),
-                    2,
-                )
+    def test_hmall_api_routes_are_sent_through_the_authenticating_gateway(self):
+        self.assertGreaterEqual(
+            len(re.findall(r"location\s+\^~\s+/api/", self.conf)),
+            4,
+        )
+        self.assertEqual(
+            2,
+            len(re.findall(r"proxy_pass\s+http://\$gateway_backend;", self.conf)),
+        )
         self.assertGreaterEqual(
             len(re.findall(r"rewrite\s+\^/api/\(\.\*\)\$\s+/\$1\s+break;", self.conf)),
             2,
         )
         self.assertNotIn("proxy_pass http://mall-service:8080", self.conf)
+        for upstream in (
+            "item-service:8081",
+            "cart-service:8082",
+            "user-service:8083",
+            "trade-service:8084",
+            "pay-service:8085",
+        ):
+            with self.subTest(upstream=upstream):
+                self.assertNotIn(f"proxy_pass http://{upstream}", self.conf)
+
+    def test_proxy_upstreams_use_docker_runtime_dns(self):
+        self.assertRegex(
+            self.conf,
+            r"resolver\s+127\.0\.0\.11\s+valid=10s\s+ipv6=off;",
+        )
+        self.assertEqual(
+            2,
+            len(re.findall(r"set\s+\$marketing_backend\s+marketing-service:8080;", self.conf)),
+        )
+        self.assertEqual(
+            2,
+            len(re.findall(r"proxy_pass\s+http://\$marketing_backend;", self.conf)),
+        )
+        self.assertEqual(
+            2,
+            len(re.findall(r"set\s+\$gateway_backend\s+hm-gateway:8080;", self.conf)),
+        )
+        self.assertEqual(
+            2,
+            len(re.findall(r"proxy_pass\s+http://\$gateway_backend;", self.conf)),
+        )
+
+    def test_runtime_upstream_is_initialized_before_rewrite_breaks(self):
+        marketing_location = (
+            r"location\s+\^~\s+/api/marketing/\s*\{\s*"
+            r"set\s+\$marketing_backend\s+marketing-service:8080;\s*"
+            r"rewrite\s+\^/api/marketing/\(\.\*\)\$\s+/api/\$1\s+break;\s*"
+            r"proxy_pass\s+http://\$marketing_backend;"
+        )
+        gateway_location = (
+            r"location\s+\^~\s+/api/\s*\{\s*"
+            r"set\s+\$gateway_backend\s+hm-gateway:8080;\s*"
+            r"rewrite\s+\^/api/\(\.\*\)\$\s+/\$1\s+break;\s*"
+            r"proxy_pass\s+http://\$gateway_backend;"
+        )
+        self.assertEqual(2, len(re.findall(marketing_location, self.conf)))
+        self.assertEqual(2, len(re.findall(gateway_location, self.conf)))
 
 
 class MarketingHmallAdapterContractTest(unittest.TestCase):
+    def test_marketing_local_run_loads_the_root_dotenv_and_compose_password_name(self):
+        application = read("marketing-service/src/main/resources/application.yaml")
+        self.assertIn("optional:file:.env[.properties]", application)
+        self.assertIn("optional:file:../.env[.properties]", application)
+        self.assertIn("${MYSQL_PASSWORD:${LUCKYHUB_DB_PASSWORD:}}", application)
+
     def test_catalog_and_address_adapters_have_independent_owner_urls(self):
         application = read("marketing-service/src/main/resources/application.yaml")
         catalog = read(

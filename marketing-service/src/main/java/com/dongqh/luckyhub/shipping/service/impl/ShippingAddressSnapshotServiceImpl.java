@@ -1,13 +1,15 @@
 package com.dongqh.luckyhub.shipping.service.impl;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressClient;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressView;
+import com.dongqh.luckyhub.shipping.crypto.AddressCipher;
 import com.dongqh.luckyhub.shipping.entity.ShippingAddressSnapshot;
-import com.dongqh.luckyhub.shipping.entity.UserShippingAddress;
 import com.dongqh.luckyhub.shipping.enums.ShippingErrorCode;
 import com.dongqh.luckyhub.shipping.enums.ShippingSourceType;
 import com.dongqh.luckyhub.shipping.mapper.ShippingAddressSnapshotMapper;
-import com.dongqh.luckyhub.shipping.service.ShippingAddressService;
 import com.dongqh.luckyhub.shipping.service.ShippingAddressSnapshotService;
+import com.dongqh.luckyhub.shipping.support.AddressMasker;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
@@ -17,14 +19,17 @@ import java.util.UUID;
 @Service
 public class ShippingAddressSnapshotServiceImpl implements ShippingAddressSnapshotService {
     private final ShippingAddressSnapshotMapper mapper;
-    private final ShippingAddressService addresses;
+    private final HmallAddressClient addresses;
+    private final AddressCipher cipher;
 
     public ShippingAddressSnapshotServiceImpl(
             ShippingAddressSnapshotMapper mapper,
-            ShippingAddressService addresses
+            HmallAddressClient addresses,
+            AddressCipher cipher
     ) {
         this.mapper = mapper;
         this.addresses = addresses;
+        this.cipher = cipher;
     }
 
     @Override
@@ -34,7 +39,10 @@ public class ShippingAddressSnapshotServiceImpl implements ShippingAddressSnapsh
             ShippingSourceType sourceType,
             String sourceId
     ) {
-        UserShippingAddress address = addresses.requireOwnedActive(userId, addressId);
+        HmallAddressView address = addresses.getAddress(addressId);
+        if (address == null || !Objects.equals(address.id(), addressId)) {
+            throw new BusinessException(ShippingErrorCode.ADDRESS_NOT_FOUND);
+        }
         ShippingAddressSnapshot candidate = copy(userId, addressId, sourceType, sourceId, address);
         ShippingAddressSnapshot existing = mapper.selectBySource(sourceType, sourceId);
         if (existing != null) {
@@ -66,7 +74,7 @@ public class ShippingAddressSnapshotServiceImpl implements ShippingAddressSnapsh
             long addressId,
             ShippingSourceType sourceType,
             String sourceId,
-            UserShippingAddress address
+            HmallAddressView address
     ) {
         ShippingAddressSnapshot snapshot = new ShippingAddressSnapshot();
         snapshot.setSnapshotNo("ADDRESS-" + UUID.randomUUID());
@@ -74,16 +82,23 @@ public class ShippingAddressSnapshotServiceImpl implements ShippingAddressSnapsh
         snapshot.setAddressId(addressId);
         snapshot.setSourceType(sourceType);
         snapshot.setSourceId(sourceId);
-        snapshot.setReceiverCiphertext(address.getReceiverCiphertext());
-        snapshot.setPhoneCiphertext(address.getPhoneCiphertext());
-        snapshot.setProvinceCiphertext(address.getProvinceCiphertext());
-        snapshot.setCityCiphertext(address.getCityCiphertext());
-        snapshot.setDistrictCiphertext(address.getDistrictCiphertext());
-        snapshot.setDetailCiphertext(address.getDetailCiphertext());
-        snapshot.setReceiverMasked(address.getReceiverMasked());
-        snapshot.setPhoneMasked(address.getPhoneMasked());
-        snapshot.setRegionMasked(address.getRegionMasked());
+        snapshot.setReceiverCiphertext(cipher.encrypt(required(address.contact())));
+        snapshot.setPhoneCiphertext(cipher.encrypt(required(address.mobile())));
+        snapshot.setProvinceCiphertext(cipher.encrypt(required(address.province())));
+        snapshot.setCityCiphertext(cipher.encrypt(required(address.city())));
+        snapshot.setDistrictCiphertext(cipher.encrypt(required(address.town())));
+        snapshot.setDetailCiphertext(cipher.encrypt(required(address.street())));
+        snapshot.setReceiverMasked(AddressMasker.maskReceiver(address.contact()));
+        snapshot.setPhoneMasked(AddressMasker.maskPhone(address.mobile()));
+        snapshot.setRegionMasked(AddressMasker.maskRegion(address.province(), address.city(), address.town()));
         return snapshot;
+    }
+
+    private String required(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ShippingErrorCode.ADDRESS_INVALID);
+        }
+        return value.trim();
     }
 
     private ShippingAddressSnapshot requireEqual(
@@ -94,17 +109,21 @@ public class ShippingAddressSnapshotServiceImpl implements ShippingAddressSnapsh
                 || !Objects.equals(existing.getAddressId(), candidate.getAddressId())
                 || existing.getSourceType() != candidate.getSourceType()
                 || !Objects.equals(existing.getSourceId(), candidate.getSourceId())
-                || !Objects.equals(existing.getReceiverCiphertext(), candidate.getReceiverCiphertext())
-                || !Objects.equals(existing.getPhoneCiphertext(), candidate.getPhoneCiphertext())
-                || !Objects.equals(existing.getProvinceCiphertext(), candidate.getProvinceCiphertext())
-                || !Objects.equals(existing.getCityCiphertext(), candidate.getCityCiphertext())
-                || !Objects.equals(existing.getDistrictCiphertext(), candidate.getDistrictCiphertext())
-                || !Objects.equals(existing.getDetailCiphertext(), candidate.getDetailCiphertext())
+                || !samePlaintext(existing.getReceiverCiphertext(), candidate.getReceiverCiphertext())
+                || !samePlaintext(existing.getPhoneCiphertext(), candidate.getPhoneCiphertext())
+                || !samePlaintext(existing.getProvinceCiphertext(), candidate.getProvinceCiphertext())
+                || !samePlaintext(existing.getCityCiphertext(), candidate.getCityCiphertext())
+                || !samePlaintext(existing.getDistrictCiphertext(), candidate.getDistrictCiphertext())
+                || !samePlaintext(existing.getDetailCiphertext(), candidate.getDetailCiphertext())
                 || !Objects.equals(existing.getReceiverMasked(), candidate.getReceiverMasked())
                 || !Objects.equals(existing.getPhoneMasked(), candidate.getPhoneMasked())
                 || !Objects.equals(existing.getRegionMasked(), candidate.getRegionMasked())) {
             throw new BusinessException(ShippingErrorCode.SHIPPING_IDEMPOTENCY_CONFLICT);
         }
         return existing;
+    }
+
+    private boolean samePlaintext(String leftCiphertext, String rightCiphertext) {
+        return Objects.equals(cipher.decrypt(leftCiphertext), cipher.decrypt(rightCiphertext));
     }
 }

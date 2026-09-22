@@ -1,14 +1,12 @@
 package com.dongqh.luckyhub.reward.service.impl;
 
-import com.dongqh.luckyhub.catalog.entity.Product;
-import com.dongqh.luckyhub.catalog.entity.ProductSku;
-import com.dongqh.luckyhub.catalog.mapper.ProductMapper;
-import com.dongqh.luckyhub.catalog.mapper.ProductSkuMapper;
 import com.dongqh.luckyhub.common.exception.BusinessException;
 import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
 import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
 import com.dongqh.luckyhub.membership.entity.MembershipProduct;
 import com.dongqh.luckyhub.membership.mapper.MembershipProductMapper;
+import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
+import com.dongqh.luckyhub.integration.hmall.HmallItemView;
 import com.dongqh.luckyhub.prize.entity.MarketingPrize;
 import com.dongqh.luckyhub.reward.entity.RewardDefinition;
 import com.dongqh.luckyhub.reward.enums.RewardErrorCode;
@@ -44,18 +42,16 @@ public class RewardSnapshotServiceImpl implements RewardSnapshotService {
     private final RewardDefinitionMapper rewards;
     private final CouponTemplateMapper coupons;
     private final MembershipProductMapper memberships;
-    private final ProductSkuMapper skus;
-    private final ProductMapper products;
+    private final HmallCatalogClient hmallCatalog;
     private final ObjectMapper json;
 
     public RewardSnapshotServiceImpl(RewardDefinitionMapper rewards, CouponTemplateMapper coupons,
-                                     MembershipProductMapper memberships, ProductSkuMapper skus,
-                                     ProductMapper products, ObjectMapper json) {
+                                     MembershipProductMapper memberships, HmallCatalogClient hmallCatalog,
+                                     ObjectMapper json) {
         this.rewards = rewards;
         this.coupons = coupons;
         this.memberships = memberships;
-        this.skus = skus;
-        this.products = products;
+        this.hmallCatalog = hmallCatalog;
         this.json = json;
     }
 
@@ -93,17 +89,16 @@ public class RewardSnapshotServiceImpl implements RewardSnapshotService {
     private TargetIndex loadTargets(List<RewardDefinition> definitions) {
         List<Long> couponIds = targetIds(definitions, RewardType.COUPON);
         List<Long> membershipIds = targetIds(definitions, RewardType.MEMBERSHIP);
-        List<Long> skuIds = targetIds(definitions, RewardType.PRODUCT);
+        List<Long> itemIds = targetIds(definitions, RewardType.PRODUCT);
         Map<Long, CouponTemplate> couponMap = couponIds.isEmpty() ? Map.of()
                 : byId(coupons.selectByIds(couponIds), CouponTemplate::getId);
         Map<Long, MembershipProduct> membershipMap = membershipIds.isEmpty() ? Map.of()
                 : byId(memberships.selectByIds(membershipIds), MembershipProduct::getId);
-        Map<Long, ProductSku> skuMap = skuIds.isEmpty() ? Map.of()
-                : byId(skus.selectByIds(skuIds), ProductSku::getId);
-        List<Long> productIds = skuMap.values().stream().map(ProductSku::getProductId).distinct().toList();
-        Map<Long, Product> productMap = productIds.isEmpty() ? Map.of()
-                : byId(products.selectByIds(productIds), Product::getId);
-        return new TargetIndex(couponMap, membershipMap, skuMap, productMap);
+        Map<Long, HmallItemView> itemMap = itemIds.stream()
+                .map(hmallCatalog::getItem)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(HmallItemView::id, Function.identity()));
+        return new TargetIndex(couponMap, membershipMap, itemMap);
     }
 
     private List<Long> targetIds(List<RewardDefinition> definitions, RewardType type) {
@@ -140,12 +135,10 @@ public class RewardSnapshotServiceImpl implements RewardSnapshotService {
             }
             case PRODUCT -> {
                 requireDiscrete(definition);
-                ProductSku sku = targets.skus().get(requiredTarget(definition));
-                if (sku == null || !Integer.valueOf(ENABLED).equals(sku.getStatus())) throw error();
-                Product product = targets.products().get(sku.getProductId());
-                if (product == null || !Integer.valueOf(ENABLED).equals(product.getStatus())) throw error();
-                yield new ProductRewardPayload(sku.getId(), sku.getSkuCode(), product.getProductName(),
-                        sku.getSkuName(), Math.toIntExact(quantity));
+                HmallItemView item = targets.items().get(requiredTarget(definition));
+                if (item == null || !item.availableForReward() || item.price() == null) throw error();
+                yield new ProductRewardPayload(item.id(), item.name(), item.image(), item.price(),
+                        Math.toIntExact(quantity));
             }
         };
     }
@@ -187,7 +180,6 @@ public class RewardSnapshotServiceImpl implements RewardSnapshotService {
 
     private record TargetIndex(Map<Long, CouponTemplate> coupons,
                                Map<Long, MembershipProduct> memberships,
-                               Map<Long, ProductSku> skus,
-                               Map<Long, Product> products) {
+                               Map<Long, HmallItemView> items) {
     }
 }

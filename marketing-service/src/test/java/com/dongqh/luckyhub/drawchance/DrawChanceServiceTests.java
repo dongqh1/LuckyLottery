@@ -104,6 +104,42 @@ class DrawChanceServiceTests {
                 String.class, userId)).containsExactly("RELEASED", "CONFIRMED");
     }
 
+    @Test
+    void staleReservationWithoutDrawOrderIsReleasedExactlyOnce() {
+        service.credit(userId, prefix + "-reward", 1);
+        var abandoned = service.reserve(command(prefix + "-abandoned", 1));
+        jdbc.update("UPDATE draw_chance_reservation SET created_at='1000-01-01 00:00:00' WHERE request_id=?",
+                abandoned.requestId());
+
+        assertThat(service.reconcileExpired(10, LocalDateTime.now().minusHours(1))).isOne();
+        assertThat(service.reconcileExpired(10, LocalDateTime.now().minusHours(1))).isZero();
+        assertThat(service.get(userId).availableBalance()).isOne();
+        assertThat(service.get(userId).reservedBalance()).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM draw_chance_reservation WHERE request_id=?",
+                String.class, abandoned.requestId())).isEqualTo(DrawChanceReservationStatus.RELEASED.name());
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM draw_chance_ledger
+                WHERE user_id=? AND business_type='DRAW_RELEASE' AND business_id=?
+                """, Integer.class, userId, abandoned.requestId())).isOne();
+    }
+
+    @Test
+    void processingReservationsAtBatchHeadDoNotStarveLaterAbandonedReservation() {
+        service.credit(userId, prefix + "-reward", 3);
+        var firstProcessing = service.reserve(command(prefix + "-p1", 1));
+        insertOrder(firstProcessing.requestId(), "PROCESSING");
+        var secondProcessing = service.reserve(command(prefix + "-p2", 1));
+        insertOrder(secondProcessing.requestId(), "PROCESSING");
+        var abandoned = service.reserve(command(prefix + "-a3", 1));
+        jdbc.update("UPDATE draw_chance_reservation SET created_at='1000-01-01 00:00:00' WHERE user_id=?", userId);
+
+        assertThat(service.reconcileExpired(2, LocalDateTime.now().minusHours(1))).isOne();
+        assertThat(jdbc.queryForObject("SELECT status FROM draw_chance_reservation WHERE request_id=?",
+                String.class, abandoned.requestId())).isEqualTo(DrawChanceReservationStatus.RELEASED.name());
+        assertThat(service.get(userId).availableBalance()).isOne();
+        assertThat(service.get(userId).reservedBalance()).isEqualTo(2);
+    }
+
     private void insertOrder(String requestId, String status) {
         jdbc.update("""
                 INSERT INTO lottery_draw_order(request_id,user_id,activity_id,draw_count,draw_date,status)

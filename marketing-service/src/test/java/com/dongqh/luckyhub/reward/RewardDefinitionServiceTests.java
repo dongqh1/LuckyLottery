@@ -7,6 +7,8 @@ import com.dongqh.luckyhub.catalog.enums.ProductType;
 import com.dongqh.luckyhub.catalog.mapper.ProductMapper;
 import com.dongqh.luckyhub.catalog.mapper.ProductSkuMapper;
 import com.dongqh.luckyhub.common.exception.BusinessException;
+import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
+import com.dongqh.luckyhub.integration.hmall.HmallItemView;
 import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
 import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
 import com.dongqh.luckyhub.membership.entity.MembershipProduct;
@@ -21,12 +23,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.List;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class RewardDefinitionServiceTests {
@@ -44,6 +48,7 @@ class RewardDefinitionServiceTests {
     private ProductSkuMapper skuMapper;
     @Autowired private CouponTemplateMapper couponMapper;
     @Autowired private MembershipProductMapper membershipMapper;
+    @MockitoBean private HmallCatalogClient hmallCatalog;
 
     @BeforeEach
     void cleanTables() {
@@ -170,6 +175,9 @@ class RewardDefinitionServiceTests {
         sku.setStatus(status);
         sku.setVersion(0);
         skuMapper.insert(sku);
+        when(hmallCatalog.getItem(sku.getId())).thenReturn(new HmallItemView(
+                sku.getId(), sku.getSkuName(), Math.toIntExact(sku.getCashPriceCent()), 10,
+                null, "实物", "LuckyHub", null, status));
         return sku.getId();
     }
 }

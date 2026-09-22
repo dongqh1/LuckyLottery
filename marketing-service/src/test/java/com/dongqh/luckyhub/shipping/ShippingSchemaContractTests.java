@@ -17,12 +17,12 @@ class ShippingSchemaContractTests {
     @Autowired JdbcTemplate jdbc;
 
     @Test
-    void migratesV17AndCreatesExactlyFiveShippingTables() {
+    void currentSchemaIncludesTheFiveShippingTables() {
         assertThat(jdbc.queryForObject("""
                 SELECT version FROM flyway_schema_history
                 WHERE success=1 ORDER BY installed_rank DESC LIMIT 1
                 """, String.class))
-                .isEqualTo("17");
+                .isEqualTo("28");
         assertThat(jdbc.queryForList("""
                 SELECT table_name FROM information_schema.tables
                 WHERE table_schema=DATABASE() AND table_name LIKE 'shipping_%'

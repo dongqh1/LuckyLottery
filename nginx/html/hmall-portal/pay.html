@@ -37,9 +37,37 @@
 						<em class="sui-lead">应付金额：</em>
 						<em class="orange money">￥{{util.formatPrice(order.totalFee)}}</em>元</span>
         <div class="clearfix"></div>
+        <div style="text-align:right;line-height:1.9;color:#666">
+          <span>商品原价：￥{{util.formatPrice(order.originalFee || order.totalFee)}}</span>
+          <span style="margin-left:18px">会员优惠：-￥{{util.formatPrice(order.membershipDiscountFee || 0)}}</span>
+          <span v-if="order.couponId" style="margin-left:18px">{{order.couponName}}：-￥{{util.formatPrice(order.couponDiscountFee || 0)}}</span>
+          <button v-if="order.status===1" style="margin-left:20px" @click="cancelOrder(false)">取消订单并释放优惠券</button>
+        </div>
       </div>
-      <div class="checkout-steps">
-        <div class="container">
+      <div class="checkout-steps" v-if="order.id">
+        <section style="padding:20px;border-bottom:1px solid #ddd" aria-label="收银台优惠券">
+          <h3>使用优惠券</h3>
+          <p v-if="order.couponId">已使用 {{order.couponName}}，优惠 ¥{{util.formatPrice(order.couponDiscountFee || 0)}}。优惠已计入应付金额。</p>
+          <template v-else-if="order.status===1">
+            <p v-if="couponLoading">正在查询这笔订单可用的优惠券...</p>
+            <template v-else>
+              <label for="checkoutCoupon">选择优惠券：</label>
+              <select id="checkoutCoupon" v-model="selectedCouponId" :disabled="applyingCoupon || paying" style="min-width:300px;padding:8px;margin:10px">
+                <option :value="null">不使用优惠券</option>
+                <option v-for="coupon in applicableCoupons" :key="coupon.userCouponId" :value="coupon.userCouponId">{{coupon.couponName}} · 优惠 ¥{{util.formatPrice(coupon.discountCent)}}</option>
+              </select>
+              <button @click="applyCoupon" :disabled="!selectedCouponId || applyingCoupon || paying">{{applyingCoupon ? '正在应用优惠…' : '使用这张券'}}</button>
+              <p v-if="!applicableCoupons.length && !couponError">当前账号没有适用于这笔订单的可用优惠券。</p>
+              <p v-if="selectedCouponId">请点击“使用这张券”，以服务端重新计算的金额付款。</p>
+            </template>
+            <p v-if="couponQueryError" role="alert" style="color:#ad6800">{{couponQueryError}}；你仍可按当前金额付款。 <button @click="refreshCheckout" :disabled="checkoutRefreshing || couponLoading || applyingCoupon || paying">重新查询优惠券</button></p>
+            <p v-if="couponError" role="alert" style="color:#c81623">{{couponError}} <button @click="refreshCheckout" :disabled="checkoutRefreshing || couponLoading || applyingCoupon || paying">刷新订单并确认结果</button></p>
+          </template>
+          <p v-else>订单已不处于待付款状态，不能补选优惠券或再次支付。</p>
+          <a href="/coupons.html">我的优惠券</a>　<a href="/my-orders.html">我的订单</a>
+        </section>
+        <p v-if="paymentError" role="alert" style="padding:15px;color:#c81623">{{paymentError}}</p>
+        <div class="container" v-if="order.status===1">
           <div class="tab-wrapper">
             <!--tab section 1-->
             <div style="padding: 15px 20px 15px 20px">
@@ -78,7 +106,7 @@
               <label for="payPassword">请输入支付密码：</label>
               <input id="payPassword" type="password" v-model="password">
 
-              <button @click="payByBalance">确认支付</button>
+              <button @click="payByBalance" :disabled="paying || applyingCoupon || couponLoading || !!couponError || !payOrderNo || (!!selectedCouponId && !order.couponId)">{{paying ? '支付处理中…' : '确认支付'}}</button>
             </div>
           </div>
         </div>
@@ -99,50 +127,125 @@
     data() {
       return {
         util, // 工具类
-        order: {id: 458010519, totalFee: 298400, paymentType: 3}, // 订单信息
+        order: {}, // 仅显示服务端读取的真实订单
         paymentTypes: [{value: "aliPay", label: "支付宝"}, {value: "wxPay", label: "微信"}, {value: "balance", label: "余额"}], // 支付方式
         tab: 3, // 标签页
         password: "", // 支付密码
         remainTime: "",
         user: null,
         payOrderNo: "", // 支付单号
+        applicableCoupons: [],
+        selectedCouponId: null,
+        couponLoading: false,
+        checkoutRefreshing: false,
+        applyingCoupon: false,
+        paying: false,
+        couponError: '',
+        couponQueryError: '',
+        paymentError: '',
+        paymentRequest: 0,
+        countdownTimer: null,
       }
     },
     created() {
       util.store.set("return-url", location.href);
       this.user = util.store.get("user-info")
-      // 查询订单
-      axios.get("/orders/" + util.getUrlParam("id"))
-        .then(resp => {
-          // 查询到订单了
-          this.order = resp;
-          this.tab = this.order.paymentType;
-          // 创建支付单
-          this.createPayOrder(this.order.id);
-          // 设置倒计时
-          const deadLine = new Date(this.order.createTime).getTime() + 1800000;
-          const tid = setInterval(() => {
-            const remainTime = deadLine - new Date().getTime();
-            this.remainTime = Math.floor(remainTime / 60000) + "分" + Math.floor((remainTime % 60000) / 1000) + "秒";
-          })
-          setTimeout(() => {
-            // 清除倒计时
-            clearInterval(tid)
-            // 跳转到失败页
-            alert("支付超时！");
-          }, deadLine - new Date().getTime())
-        })
-        .catch(err => console.log(err));
+      if (!this.user) { location.href = '/login.html'; return; }
+      this.refreshCheckout();
+    },
+    beforeDestroy() {
+      clearInterval(this.countdownTimer);
     },
     watch: {
       tab(val) {
-        // 创建支付单
-        this.createPayOrder(this.order.id);
+        if (!this.couponLoading && !this.applyingCoupon && !this.paying) this.createPayOrder(this.order.id);
       }
     },
     methods: {
+      async refreshCheckout() {
+        if (this.checkoutRefreshing || this.applyingCoupon || this.paying) return;
+        this.checkoutRefreshing = true;
+        this.payOrderNo = '';
+        this.paymentRequest++;
+        this.couponLoading = true;
+        this.paymentError = '';
+        try {
+          this.order = await axios.get('/orders/' + util.getUrlParam('id'));
+          // A fresh authoritative read resolves any previous uncertain coupon result.
+          this.couponError = '';
+          this.couponQueryError = '';
+          this.tab = this.order.paymentType;
+          clearInterval(this.countdownTimer);
+          if (this.order.status !== 1) { this.couponError = ''; return; }
+          const deadline = new Date(this.order.createTime).getTime() + 1800000;
+          const tick = () => {
+            const remaining = Math.max(0, deadline - Date.now());
+            this.remainTime = Math.floor(remaining / 60000) + '分' + Math.floor(remaining % 60000 / 1000) + '秒';
+            if (!remaining) { clearInterval(this.countdownTimer); this.paymentError = '订单已超时，请返回我的订单查看状态。'; this.payOrderNo = ''; }
+          };
+          this.countdownTimer = setInterval(tick, 1000);
+          tick();
+          await this.loadCheckoutCoupons();
+          if (deadline > Date.now()) await this.createPayOrder(this.order.id);
+        } catch (error) {
+          this.paymentError = '订单加载失败，请刷新后重试';
+        } finally {
+          this.couponLoading = false;
+          this.checkoutRefreshing = false;
+        }
+      },
+      async loadCheckoutCoupons() {
+        this.couponLoading = true;
+        this.couponError = '';
+        this.couponQueryError = '';
+        this.applicableCoupons = [];
+        this.selectedCouponId = null;
+        try {
+          if (this.order.couponId || this.order.status !== 1) return;
+          const details = await axios.get('/orders/' + this.order.id + '/checkout-items');
+          const items = details.map(item => ({itemId:item.itemId, quantity:item.num}));
+          const result = await axios.post('/marketing/coupons/checkout/applicable', {items});
+          this.applicableCoupons = result.data || [];
+        } catch (error) {
+          this.couponQueryError = '可用优惠券暂时无法查询';
+        } finally { this.couponLoading = false; }
+      },
+      async applyCoupon() {
+        if (!this.selectedCouponId || this.order.couponId || this.order.status !== 1 || this.applyingCoupon || this.paying) return;
+        this.applyingCoupon = true;
+        this.couponError = '';
+        this.payOrderNo = '';
+        this.paymentRequest++;
+        try {
+          this.order = await axios.put('/orders/' + this.order.id + '/coupon', {couponId:this.selectedCouponId});
+          this.applyingCoupon = false;
+          await this.createPayOrder(this.order.id);
+        } catch (error) {
+          this.couponError = (error.response && error.response.data && (error.response.data.message || error.response.data.msg)) || '优惠券应用失败，请刷新订单确认结果后重试';
+        } finally { this.applyingCoupon = false; }
+      },
+      cancelOrder(timeout) {
+        if (this.paying || this.applyingCoupon || this.order.status !== 1) return;
+        if(!timeout && !confirm("确定取消该订单吗？已占用的优惠券将恢复可用。")){
+          return
+        }
+        axios.delete("/orders/" + this.order.id)
+          .then(() => {
+            alert(timeout ? "支付超时，订单已取消，优惠券已释放" : "订单已取消，优惠券已释放")
+            location.href = "/coupons.html"
+          })
+          .catch(err => {
+            if(!timeout){
+              alert((err.response && err.response.data && err.response.data.message) || "取消订单失败")
+            }
+          })
+      },
       createPayOrder(id) {
-        axios.post("/pay-orders",
+        if (!id || this.order.status !== 1 || this.applyingCoupon || this.couponError) return Promise.resolve();
+        const request = ++this.paymentRequest;
+        this.payOrderNo = '';
+        this.paymentError = '';
+        return axios.post("/pay-orders",
           {
             bizOrderNo: this.order.id,
             amount: this.order.totalFee,
@@ -154,6 +257,7 @@
             transformResponse: data => data
           }
         ).then(resp => {
+            if (request !== this.paymentRequest) return;
             // 判断支付方式
             if (this.tab === 3) {
               // 余额支付，保存交易单号即可
@@ -161,7 +265,7 @@
               return;
             }
             // 扫描支付，生成二维码
-            new QRCode(document.getElementById("qrImage"), {
+            new QRCode(document.getElementById("qrImage2"), {
               text: resp,
               width: 250,
               height: 250,
@@ -181,10 +285,10 @@
               this.queryPayStatus();
             }, 300000)
           })
-          .catch(err => console.log(err));
+          .catch(err => { if (request === this.paymentRequest) this.paymentError = '支付单创建失败，请刷新订单后重试'; });
       },
       queryOrderStatus(taskId) {
-        axios.get("/order/status/" + id)
+        axios.get("/orders/" + this.order.id + "/status")
           .then(resp => {
             let i = resp;
             if (i === 5) {
@@ -196,7 +300,7 @@
               // 付款成功
               clearInterval(taskId);
               // 跳转到付款成功页
-              location.href = "/paysuccess.html?orderId=" + id;
+              location.href = "/paysuccess.html?orderId=" + this.order.id;
             }
           }).catch((e) => {
           alert("支付状态查询失败，请刷新页面重试。");
@@ -204,15 +308,17 @@
         })
       },
       queryPayStatus() {
-        axios.get("/pay/status/" + id)
+        if (!this.payOrderNo) return;
+        axios.get("/pay-orders/" + this.payOrderNo + "/status")
           .then(resp => {
             // resp是返回的状态，1代表未支付、2代表已支付、3代表支付失败、4正在支付
-            if (resp !== 2) {
+            if (resp !== 3) {
               // 未支付或者支付失败，跳转到失败页
               alert("支付失败，请重试！")
+              return;
             }
             // 已经支付，跳转到支付成功页面
-            location.href = "/paysuccess.html?orderId=" + id;
+            location.href = "/paysuccess.html?orderId=" + this.order.id;
           })
           .catch(err => {
             console.log(err)
@@ -220,11 +326,13 @@
           })
       },
       payByBalance() {
+        if (this.paying || this.applyingCoupon || this.couponLoading || this.couponError || this.order.status !== 1 || (this.selectedCouponId && !this.order.couponId)) return;
         if(!this.payOrderNo){
           alert("交易单号为空")
           return;
         }
-        axios.post("/pay-orders/" + this.payOrderNo,
+        this.paying = true;
+        return axios.post("/pay-orders/" + this.payOrderNo,
           {id: this.payOrderNo, pw: this.password},{
             transformResponse: data => data
           })
@@ -234,8 +342,8 @@
           })
           .catch(err => {
             console.log(err)
-            alert("支付失败，请重试！")
-          })
+            alert("支付失败，请刷新订单确认优惠和付款状态后重试！")
+          }).finally(() => { this.paying = false; })
       }
     }
   });

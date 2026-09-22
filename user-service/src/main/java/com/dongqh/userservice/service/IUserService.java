@@ -1,6 +1,6 @@
 package com.dongqh.userservice.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 import com.dongqh.userservice.domain.dto.LoginFormDTO;
 import com.dongqh.userservice.domain.dto.UserAdminFormDTO;
 import com.dongqh.userservice.domain.po.User;

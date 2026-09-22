@@ -180,8 +180,8 @@ class PhysicalClaimConcurrencyTests extends Task5ShippingTestFixture {
 
     private void createPendingBenefit(long userId, long skuId, LocalDateTime deadline) {
         String suffix = UUID.randomUUID().toString();
-        String payload = "{\"skuId\":" + skuId + ",\"skuCode\":\"SKU-" + suffix
-                + "\",\"productName\":\"并发礼盒\",\"skuName\":\"默认\",\"quantity\":1}";
+        String payload = "{\"itemId\":" + skuId
+                + ",\"itemName\":\"并发礼盒\",\"itemImage\":null,\"itemPriceCent\":100,\"quantity\":1}";
         String fingerprint = "a".repeat(64);
         rewardId = insert("reward_definition", map("reward_code", "TASK4-R-" + suffix,
                 "reward_name", "领取奖励", "reward_type", "PRODUCT", "target_id", skuId,

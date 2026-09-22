@@ -34,9 +34,13 @@ public interface DrawChanceReservationMapper extends BaseMapper<DrawChanceReserv
                         @Param("drawDate") LocalDate drawDate);
 
     @Select("""
-            SELECT * FROM draw_chance_reservation
-            WHERE status='RESERVED' AND created_at < #{cutoff}
-            ORDER BY created_at,id LIMIT #{limit} FOR UPDATE SKIP LOCKED
+            SELECT r.* FROM draw_chance_reservation r
+            WHERE r.status='RESERVED' AND r.created_at < #{cutoff}
+              AND NOT EXISTS (
+                  SELECT 1 FROM lottery_draw_order o
+                  WHERE o.request_id=r.request_id AND o.status='PROCESSING'
+              )
+            ORDER BY r.created_at,r.id LIMIT #{limit} FOR UPDATE SKIP LOCKED
             """)
     List<DrawChanceReservation> lockExpired(@Param("limit") int limit,
                                             @Param("cutoff") LocalDateTime cutoff);

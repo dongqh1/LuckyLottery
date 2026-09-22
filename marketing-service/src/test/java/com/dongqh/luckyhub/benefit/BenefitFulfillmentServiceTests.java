@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+@SpringBootTest(properties = "seata.enabled=false")
 class BenefitFulfillmentServiceTests {
 
     @Autowired BenefitFulfillmentService fulfillmentService;
@@ -228,8 +228,8 @@ class BenefitFulfillmentServiceTests {
     }
 
     private MessagingProperties properties() {
-        return new MessagingProperties(false, "redis-stream", "task12", "task12-group",
-                "task12-core", 20, Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(30));
+        return new MessagingProperties(
+                false, "task12-core", Duration.ofSeconds(5), Duration.ofSeconds(30));
     }
 
     private long insertBenefit(PrizeType type, BenefitStatus status) {

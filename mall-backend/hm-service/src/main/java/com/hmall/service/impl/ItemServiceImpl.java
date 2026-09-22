@@ -1,6 +1,6 @@
 package com.hmall.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.domain.dto.ItemDTO;
@@ -25,15 +25,16 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 
     @Override
     public void deductStock(List<OrderDetailDTO> items) {
-        String sqlStatement = "com.hmall.mapper.ItemMapper.updateStock";
-        boolean r = false;
-        try {
-            r = executeBatch(items, (sqlSession, entity) -> sqlSession.update(sqlStatement, entity));
-        } catch (Exception e) {
-            throw new BizIllegalException("更新库存异常，可能是库存不足!", e);
+        if (items == null || items.isEmpty()) {
+            throw new BizIllegalException("扣减库存明细不能为空！");
         }
-        if (!r) {
-            throw new BizIllegalException("库存不足！");
+        for (OrderDetailDTO item : items) {
+            if (item == null || item.getItemId() == null || item.getNum() == null || item.getNum() <= 0) {
+                throw new BizIllegalException("扣减库存参数不合法！");
+            }
+            if (baseMapper.updateStock(item) != 1) {
+                throw new BizIllegalException("库存不足！");
+            }
         }
     }
 

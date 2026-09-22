@@ -143,8 +143,8 @@ class PointsDomainContractTests {
         assertAdminAdjustmentValidation();
 
         assertRecord("dto.CreatePointsRedemptionCommand", new String[]{
-                "redemptionNo", "skuId", "quantity", "addressId"
-        }, new Class<?>[]{String.class, Long.class, Integer.class, Long.class});
+                "redemptionNo", "skuId", "offerId", "quantity", "addressId"
+        }, new Class<?>[]{String.class, Long.class, Long.class, Integer.class, Long.class});
         assertRecord("dto.ReversePointsRedemptionCommand", new String[]{
                 "reversalNo", "reason"
         }, new Class<?>[]{String.class, String.class});
@@ -175,13 +175,15 @@ class PointsDomainContractTests {
                 String.class, LocalDateTime.class
         });
         assertRecord("vo.PointsRedemptionView", new String[]{
-                "id", "redemptionNo", "userId", "skuId", "quantity", "unitPoints", "totalPoints",
+                "id", "redemptionNo", "userId", "skuId", "offerId", "hmallItemId",
+                "quantity", "unitPoints", "totalPoints", "cashPriceCent",
                 "productCode", "productName", "skuCode", "skuName", "productType", "imageUrl",
                 "status", "reversalNo", "failureReason", "addressSnapshot", "shippingOrderId",
                 "shippingNo", "shippingStatus",
                 "createdAt", "updatedAt"
         }, new Class<?>[]{
-                Long.class, String.class, Long.class, Long.class, Integer.class, Long.class, Long.class,
+                Long.class, String.class, Long.class, Long.class, Long.class, Long.class,
+                Integer.class, Long.class, Long.class, Integer.class,
                 String.class, String.class, String.class, String.class, ProductType.class, String.class,
                 requiredClass("enums.PointsRedemptionStatus"), String.class, String.class,
                 ShippingAddressSnapshotView.class, Long.class, String.class,

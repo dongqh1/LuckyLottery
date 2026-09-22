@@ -1,0 +1,33 @@
+package com.dongqh.luckyhub.coupon.config;
+
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Declarables;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+public class PayCouponMessagingConfiguration {
+    public static final String EXCHANGE = "pay.direct";
+    public static final String ROUTING_KEY = "pay.success";
+    public static final String QUEUE = "marketing.pay.coupon-use.queue";
+    public static final String DLX = "pay.dlx";
+    public static final String DLQ = "marketing.pay.coupon-use.dlq";
+
+    @Bean
+    public Declarables payCouponDeclarables() {
+        DirectExchange exchange = new DirectExchange(EXCHANGE, true, false);
+        DirectExchange dlx = new DirectExchange(DLX, true, false);
+        Queue queue = QueueBuilder.durable(QUEUE).deadLetterExchange(DLX).build();
+        Queue dlq = QueueBuilder.durable(DLQ).build();
+        return new Declarables(
+                exchange,
+                dlx,
+                queue,
+                dlq,
+                BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY),
+                BindingBuilder.bind(dlq).to(dlx).with(ROUTING_KEY));
+    }
+}

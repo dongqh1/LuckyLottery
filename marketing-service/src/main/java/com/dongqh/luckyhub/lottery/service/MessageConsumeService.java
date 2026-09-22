@@ -50,8 +50,8 @@ public class MessageConsumeService {
 
     /**
      * Performs the idempotent Redis quota transition before opening the short MySQL
-     * transaction that records consumption. If the database write fails, Stream is
-     * not acknowledged; redelivery safely repeats the Lua transition and record insert.
+     * transaction that records consumption. If the database write fails, the broker
+     * delivery is not acknowledged; redelivery safely repeats the transition and insert.
      */
     public void consume(DrawEventEnvelope event) {
         String eventId = event.eventId().toString();
@@ -67,8 +67,8 @@ public class MessageConsumeService {
             }
             case DRAW_RELEASE_REQUESTED -> {
                 event.payloadAs(DrawReleaseRequestedEvent.class, objectMapper);
-                quotaService.release(event.requestId());
                 settleRewardedChance(event.requestId(), false);
+                quotaService.release(event.requestId());
             }
             case PRIZE_FULFILLMENT_REQUESTED -> {
                 var payload = event.payloadAs(

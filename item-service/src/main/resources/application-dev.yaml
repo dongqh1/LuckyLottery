@@ -1,0 +1,7 @@
+hm:
+  db:
+    port: ${HM_ITEM_DB_PORT:3306}
+    host: ${HM_ITEM_DB_HOST:mysql}
+    database: hm_item
+    username: hm_item_app
+    password: ${HM_ITEM_DB_PASSWORD:change-item-db-password}

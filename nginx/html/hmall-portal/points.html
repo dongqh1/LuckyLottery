@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>积分商城 - 黑马商城</title>
+  <link rel="stylesheet" href="css/webbase2.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <style>
+    .offer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;padding:20px 0}
+    .offer-card{border:1px solid #eee;border-radius:8px;background:#fff;overflow:hidden}.offer-card img{width:100%;height:180px;object-fit:cover;background:#f6f6f6}
+    .offer-body{padding:16px}.offer-name{font-size:17px;font-weight:600;min-height:48px}.points-price{color:#e4393c;font-size:24px;font-weight:700;margin:10px 0}
+    .cash-price,.stock{color:#777;font-size:13px}.address-list{display:grid;gap:10px;margin:14px 0}.address-option{display:block;border:1px solid #ddd;border-radius:6px;padding:12px;cursor:pointer}
+    .address-option.active{border-color:#e4393c;background:#fff8f8}.order-card{border-top:1px solid #eee;padding:16px 0;display:grid;gap:6px}.status{color:#d66b00;font-weight:600}
+    .action{background:#e4393c;color:#fff;border:0;padding:9px 22px;border-radius:4px;cursor:pointer}.action[disabled]{background:#bbb;cursor:not-allowed}.notice{padding:12px;background:#fff8e6;border-radius:5px}.success{color:#168443}
+  </style>
+</head>
+<body>
+<div id="app">
+  <top></top><marketing-header active="points"></marketing-header>
+  <main class="marketing-page">
+    <div class="breadcrumb">首页 &gt; 会员中心 &gt; 积分商城</div>
+    <div class="page-heading"><h1>积分商城</h1><p>使用商城积分兑换心仪好物，兑换后可查看收货信息和物流进度</p></div>
+    <section class="panel">
+      <div class="panel-title"><h2>我的积分</h2><button class="secondary" @click="loadAll">刷新</button></div>
+      <div class="account-summary"><div><div class="metric-label">可用积分</div><div class="metric">{{account.balance || 0}}</div></div></div>
+      <p class="error" v-if="error">{{error}}</p><p class="success" v-if="message">{{message}}</p>
+    </section>
+    <section class="panel">
+      <div class="panel-title"><h2>可兑换商品</h2><span class="muted">商品信息来自黑马商城</span></div>
+      <div class="offer-grid" v-if="offers.length">
+        <article class="offer-card" v-for="offer in offers" :key="offer.id">
+          <img :src="offer.imageUrl || 'img/default-goods.png'" :alt="offer.itemName"><div class="offer-body">
+            <div class="offer-name">{{offer.itemName}}</div><div class="points-price">{{offer.unitPoints}} 积分</div>
+            <div class="cash-price">商城参考价：¥{{formatMoney(offer.cashPriceCent)}}</div><div class="stock">本期剩余：{{offer.availableStock}} 件</div>
+            <button class="action" @click="openRedeem(offer)" :disabled="account.balance < offer.unitPoints">立即兑换</button>
+          </div>
+        </article>
+      </div><div class="empty" v-else>当前暂无可兑换商品</div>
+    </section>
+    <section class="panel" v-if="selectedOffer">
+      <div class="panel-title"><h2>确认兑换：{{selectedOffer.itemName}}</h2></div>
+      <div class="notice" v-if="!addresses.length">尚未设置收货地址，请先前往 <a href="address.html">收货地址管理</a>。</div>
+      <div class="address-list">
+        <label class="address-option" :class="{active:selectedAddressId===address.id}" v-for="address in addresses" :key="address.id">
+          <input type="radio" v-model="selectedAddressId" :value="address.id"><strong>{{address.contact}}</strong> {{address.mobile}}<br>
+          {{address.province}}{{address.city}}{{address.town}}{{address.street}}<span v-if="address.isDefault===1">（默认地址）</span>
+        </label>
+      </div>
+      <button class="action" @click="redeem(selectedOffer)" :disabled="submitting || !selectedAddressId">{{submitting ? '提交中…' : '确认支付 ' + selectedOffer.unitPoints + ' 积分'}}</button>
+      <button class="secondary" @click="selectedOffer=null">取消</button>
+    </section>
+    <section class="panel">
+      <div class="panel-title"><h2>我的兑换</h2><span class="muted">共 {{redemptions.total || 0}} 条</span></div>
+      <article class="order-card" v-for="order in redemptions.records" :key="order.id">
+        <strong>{{order.productName}} × {{order.quantity}}</strong><span>消耗积分：{{order.totalPoints}}，状态：<span class="status">{{statusText(order.status)}}</span></span>
+        <span v-if="order.addressSnapshot">收货信息：{{order.addressSnapshot.receiverMasked}} {{order.addressSnapshot.phoneMasked}} {{order.addressSnapshot.regionMasked}}</span>
+        <span v-if="order.shippingNo">物流单：{{order.shippingNo}}（{{shippingText(order.shippingStatus)}}）</span><span class="muted">兑换编号：{{order.redemptionNo}}</span>
+      </article><div class="empty" v-if="!redemptions.records.length">暂无兑换记录</div>
+    </section>
+  </main>
+</div>
+<script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
+<script>
+new Vue({el:"#app",data:{account:{balance:0},offers:[],addresses:[],redemptions:{records:[],total:0},selectedOffer:null,selectedAddressId:null,submitting:false,error:"",message:""},
+created(){if(!util.isLogin()){location.href="/login.html";return}this.loadAll()},methods:{
+dataOf(response,fallback){return response && response.data !== undefined ? response.data : (response || fallback)},
+loadAll(){this.error="";Promise.all([axios.get("/marketing/points/account"),axios.get("/marketing/points/offers"),axios.get("/addresses"),axios.get("/marketing/points/redemptions",{params:{page:1,size:20}})]).then(result=>{
+this.account=this.dataOf(result[0],{balance:0});this.offers=this.dataOf(result[1],[]);this.addresses=this.dataOf(result[2],[]);this.redemptions=this.dataOf(result[3],{records:[],total:0});const preferred=this.addresses.find(address=>address.isDefault===1)||this.addresses[0];this.selectedAddressId=preferred?preferred.id:null}).catch(this.showError)},
+openRedeem(offer){this.selectedOffer=offer;this.message="";this.error=""},
+redeem(offer){if(!this.selectedAddressId){this.error="请选择真实收货地址";return}this.submitting=true;this.error="";this.message="";const redemptionNo="HMALL-POINTS-"+Date.now()+"-"+Math.random().toString(16).slice(2,10);
+axios.post("/marketing/points/redemptions",{redemptionNo:redemptionNo,offerId: offer.id,quantity:1,addressId: this.selectedAddressId}).then(()=>{this.message="兑换成功，积分已扣除，商品已进入履约流程";this.selectedOffer=null;return this.loadAll()}).catch(this.showError).finally(()=>this.submitting=false)},
+showError(error){this.error=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||"数据加载失败"},formatMoney(value){return ((value||0)/100).toFixed(2)},statusText(value){return {PROCESSING:"处理中",COMPLETED:"已完成",REVERSED:"已冲正"}[value]||value||"-"},shippingText(value){return {READY:"待履约",FULFILLING:"履约中",SHIPPED:"已发货",IN_TRANSIT:"运输中",DELIVERED:"已送达",FAILED:"履约异常",TERMINATED:"已终止"}[value]||value||"-"}
+}})
+</script>
+</body></html>

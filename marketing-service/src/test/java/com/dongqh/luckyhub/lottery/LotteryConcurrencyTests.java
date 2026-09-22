@@ -3,6 +3,7 @@ package com.dongqh.luckyhub.lottery;
 import com.dongqh.luckyhub.auth.context.LoginContext;
 import com.dongqh.luckyhub.auth.model.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.BusinessException;
+import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
 import com.dongqh.luckyhub.lottery.algorithm.DrawRandomSource;
 import com.dongqh.luckyhub.lottery.dto.DrawCommand;
 import com.dongqh.luckyhub.lottery.enums.LotteryErrorCode;
@@ -40,7 +41,7 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(properties = {
         "spring.task.scheduling.enabled=false",
         "luckyhub.lottery.reconcile-initial-delay=24h",
-        "luckyhub.messaging.consumer-initial-delay=24h",
+        "luckyhub.messaging.enabled=false",
         "luckyhub.lottery.outbox-initial-delay=24h",
         "luckyhub.activity.status-refresh-initial-delay=86400000"
 })
@@ -50,6 +51,7 @@ class LotteryConcurrencyTests {
     private static final long BASE_USER = 916000L;
 
     @Autowired LotteryService lotteryService;
+    @Autowired DrawChanceService drawChanceService;
     @Autowired JdbcTemplate jdbc;
     @Autowired StringRedisTemplate redis;
     @MockitoBean DrawRandomSource randomSource;
@@ -57,6 +59,7 @@ class LotteryConcurrencyTests {
     private final List<String> requestIds = new ArrayList<>();
     private final List<Long> activityIds = new ArrayList<>();
     private final List<Long> prizeIds = new ArrayList<>();
+    private final List<Long> insertedUserIds = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -84,6 +87,12 @@ class LotteryConcurrencyTests {
             jdbc.update("DELETE FROM marketing_activity WHERE id=?", activityId);
         }
         for (long prizeId : prizeIds) jdbc.update("DELETE FROM marketing_prize WHERE id=?", prizeId);
+        for (long userId : insertedUserIds) {
+            jdbc.update("DELETE FROM draw_chance_ledger WHERE user_id=?", userId);
+            jdbc.update("DELETE FROM draw_chance_reservation WHERE user_id=?", userId);
+            jdbc.update("DELETE FROM draw_chance_account WHERE user_id=?", userId);
+            jdbc.update("DELETE FROM sys_user WHERE id=?", userId);
+        }
     }
 
     @Test
@@ -229,6 +238,160 @@ class LotteryConcurrencyTests {
                 """, Integer.class, fixture.activityId())).isZero();
     }
 
+    @Test
+    void concurrentMixedSingleAndTenDrawsConsumeCombinedFreeAndRewardQuotaExactlyOnce() throws Exception {
+        long activityId = activity(100, 5);
+        long userId = BASE_USER + 3;
+        insertUser(userId, "mixed-quota-user");
+        drawChanceService.credit(userId, "mixed-reward-" + UUID.randomUUID(), 25);
+        List<Integer> drawCounts = List.of(10, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        CountDownLatch ready = new CountDownLatch(drawCounts.size());
+        CountDownLatch start = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(drawCounts.size());
+        List<Future<?>> futures = new ArrayList<>();
+        try {
+            for (int drawCount : drawCounts) {
+                String requestId = requestId();
+                futures.add(pool.submit(() -> {
+                    ready.countDown();
+                    await(start);
+                    LoginContext.set(new LoginPrincipal(userId, "mixed-quota-user", "mixed-session"));
+                    try {
+                        lotteryService.draw(new DrawCommand(requestId, activityId, drawCount));
+                    } finally {
+                        LoginContext.clear();
+                    }
+                    return null;
+                }));
+            }
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (Future<?> future : futures) future.get(30, TimeUnit.SECONDS);
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+            assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        assertThat(jdbc.queryForObject("""
+                SELECT COALESCE(SUM(draw_count),0) FROM lottery_draw_order
+                WHERE activity_id=? AND user_id=? AND status='SUCCESS'
+                """, Integer.class, activityId, userId)).isEqualTo(30);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lottery_draw_record WHERE activity_id=? AND user_id=?",
+                Integer.class, activityId, userId)).isEqualTo(30);
+        assertThat(redis.opsForValue().get(DrawQuotaKeys.quota(
+                activityId, userId, LocalDate.now(SHANGHAI)))).isEqualTo("30");
+        assertThat(drawChanceService.get(userId).availableBalance()).isZero();
+        assertThat(drawChanceService.get(userId).reservedBalance()).isEqualTo(25);
+    }
+
+    @Test
+    void concurrentSameRequestWithSingleAndTenDrawPayloadsChoosesOneCanonicalIdentity() throws Exception {
+        long activityId = activity(100, 100);
+        long userId = BASE_USER + 4;
+        String requestId = requestId();
+        int callsPerPayload = 8;
+        CountDownLatch ready = new CountDownLatch(callsPerPayload * 2);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger succeeded = new AtomicInteger();
+        AtomicInteger processing = new AtomicInteger();
+        AtomicInteger conflicts = new AtomicInteger();
+        var pool = Executors.newFixedThreadPool(callsPerPayload * 2);
+        List<Future<?>> futures = new ArrayList<>();
+        try {
+            for (int i = 0; i < callsPerPayload * 2; i++) {
+                int drawCount = i % 2 == 0 ? 1 : 10;
+                futures.add(pool.submit(() -> {
+                    ready.countDown();
+                    await(start);
+                    LoginContext.set(new LoginPrincipal(userId, "identity-user", "identity-session"));
+                    try {
+                        lotteryService.draw(new DrawCommand(requestId, activityId, drawCount));
+                        succeeded.incrementAndGet();
+                    } catch (BusinessException error) {
+                        if (error.getErrorCode() == LotteryErrorCode.DRAW_ORDER_PROCESSING) {
+                            processing.incrementAndGet();
+                        } else if (error.getErrorCode() == LotteryErrorCode.IDEMPOTENCY_CONFLICT) {
+                            conflicts.incrementAndGet();
+                        } else {
+                            throw error;
+                        }
+                    } finally {
+                        LoginContext.clear();
+                    }
+                    return null;
+                }));
+            }
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (Future<?> future : futures) future.get(30, TimeUnit.SECONDS);
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+            assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        int canonicalDrawCount = jdbc.queryForObject(
+                "SELECT draw_count FROM lottery_draw_order WHERE request_id=?", Integer.class, requestId);
+        assertThat(canonicalDrawCount).isIn(1, 10);
+        assertThat(conflicts).hasValue(callsPerPayload);
+        assertThat(succeeded.get() + processing.get()).isEqualTo(callsPerPayload);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lottery_draw_order WHERE request_id=?",
+                Integer.class, requestId)).isOne();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lottery_draw_record WHERE request_id=?",
+                Integer.class, requestId)).isEqualTo(canonicalDrawCount);
+        assertThat(redis.opsForValue().get(DrawQuotaKeys.quota(
+                activityId, userId, LocalDate.now(SHANGHAI)))).isEqualTo(String.valueOf(canonicalDrawCount));
+    }
+
+    @Test
+    void concurrentTenDrawsAcrossUsersNeverOversellAndAlwaysPersistCompleteOrders() throws Exception {
+        Fixture fixture = prizeActivity(7, 100, 7, 0, 10);
+        int users = 12;
+        CountDownLatch ready = new CountDownLatch(users);
+        CountDownLatch start = new CountDownLatch(1);
+        var pool = Executors.newFixedThreadPool(users);
+        List<Future<?>> futures = new ArrayList<>();
+        try {
+            for (int i = 0; i < users; i++) {
+                long userId = BASE_USER + 200 + i;
+                String requestId = requestId();
+                futures.add(pool.submit(() -> {
+                    ready.countDown();
+                    await(start);
+                    LoginContext.set(new LoginPrincipal(userId, "ten-stock-user", "ten-stock-session"));
+                    try {
+                        lotteryService.draw(new DrawCommand(requestId, fixture.activityId(), 10));
+                    } finally {
+                        LoginContext.clear();
+                    }
+                    return null;
+                }));
+            }
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (Future<?> future : futures) future.get(45, TimeUnit.SECONDS);
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+            assertThat(pool.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        assertThat(jdbc.queryForObject("SELECT remaining_stock FROM marketing_activity_prize WHERE id=?",
+                Integer.class, fixture.activityPrizeId())).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lottery_draw_record WHERE activity_id=? AND result_type='WIN'",
+                Integer.class, fixture.activityId())).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lottery_draw_record WHERE activity_id=? AND result_type='NO_WIN'",
+                Integer.class, fixture.activityId())).isEqualTo(113);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lottery_draw_order WHERE activity_id=? AND status='SUCCESS'",
+                Integer.class, fixture.activityId())).isEqualTo(users);
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM lottery_draw_order o
+                WHERE o.activity_id=? AND o.status='SUCCESS'
+                  AND (SELECT COUNT(*) FROM lottery_draw_record r WHERE r.order_id=o.id) <> 10
+                """, Integer.class, fixture.activityId())).isZero();
+    }
+
     private Fixture prizeActivity(int totalStock, int weight, int remainingStock,
                                   int noWinWeight, int dailyLimit) {
         long prizeId = insert("""
@@ -260,6 +423,13 @@ class LotteryConcurrencyTests {
         String value = UUID.randomUUID().toString();
         requestIds.add(value);
         return value;
+    }
+
+    private void insertUser(long userId, String usernamePrefix) {
+        jdbc.update("INSERT INTO sys_user(id,username,password,nickname,status) VALUES(?,?,?,?,1)",
+                userId, usernamePrefix.substring(0, 4) + "-" + UUID.randomUUID().toString().substring(0, 12),
+                "x", "并发抽奖用户");
+        insertedUserIds.add(userId);
     }
 
     private long insert(String sql, Object... args) {

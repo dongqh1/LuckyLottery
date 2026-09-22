@@ -6,14 +6,25 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 
 public record CreatePointsRedemptionCommand(
         @NotBlank @Size(max = 64) String redemptionNo,
-        @NotNull @Positive Long skuId,
+        @Positive Long skuId,
+        @Positive Long offerId,
         @NotNull @Min(1) @Max(100) Integer quantity,
         @Positive Long addressId
 ) {
     public CreatePointsRedemptionCommand(String redemptionNo, Long skuId, Integer quantity) {
-        this(redemptionNo, skuId, quantity, null);
+        this(redemptionNo, skuId, null, quantity, null);
+    }
+
+    public CreatePointsRedemptionCommand(String redemptionNo, Long skuId, Integer quantity, Long addressId) {
+        this(redemptionNo, skuId, null, quantity, addressId);
+    }
+
+    @AssertTrue(message = "skuId和offerId必须且只能填写一个")
+    public boolean isRedemptionSourceValid() {
+        return (skuId == null) != (offerId == null);
     }
 }

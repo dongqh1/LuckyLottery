@@ -9,6 +9,9 @@
   <link rel="stylesheet" type="text/css" href="./css/webbase.css" />
   <link rel="stylesheet" type="text/css" href="./css/pages-getOrderInfo.css" />
   <link rel="stylesheet" type="text/css" href="./css/orderInfo.css" />
+  <style>
+    .coupon-choice-list{display:flex;flex-wrap:wrap;gap:12px}.coupon-choice{position:relative;display:block;width:260px;min-height:86px;padding:14px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;box-sizing:border-box}.coupon-choice.selected{border:2px solid #e1251b;padding:13px 15px;background:#fff8f7}.coupon-choice input{position:absolute;right:12px;top:12px}.coupon-choice strong{display:block;color:#e1251b;font-size:20px;margin-bottom:6px}.coupon-choice span,.coupon-choice small{display:block;color:#666;line-height:1.6}.coupon-choice.no-coupon strong{font-size:16px;color:#555}.coupon-state{padding:12px 0;color:#777}.coupon-error{color:#c81623}.coupon-link{display:inline-block;margin-top:12px;color:#e1251b}
+  </style>
 </head>
 
 <body>
@@ -32,7 +35,7 @@
       <div class="checkout-steps">
         <!--收件人信息-->
         <div class="step-tit">
-          <h5>收件人信息<span><a class="newadd">新增收货地址</a></span></h5>
+          <h5>收件人信息<span><a class="newadd" href="/address.html">新增收货地址</a></span></h5>
         </div>
         <div class="step-cont">
           <div class="addressInfo">
@@ -101,17 +104,42 @@
             </ul>
           </div>
         </div>
+        <div class="step-tit">
+          <h5>使用优惠券</h5>
+        </div>
+        <div class="step-cont" style="padding: 18px 24px">
+          <div v-if="couponLoading" class="coupon-state">正在计算当前商品可用的优惠券...</div>
+          <div v-else-if="couponLoadFailed" class="coupon-state coupon-error">可用优惠券加载失败，请刷新后重试。</div>
+          <div v-else class="coupon-choice-list">
+            <label class="coupon-choice no-coupon" :class="{selected:selectedCouponId===null}">
+              <input type="radio" v-model="selectedCouponId" :value="null">
+              <strong>不使用优惠券</strong><span>仅享受会员折扣</span>
+            </label>
+            <label class="coupon-choice" :class="{selected:selectedCouponId===coupon.userCouponId}" v-for="coupon in applicableCoupons" :key="coupon.userCouponId">
+              <input type="radio" v-model="selectedCouponId" :value="coupon.userCouponId">
+              <strong>优惠 ¥{{util.formatPrice(coupon.discountCent)}}</strong>
+              <span>{{coupon.couponName}}</span><small>{{couponScope(coupon)}} · 有效期至 {{formatCouponTime(coupon.validUntil)}}</small>
+            </label>
+          </div>
+          <div v-if="!couponLoading && !couponLoadFailed && !applicableCoupons.length" class="coupon-state">当前账号没有适用于所选商品的可用优惠券。</div>
+          <a href="/coupons.html" class="coupon-link">查看我的全部优惠券</a>
+        </div>
       </div>
     </div>
     <div class="order-summary">
       <div class="static fr">
         <div class="list">
-          <span><i class="number">{{items.length}}</i>件商品，总金额:</span>
-          <em class="allprice">¥{{totalPrice}}</em>
+          <span><i class="number">{{items.length}}</i>件商品，商品原价:</span>
+          <em class="allprice">¥{{originalPrice}}</em>
         </div>
         <div class="list">
-          <span>优惠券：</span>
-          <em class="money">0.00</em>
+          <span>GOLD 会员优惠：</span>
+          <em class="money">-¥{{membershipDiscount}}</em>
+          <small v-if="membership.membershipLevel">（{{membership.membershipLevel}}，{{membership.discountBasisPoints / 1000}} 折）</small>
+        </div>
+        <div class="list">
+          <span>优惠券优惠：</span>
+          <em class="money">-¥{{couponDiscount}}</em>
         </div>
         <div class="list">
           <span>运费：</span>
@@ -120,7 +148,7 @@
       </div>
     </div>
     <div class="clearfix trade">
-      <div class="fc-price">应付金额:　<span class="price">¥{{totalPrice}}</span></div>
+      <div class="fc-price">应付金额:　<span class="price">¥{{payablePrice}}</span></div>
       <div class="fc-receiverInfo">寄送至: {{address}}</div>
     </div>
     <div class="submit">
@@ -144,9 +172,15 @@
           params: {
             details: [],
             paymentType: 3, // 支付方式
-            addressId: 61, // 收货地址的id
+            addressId: null, // 仅使用当前登录用户选择的真实收货地址
           },
           user: null,
+          membership: {membershipLevel: null, discountBasisPoints: 10000},
+          membershipLoadFailed: false,
+          applicableCoupons: [],
+          selectedCouponId: null,
+          couponLoading: false,
+          couponLoadFailed: false,
         }
       },
       created() {
@@ -154,14 +188,51 @@
         this.user = util.store.get("user-info")
         if(!this.user){
           location.href = "login.html";
+          return;
         }
         // 查询商品
         this.getItem();
         this.getAddress();
+        this.getMembership();
       },
       methods: {
         getItem() {
-          this.items = util.store.get("selectedCarts");
+          this.items = util.store.get("selectedCarts") || [];
+        },
+        getMembership() {
+          axios.get('/marketing/memberships/me')
+            .then(resp => {
+              this.membership = (resp && resp.data) || resp || {membershipLevel: null, discountBasisPoints: 10000}
+              this.loadApplicableCoupons()
+            })
+            .catch(() => {
+              this.membershipLoadFailed = true
+              alert("会员权益加载失败，为避免优惠丢失，暂时不能提交订单")
+            })
+        },
+        loadApplicableCoupons() {
+          if(!this.items.length){
+            this.applicableCoupons = []
+            this.selectedCouponId = null
+            return
+          }
+          this.couponLoading = true
+          this.couponLoadFailed = false
+          const items = this.items.map(item => ({itemId: item.itemId, quantity: Number(item.num)}))
+          axios.post('/marketing/coupons/checkout/applicable', {items})
+            .then(resp => {
+              this.applicableCoupons = (resp && resp.data) || []
+              if(!this.applicableCoupons.some(coupon => coupon.userCouponId === this.selectedCouponId)){
+                this.selectedCouponId = null
+              }
+            })
+            .catch(() => {
+              this.applicableCoupons = []
+              this.selectedCouponId = null
+              this.couponLoadFailed = true
+              alert("可用优惠券加载失败，为避免优惠丢失，暂时不能提交订单")
+            })
+            .finally(() => { this.couponLoading = false })
         },
         getAddress() {
           // 根据用户id查询地址列表
@@ -169,31 +240,45 @@
             .then(resp => {
               if(resp && resp.length > 0){
                 this.addressList = resp
+                const selected = this.addressList.find(addr => addr.isDefault) || this.addressList[0]
+                this.params.addressId = selected.id
               }else{
-                alert("当前用户没有地址，现在展示假数据")
-                this.addressList = [
-                  { "id": 61, "userId": 2, "contact": "李佳星", "mobile": "13301212233", "province": "上海", "city": "上海", "town": "浦东新区", "street": "航头镇航头路", "isDefault": true },
-                  { "id": 63, "userId": 2, "contact": "李小龙", "mobile": "13301212233", "province": "广东", "city": "佛山", "town": "永春", "street": "永春武馆", "isDefault": false },
-                ]
+                this.addressList = []
+                alert("请选择或新增收货地址")
               }
             })
             .catch(err => {
-              this.addressList = [
-                { "id": 61, "userId": 2, "contact": "李佳星", "mobile": "13301212233", "province": "上海", "city": "上海", "town": "浦东新区", "street": "航头镇航头路", "isDefault": true },
-                { "id": 63, "userId": 2, "contact": "李小龙", "mobile": "13301212233", "province": "广东", "city": "佛山", "town": "永春", "street": "永春武馆", "isDefault": false },
-              ]
-              console.log("err")
+              this.addressList = []
+              this.params.addressId = null
+              alert("收货地址加载失败，请刷新后重试")
             }
             )
         },
         toPay() {
+          if(!this.items.length){
+            alert("未选择商品，请返回商品页重新购买")
+            return
+          }
+          if(!this.params.addressId){
+            alert("请选择或新增收货地址")
+            return
+          }
+          if(this.membershipLoadFailed){
+            alert("会员权益尚未成功加载，请刷新后重试")
+            return
+          }
+          if(this.couponLoading || this.couponLoadFailed){
+            alert("优惠券尚未成功加载，请稍后重试")
+            return
+          }
           // 发送ajax请求到微服务执行：下单、扣库存
           let details = [];
           this.items.forEach(({itemId, num}) => {
             details.push({itemId, num})
           })
           this.params.details = details;
-          axios.post("/orders", this.params)
+          const orderParams = {...this.params, couponId: this.selectedCouponId}
+          axios.post("/orders", orderParams)
             .then(resp => {
               // 获取订单id
               let orderId = resp;
@@ -211,11 +296,13 @@
         incNum(item) {
           if (item.num < item.stock) {
             item.num++
+            this.loadApplicableCoupons()
           }
         },
         decNum(item) {
           if (item.num > 1) {
             item.num--
+            this.loadApplicableCoupons()
           }
         },
         parseJson(str) {
@@ -223,6 +310,15 @@
             return "";
           }
           return JSON.parse(str);
+        },
+        couponScope(coupon) {
+          if(coupon.scopeType === 'BRAND') return coupon.scopeValue + ' 品牌商品'
+          if(coupon.scopeType === 'CATEGORY') return coupon.scopeValue + ' 分类商品'
+          if(coupon.scopeType === 'ITEM') return '指定商品'
+          return '全场商品'
+        },
+        formatCouponTime(value) {
+          return value ? value.replace('T', ' ').slice(0, 16) : '-'
         }
       },
       computed: {
@@ -235,12 +331,35 @@
             + address.town + address.street + " 收件人："
             + address.contact + " " + this.handleMobile(address.mobile);
         },
-        totalPrice() {
+        originalFeeCent() {
           let total = 0;
           this.items.forEach(i => {
             total += ((i.newPrice || i.price) * i.num)
           })
-          return util.formatPrice(total);
+          return total;
+        },
+        originalPrice() {
+          return util.formatPrice(this.originalFeeCent);
+        },
+        membershipDiscountCent() {
+          const basisPoints = this.membership.discountBasisPoints || 10000;
+          const payable = Math.ceil(this.originalFeeCent * basisPoints / 10000);
+          return this.originalFeeCent - payable;
+        },
+        membershipDiscount() {
+          return util.formatPrice(this.membershipDiscountCent);
+        },
+        selectedCoupon() {
+          return this.applicableCoupons.find(coupon => coupon.userCouponId === this.selectedCouponId) || null;
+        },
+        couponDiscountCent() {
+          return this.selectedCoupon ? this.selectedCoupon.discountCent : 0;
+        },
+        couponDiscount() {
+          return util.formatPrice(this.couponDiscountCent);
+        },
+        payablePrice() {
+          return util.formatPrice(this.originalFeeCent - this.membershipDiscountCent - this.couponDiscountCent);
         }
       }
     });

@@ -55,7 +55,7 @@ public class PhysicalClaimExpiryWorkerImpl implements PhysicalClaimExpiryWorker 
         MarketingActivityPrize activityPrize = activityPrizes.lockByActivityAndPrize(
                 draw.getActivityId(), draw.getPrizeId());
         if (activityPrize == null) throw new IllegalStateException("活动奖品关系不存在");
-        inventory.returnExpiredClaim(activityPrize.getId(), product.skuId(), "CLAIM-EXPIRE-" + benefitId);
+        inventory.returnExpiredClaim(activityPrize.getId(), product.itemId(), "CLAIM-EXPIRE-" + benefitId);
         if (benefits.markClaimExpired(benefitId, now) != 1) {
             throw new IllegalStateException("权益过期状态转换失败");
         }
@@ -78,7 +78,7 @@ public class PhysicalClaimExpiryWorkerImpl implements PhysicalClaimExpiryWorker 
         }
         try {
             ProductRewardPayload product = json.readValue(benefit.getRewardPayload(), ProductRewardPayload.class);
-            if (!Objects.equals(benefit.getRewardTargetId(), product.skuId())
+            if (!Objects.equals(benefit.getRewardTargetId(), product.itemId())
                     || benefit.getRewardQuantity() != product.quantity()
                     || !Objects.equals(benefit.getQuantity(), product.quantity())) {
                 throw new IllegalStateException("冻结商品奖励不一致");

@@ -19,13 +19,15 @@ const topApp = {
           <li class="f-item space"></li>
           <li class="f-item"><a href="/cart.html">我的购物车</a></li>
           <li class="f-item space"></li>
-          <li class="f-item">我的黑马</li>
+          <li class="f-item"><a href="/lottery.html">幸运抽奖</a></li>
           <li class="f-item space"></li>
-          <li class="f-item">黑马会员</li>
+          <li class="f-item"><a href="/points.html">我的积分</a></li>
           <li class="f-item space"></li>
-          <li class="f-item">企业采购</li>
+          <li class="f-item"><a href="/benefits.html">我的权益</a></li>
           <li class="f-item space"></li>
-          <li class="f-item">关注黑马</li>
+          <li class="f-item"><a href="/my-orders.html">我的订单</a></li>
+          <li class="f-item space"></li>
+          <li class="f-item"><a href="/coupons.html">我的优惠券</a></li>
           <li class="f-item space"></li>
           <li class="f-item">客户服务</li>
           <li class="f-item space"></li>

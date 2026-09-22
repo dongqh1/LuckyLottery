@@ -1,5 +1,11 @@
 name: ${COMPOSE_PROJECT_NAME:-hmall-lottery}
 
+x-java-healthcheck: &java-healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 20
+  start_period: 20s
+
 services:
   mysql:
     image: mysql:8.4
@@ -36,6 +42,27 @@ services:
       timeout: 3s
       retries: 20
 
+  rabbitmq:
+    image: rabbitmq:4.3.5-management-alpine
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/dongqh}
+      TZ: Asia/Shanghai
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   schema-init:
     image: mysql:8.4
     restart: "no"
@@ -51,6 +78,7 @@ services:
       HM_TRADE_DB_PASSWORD: ${HM_TRADE_DB_PASSWORD:?set HM_TRADE_DB_PASSWORD in .env}
       HM_PAY_DB_PASSWORD: ${HM_PAY_DB_PASSWORD:?set HM_PAY_DB_PASSWORD in .env}
       NACOS_DB_PASSWORD: ${NACOS_DB_PASSWORD:?set NACOS_DB_PASSWORD in .env}
+      SEATA_DB_PASSWORD: ${SEATA_DB_PASSWORD:?set SEATA_DB_PASSWORD in .env}
     volumes:
       - ./mysql/migrations/V001__hmall_marketing_integration.sql:/migrations/V001__hmall_marketing_integration.sql:ro
       - ./mysql/migrations/V002__hmall_order_membership_pricing.sql:/migrations/V002__hmall_order_membership_pricing.sql:ro
@@ -60,7 +88,10 @@ services:
       - ./mysql/migrations/V006__create_user_service_database.sql:/migrations/V006__create_user_service_database.sql:ro
       - ./mysql/migrations/V007__create_trade_service_database.sql:/migrations/V007__create_trade_service_database.sql:ro
       - ./mysql/migrations/V008__create_pay_service_database.sql:/migrations/V008__create_pay_service_database.sql:ro
+      - ./mysql/migrations/V009__add_trade_message_outbox.sql:/migrations/V009__add_trade_message_outbox.sql:ro
+      - ./mysql/migrations/V010__add_pay_message_outbox.sql:/migrations/V010__add_pay_message_outbox.sql:ro
       - ./mysql/nacos.sql:/migrations/nacos.sql:ro
+      - ./mysql/seata/seata-tc.sql:/migrations/seata-tc.sql:ro
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
@@ -92,13 +123,21 @@ services:
         mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
           --init-command="SET @hm_pay_password = CONVERT(X'$${pay_password_hex}' USING utf8mb4)" \
           < /migrations/V008__create_pay_service_database.sql
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          < /migrations/V009__add_trade_message_outbox.sql
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          < /migrations/V010__add_pay_message_outbox.sql
         nacos_password_hex="$$(printf '%s' "$$NACOS_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
-        exec mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
           --init-command="SET @nacos_db_password = CONVERT(X'$${nacos_password_hex}' USING utf8mb4)" \
           < /migrations/nacos.sql
+        seata_password_hex="$$(printf '%s' "$$SEATA_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        exec mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @seata_db_password = CONVERT(X'$${seata_password_hex}' USING utf8mb4)" \
+          < /migrations/seata-tc.sql
 
   nacos:
-    image: nacos/nacos-server:v2.2.3
+    image: nacos/nacos-server:v3.1.1
     restart: unless-stopped
     env_file:
       - ./mysql/nacos/custom.env
@@ -107,17 +146,50 @@ services:
       NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?set NACOS_AUTH_TOKEN in .env}
       NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:?set NACOS_AUTH_IDENTITY_KEY in .env}
       NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:?set NACOS_AUTH_IDENTITY_VALUE in .env}
+      NACOS_CONSOLE_PORT: "8080"
       TZ: Asia/Shanghai
     ports:
       - "${NACOS_PORT:-18848}:8848"
       - "${NACOS_GRPC_PORT:-19848}:9848"
+      - "${NACOS_CONSOLE_PORT:-18048}:8080"
     volumes:
       - nacos-logs:/home/nacos/logs
     depends_on:
       schema-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8848/nacos/v1/console/health/readiness || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/v3/console/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  seata-server:
+    build:
+      context: .
+      dockerfile: seata/Dockerfile
+    image: hmall-lottery-seata-server:2.5.0-jdk17-mysql9.7.0
+    restart: unless-stopped
+    environment:
+      SEATA_IP: seata-server
+      SEATA_PORT: "8091"
+      STORE_MODE: db
+      SEATA_DB_PASSWORD: ${SEATA_DB_PASSWORD:?set SEATA_DB_PASSWORD in .env}
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      SEATA_SECURITY_SECRET_KEY: ${SEATA_SECURITY_SECRET_KEY:?set SEATA_SECURITY_SECRET_KEY in .env}
+      TZ: Asia/Shanghai
+    ports:
+      - "${SEATA_RPC_PORT:-18091}:8091"
+    volumes:
+      - ./seata/application.yml:/seata-server/resources/application.yml:ro
+    depends_on:
+      schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8091'"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -126,8 +198,8 @@ services:
   mall-service:
     profiles: ["rollback"]
     build:
-      context: ./mall-backend
-      dockerfile: hm-service/Dockerfile
+      context: .
+      dockerfile: mall-backend/hm-service/Dockerfile
     restart: unless-stopped
     environment:
       HM_DB_HOST: mysql
@@ -157,11 +229,17 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      SEATA_ENABLED: ${SEATA_ENABLED:-true}
       TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8081'"]
     depends_on:
       schema-init:
         condition: service_completed_successfully
       nacos:
+        condition: service_healthy
+      seata-server:
         condition: service_healthy
 
   cart-service:
@@ -177,11 +255,24 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      SEATA_ENABLED: ${SEATA_ENABLED:-true}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
       TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8082'"]
     depends_on:
       schema-init:
         condition: service_completed_successfully
       nacos:
+        condition: service_healthy
+      seata-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   user-service:
@@ -197,12 +288,18 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      SEATA_ENABLED: ${SEATA_ENABLED:-true}
       MARKETING_BASE_URL: http://marketing-service:8080
       TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8083'"]
     depends_on:
       schema-init:
         condition: service_completed_successfully
       nacos:
+        condition: service_healthy
+      seata-server:
         condition: service_healthy
 
   trade-service:
@@ -218,12 +315,23 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      SEATA_ENABLED: ${SEATA_ENABLED:-true}
       MARKETING_BASE_URL: http://marketing-service:8080
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
       TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8084'"]
     depends_on:
       schema-init:
         condition: service_completed_successfully
       nacos:
+        condition: service_healthy
+      seata-server:
         condition: service_healthy
 
   pay-service:
@@ -239,18 +347,56 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      SEATA_ENABLED: ${SEATA_ENABLED:-true}
       MARKETING_BASE_URL: http://marketing-service:8080
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
       TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8085'"]
     depends_on:
       schema-init:
         condition: service_completed_successfully
       nacos:
         condition: service_healthy
+      seata-server:
+        condition: service_healthy
+
+  hm-gateway:
+    build:
+      context: .
+      dockerfile: hm-gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+    depends_on:
+      nacos:
+        condition: service_healthy
+      item-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      trade-service:
+        condition: service_healthy
+      pay-service:
+        condition: service_healthy
 
   marketing-service:
     build:
-      context: ./marketing-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: marketing-service/Dockerfile
     restart: unless-stopped
     environment:
       MYSQL_HOST: mysql
@@ -258,9 +404,18 @@ services:
       MYSQL_DATABASE: luckyhub
       MYSQL_USER: luckyhub
       MYSQL_PASSWORD: ${LUCKYHUB_DB_PASSWORD:?set LUCKYHUB_DB_PASSWORD in .env}
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      SEATA_ENABLED: ${SEATA_ENABLED:-true}
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
       HMALL_ITEM_BASE_URL: http://item-service:8081
       HMALL_USER_BASE_URL: http://user-service:8083
       BCRYPT_STRENGTH: ${BCRYPT_STRENGTH:-12}
@@ -276,15 +431,20 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
       OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
       TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
     depends_on:
       schema-init:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      seata-server:
+        condition: service_healthy
       item-service:
-        condition: service_started
+        condition: service_healthy
       user-service:
-        condition: service_started
+        condition: service_healthy
 
   nginx:
     build:
@@ -294,21 +454,20 @@ services:
     ports:
       - "${PORTAL_PORT:-18080}:18080"
       - "${ADMIN_PORT:-18081}:18081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:18080/ && wget -q -O /dev/null http://127.0.0.1:18081/items.html"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
     depends_on:
-      item-service:
-        condition: service_started
-      cart-service:
-        condition: service_started
-      user-service:
-        condition: service_started
-      trade-service:
-        condition: service_started
-      pay-service:
-        condition: service_started
+      hm-gateway:
+        condition: service_healthy
       marketing-service:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   mysql-data:
   redis-data:
+  rabbitmq-data:
   nacos-logs:

@@ -9,7 +9,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import javax.validation.constraints.Min;
+import jakarta.validation.constraints.Min;
 
 @Data
 @ApiModel(description = "分页查询条件")

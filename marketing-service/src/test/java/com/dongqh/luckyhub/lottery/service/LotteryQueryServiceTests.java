@@ -79,7 +79,9 @@ class LotteryQueryServiceTests {
                 .getMethod("selectVisiblePrizeViews", long.class).getAnnotation(Select.class);
         String sql = String.join(" ", select.value()).replaceAll("\\s+", " ").toLowerCase();
 
-        assertThat(sql).contains("join marketing_prize", "ap.remaining_stock > 0", "p.status = 1",
+        assertThat(sql).contains("join marketing_prize", "left join reward_definition",
+                "rd.reward_type = 'product'", "rd.target_id", "hmall_item_id",
+                "ap.remaining_stock > 0", "p.status = 1",
                 "order by ap.sort_order asc, ap.id asc", "limit 100");
         assertThat(sql.indexOf("p.status = 1")).isLessThan(sql.indexOf("limit 100"));
         assertThat(sql).doesNotContain("ap.weight", "ap.total_stock");

@@ -8,11 +8,12 @@ import com.dongqh.luckyhub.fulfillment.service.FulfillmentTaskService;
 import com.dongqh.luckyhub.fulfillment.vo.FulfillmentTaskView;
 import org.junit.jupiter.api.AfterEach; import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired; import org.springframework.boot.test.context.SpringBootTest; import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.util.List; import java.util.concurrent.*; import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.*;
 @SpringBootTest class FulfillmentTaskServiceTests {
- @Autowired FulfillmentTaskService service; @Autowired JdbcTemplate jdbc;
- @AfterEach void clean(){jdbc.update("DELETE FROM fulfillment_attempt");jdbc.update("DELETE FROM fulfillment_quarantine");jdbc.update("DELETE FROM fulfillment_task");}
+ @Autowired FulfillmentTaskService service; @Autowired JdbcTemplate jdbc; @Autowired TransactionTemplate transactions;
+ @AfterEach void clean(){jdbc.update("DELETE FROM fulfillment_outbox");jdbc.update("DELETE FROM fulfillment_attempt");jdbc.update("DELETE FROM fulfillment_quarantine");jdbc.update("DELETE FROM fulfillment_task");}
  @Test void createsFourValidatedPayloadSnapshotsWithoutCallingProviders(){
   List<CreateFulfillmentTaskCommand> commands=List.of(
    command("TASK-C",FulfillmentType.COUPON,new CouponFulfillmentPayload("NEW20",1)),
@@ -29,6 +30,7 @@ import static org.assertj.core.api.Assertions.*;
   CreateFulfillmentTaskCommand command=command("IDEM-TASK",FulfillmentType.POINTS,new PointsFulfillmentPayload(100,"奖励"));
   FulfillmentTaskView first=service.create(command), second=service.create(command);
   assertThat(second.id()).isEqualTo(first.id());assertThat(second.requestFingerprint()).isEqualTo(first.requestFingerprint());
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM fulfillment_outbox WHERE fulfillment_no='IDEM-TASK'",Integer.class)).isOne();
   assertThatThrownBy(()->service.create(command("IDEM-TASK",FulfillmentType.POINTS,new PointsFulfillmentPayload(200,"奖励"))))
    .isInstanceOfSatisfying(BusinessException.class,e->assertThat(e.getErrorCode()).isEqualTo(FulfillmentErrorCode.IDEMPOTENCY_CONFLICT));
  }
@@ -48,7 +50,13 @@ import static org.assertj.core.api.Assertions.*;
    List<Future<Long>> futures=IntStream.range(0,10).mapToObj(i->pool.submit(()->{start.await();return service.create(c).id();})).toList();start.countDown();
    assertThat(futures.stream().map(f->{try{return f.get(10,TimeUnit.SECONDS);}catch(Exception e){throw new RuntimeException(e);}}).distinct()).hasSize(1);
    assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM fulfillment_task WHERE fulfillment_no='CREATE-RACE'",Integer.class)).isOne();
+   assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM fulfillment_outbox WHERE fulfillment_no='CREATE-RACE'",Integer.class)).isOne();
   }finally{pool.shutdownNow();}
+ }
+ @Test void taskAndOutboxRollbackTogether(){
+  assertThatThrownBy(()->transactions.executeWithoutResult(status->{service.create(command("ROLLBACK-TASK",FulfillmentType.POINTS,new PointsFulfillmentPayload(10,"rollback")));throw new IllegalStateException("rollback");})).isInstanceOf(IllegalStateException.class);
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM fulfillment_task WHERE fulfillment_no='ROLLBACK-TASK'",Integer.class)).isZero();
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM fulfillment_outbox WHERE fulfillment_no='ROLLBACK-TASK'",Integer.class)).isZero();
  }
  private CreateFulfillmentTaskCommand command(String no,FulfillmentType type,FulfillmentPayload payload){return new CreateFulfillmentTaskCommand(no,"LOTTERY_REWARD","DRAW-1",type,11L,payload,5);}
 }

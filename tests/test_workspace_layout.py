@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class WorkspaceLayoutTest(unittest.TestCase):
-    def test_copies_each_source_without_build_outputs(self):
+    def test_copies_each_source_without_embedded_vcs_or_dependencies(self):
         expected_files = [
             ROOT / "mall-backend" / "pom.xml",
             ROOT / "mall-backend" / "hm-service" / "pom.xml",
@@ -20,14 +20,16 @@ class WorkspaceLayoutTest(unittest.TestCase):
         self.assertEqual([], missing, f"missing copied source files: {missing}")
 
         forbidden = [
-            ROOT / "mall-backend" / "hm-service" / "target",
-            ROOT / "marketing-service" / "target",
             ROOT / "marketing-service" / ".git",
             ROOT / "marketing-service" / ".worktrees",
             ROOT / "marketing-service" / "frontend" / "node_modules",
         ]
         present = [str(path.relative_to(ROOT)) for path in forbidden if path.exists()]
-        self.assertEqual([], present, f"build/VCS artifacts must not be copied: {present}")
+        self.assertEqual([], present, f"VCS/dependency artifacts must not be copied: {present}")
+
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        self.assertIn("**/target/", gitignore)
+        self.assertIn("**/node_modules/", gitignore)
 
 
 if __name__ == "__main__":

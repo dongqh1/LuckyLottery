@@ -1,0 +1,6 @@
+com.hmall.common.config.MyBatisConfig
+com.hmall.common.config.MvcConfig
+com.hmall.common.config.JsonConfig
+com.hmall.common.swagger.OpenApiAutoConfiguration
+com.hmall.common.config.SeataHttpClientAutoConfiguration
+com.hmall.common.config.MqConfig

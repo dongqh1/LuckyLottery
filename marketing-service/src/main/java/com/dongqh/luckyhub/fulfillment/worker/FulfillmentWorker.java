@@ -48,21 +48,42 @@ public class FulfillmentWorker {
 
     public int runBatch() {
         var claims = state.claimDue(properties.batchSize(), properties.leaseDuration());
-        for (FulfillmentClaim claim : claims) {
-            long start = System.nanoTime();
-            GatewayResult result;
-            try {
-                result = route(claim);
-            } catch (RuntimeException exception) {
-                result = GatewayResult.retryable("GATEWAY_EXCEPTION", "Gateway调用异常");
-            }
-            long duration = Math.max(0, (System.nanoTime() - start) / 1_000_000);
-            state.recordResult(claim, result, duration);
-            if (claim.fulfillmentType() == FulfillmentType.LOGISTICS) {
-                shippingOrders.projectFulfillmentState(claim.fulfillmentNo());
-            }
-        }
+        execute(claims);
         return claims.size();
+    }
+
+    public boolean runOne(String fulfillmentNo) {
+        var claim = state.claimReady(fulfillmentNo, properties.leaseDuration());
+        claim.ifPresent(this::execute);
+        return claim.isPresent();
+    }
+
+    public int runCompensationBatch() {
+        var claims = state.claimCompensationDue(
+                properties.batchSize(), properties.leaseDuration(), properties.compensationGrace());
+        execute(claims);
+        return claims.size();
+    }
+
+    private void execute(Iterable<FulfillmentClaim> claims) {
+        for (FulfillmentClaim claim : claims) {
+            execute(claim);
+        }
+    }
+
+    private void execute(FulfillmentClaim claim) {
+        long start = System.nanoTime();
+        GatewayResult result;
+        try {
+            result = route(claim);
+        } catch (RuntimeException exception) {
+            result = GatewayResult.retryable("GATEWAY_EXCEPTION", "Gateway调用异常");
+        }
+        long duration = Math.max(0, (System.nanoTime() - start) / 1_000_000);
+        state.recordResult(claim, result, duration);
+        if (claim.fulfillmentType() == FulfillmentType.LOGISTICS) {
+            shippingOrders.projectFulfillmentState(claim.fulfillmentNo());
+        }
     }
 
     private GatewayResult route(FulfillmentClaim claim) {

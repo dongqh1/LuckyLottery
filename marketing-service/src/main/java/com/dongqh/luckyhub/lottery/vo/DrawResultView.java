@@ -5,5 +5,12 @@ import com.dongqh.luckyhub.prize.enums.PrizeType;
 
 public record DrawResultView(
         long recordId, int sequenceNo, DrawResultType resultType, Long prizeId,
-        String prizeName, PrizeType prizeType, String prizeImageUrl, Long benefitId) {
+        String prizeName, PrizeType prizeType, String prizeImageUrl, Long benefitId,
+        Long hmallItemId) {
+
+    public DrawResultView(long recordId, int sequenceNo, DrawResultType resultType, Long prizeId,
+                          String prizeName, PrizeType prizeType, String prizeImageUrl, Long benefitId) {
+        this(recordId, sequenceNo, resultType, prizeId, prizeName, prizeType,
+                prizeImageUrl, benefitId, null);
+    }
 }

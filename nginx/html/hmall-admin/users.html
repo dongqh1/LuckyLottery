@@ -11,7 +11,7 @@
 </head>
 <body>
 <div id="app">
-  <h1>用户管理</h1>
+  <h1>用户数据管理 <small style="font-size:14px"><a href="items.html">商品管理</a> · <a href="marketing.html">营销活动</a></small></h1>
   <div class="add-btn" >
     <el-button type="primary" size="small" @click="beginAdd">新增用户</el-button>
     <el-pagination
@@ -116,7 +116,7 @@
   // request拦截器
   axios.interceptors.request.use(
     config => {
-      config.headers['authorization'] = 'admin'
+      config.headers['authorization'] = sessionStorage.getItem("token")
       return config
     },
     error => {

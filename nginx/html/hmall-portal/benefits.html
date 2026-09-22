@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>我的权益 - 黑马商城</title>
+  <link rel="stylesheet" href="css/webbase2.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <style>
+    .benefit-tabs{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+    .benefit-tabs button{padding:9px 20px;border:1px solid #ddd;background:#fff;cursor:pointer;border-radius:3px}
+    .benefit-tabs button.active{color:#fff;background:#e1251b;border-color:#e1251b}
+  </style>
+</head>
+<body>
+<div id="app">
+  <top></top>
+  <marketing-header active="benefits"></marketing-header>
+  <main class="marketing-page">
+    <div class="breadcrumb">首页 &gt; 会员中心 &gt; 我的权益</div>
+    <div class="page-heading"><h1>我的权益</h1><p>商城优惠券、商品奖励和会员权益统一在这里管理</p></div>
+
+    <section class="panel">
+      <div class="panel-title"><h2>我的会员</h2><button class="secondary" @click="load">刷新</button></div>
+      <div class="account-summary" v-if="membership">
+        <div><div class="metric-label">会员等级</div><div class="metric">{{membership.membershipLevel}}</div><div class="muted">有效期至：{{membership.expiresAt}}</div></div>
+        <div class="usage-guide"><strong>当前会员功能</strong><p>商城折扣：{{membership.discountBasisPoints/1000}} 折　积分倍率：{{membership.pointsMultiplierBasisPoints/10000}} 倍　每日额外抽奖：{{membership.dailyDrawBonus}} 次</p><p>会员权益已真实应用于商城结算、积分累计和抽奖次数。</p></div>
+      </div>
+      <div class="empty" v-else>当前还不是会员，参与幸运抽奖有机会获得会员月卡。</div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title"><h2>权益资产</h2><button class="secondary" @click="load">刷新</button></div>
+      <div class="panel-body">
+        <div class="benefit-tabs">
+          <button v-for="category in categories" :key="category.value" :class="{active:activeCategory===category.value}" @click="activeCategory=category.value">{{category.label}}（{{categoryCount(category.value)}}）</button>
+        </div>
+        <div class="benefit-grid" v-if="visibleBenefits.length">
+          <article class="benefit-card" v-for="item in visibleBenefits" :key="item.id">
+            <div><img v-if="item.prizeImageUrl" class="prize-image" :src="item.prizeImageUrl" :alt="item.prizeName"><span v-else class="no-image">暂无图片</span></div>
+            <div><h3>{{item.prizeName||('权益 #'+item.id)}}</h3><p><span class="type-label">{{typeName(item.rewardType||item.prizeType)}}</span> × {{item.rewardQuantity||item.quantity}}</p><p>权益状态：{{item.status}}</p><p>发放状态：<strong>{{item.fulfillmentStatus||'等待发放'}}</strong></p><p v-if="item.shippingStatus">物流：{{item.shippingStatus}}</p><p class="muted">获得时间：{{item.obtainedAt}}</p></div>
+          </article>
+        </div>
+        <div class="empty" v-else>{{page.records.length?'当前分类下暂无权益':'暂无权益，先去参加抽奖吧。'}}</div>
+        <p class="error" v-if="error">{{error}}</p>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
+<script>
+new Vue({el:'#app',data:{membership:null,page:{records:[],total:0},activeCategory:'PHYSICAL',categories:[{value:'PHYSICAL',label:'实物'},{value:'POINTS',label:'积分'},{value:'COUPON',label:'优惠券'},{value:'MEMBERSHIP',label:'会员权益'}],error:''},computed:{visibleBenefits(){return this.page.records.filter(item=>this.categoryOf(item)===this.activeCategory)}},created(){if(!util.isLogin()){location.href='/login.html';return}this.load()},methods:{load(){this.error='';Promise.all([axios.get('/marketing/memberships/me'),axios.get('/marketing/benefits',{params:{page:1,size:50}})]).then(r=>{this.membership=r[0].data||null;this.page=r[1].data||{records:[],total:0}}).catch(e=>this.error=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg))||'权益数据加载失败')},categoryOf(item){const type=item.rewardType||item.prizeType;if(type==='PRODUCT'||type==='PHYSICAL')return 'PHYSICAL';if(type==='DRAW_CHANCE')return 'POINTS';return type},categoryCount(category){return this.page.records.filter(item=>this.categoryOf(item)===category).length},typeName(type){return({PRODUCT:'商城商品',PHYSICAL:'商城商品',COUPON:'商城优惠券',POINTS:'商城积分',MEMBERSHIP:'会员权益',DRAW_CHANCE:'抽奖次数'})[type]||type||'-'}}})
+</script>
+</body>
+</html>

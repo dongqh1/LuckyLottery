@@ -13,6 +13,22 @@ public class OrderVO {
     private Long id;
     @ApiModelProperty("总金额，单位为分")
     private Integer totalFee;
+    @ApiModelProperty("商品原价总额，单位为分")
+    private Integer originalFee;
+    @ApiModelProperty("会员优惠金额，单位为分")
+    private Integer membershipDiscountFee;
+    @ApiModelProperty("下单时冻结的会员等级")
+    private String membershipLevel;
+    @ApiModelProperty("下单时冻结的会员折扣基点，10000 表示不打折")
+    private Integer membershipDiscountBasisPoints;
+    @ApiModelProperty("用户优惠券id")
+    private Long couponId;
+    @ApiModelProperty("优惠券模板id快照")
+    private Long couponTemplateId;
+    @ApiModelProperty("优惠券名称快照")
+    private String couponName;
+    @ApiModelProperty("优惠券优惠金额，单位为分")
+    private Integer couponDiscountFee;
     @ApiModelProperty("支付类型，1、支付宝，2、微信，3、扣减余额")
     private Integer paymentType;
     @ApiModelProperty("用户id")
@@ -31,4 +47,6 @@ public class OrderVO {
     private LocalDateTime closeTime;
     @ApiModelProperty("评价时间")
     private LocalDateTime commentTime;
+    @ApiModelProperty("订单配送详情")
+    private OrderDeliveryVO delivery;
 }

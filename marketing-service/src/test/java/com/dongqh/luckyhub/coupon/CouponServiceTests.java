@@ -26,6 +26,11 @@ class CouponServiceTests {
     @Test void issuesIdempotentlyEnforcesLimitAndTransitionsSafely(){
         var template=service.createTemplate(new CreateCouponTemplateCommand("C-20","满100减20",CouponType.THRESHOLD,10000L,2000L,null,LocalDateTime.now().minusDays(1),LocalDateTime.now().plusDays(30),1,true));
         var first=service.issue(new IssueCouponCommand("ISSUE-1","UC-1",template.id(),userId));
+        assertThat(first.templateName()).isEqualTo("满100减20");
+        assertThat(first.thresholdCent()).isEqualTo(10000L);
+        assertThat(first.discountCent()).isEqualTo(2000L);
+        assertThat(service.pageMine(userId, 1, 20).records().get(0).templateName())
+                .isEqualTo("满100减20");
         var repeated=service.issue(new IssueCouponCommand("ISSUE-1","UC-1",template.id(),userId));
         assertThat(repeated.id()).isEqualTo(first.id());
         assertThatThrownBy(()->service.issue(new IssueCouponCommand("ISSUE-2","UC-2",template.id(),userId))).hasMessageContaining("领取上限");

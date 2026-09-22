@@ -1,6 +1,8 @@
 package com.dongqh.luckyhub.shipping;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressClient;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressView;
 import com.dongqh.luckyhub.rbac.entity.SysUser;
 import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
 import com.dongqh.luckyhub.shipping.dto.CreateShippingAddressCommand;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +24,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class ShippingAddressSnapshotTests {
@@ -28,6 +32,7 @@ class ShippingAddressSnapshotTests {
     @Autowired ShippingAddressSnapshotService snapshots;
     @Autowired SysUserMapper userMapper;
     @Autowired JdbcTemplate jdbc;
+    @MockitoBean HmallAddressClient hmallAddresses;
     private final List<Long> userIds = new ArrayList<>();
 
     @AfterEach
@@ -42,6 +47,7 @@ class ShippingAddressSnapshotTests {
     void copiesCiphertextWithoutDecryptingAndRemainsImmutableAfterAddressChanges() {
         long userId = createUser();
         long addressId = addresses.create(userId, address("张三", "杭州市", "文一西路1号")).id();
+        stubAddress(addressId, "张三", "13812345678", "杭州市", "文一西路1号");
         String sourceId = businessId("cash");
 
         ShippingAddressSnapshot created = snapshots.create(
@@ -68,6 +74,8 @@ class ShippingAddressSnapshotTests {
         long userId = createUser();
         long first = addresses.create(userId, address("张三", "杭州市", "文一西路1号")).id();
         long second = addresses.create(userId, address("李四", "杭州市", "文一西路2号")).id();
+        stubAddress(first, "张三", "13812345678", "杭州市", "文一西路1号");
+        stubAddress(second, "李四", "13812345678", "杭州市", "文一西路2号");
         String sourceId = businessId("points");
         ShippingAddressSnapshot created = snapshots.create(
                 userId, first, ShippingSourceType.POINTS_REDEMPTION, sourceId);
@@ -77,7 +85,13 @@ class ShippingAddressSnapshotTests {
         assertError(() -> snapshots.create(userId, second, ShippingSourceType.POINTS_REDEMPTION, sourceId));
         addresses.update(userId, first, new com.dongqh.luckyhub.shipping.dto.UpdateShippingAddressCommand(
                 "王五", "13712345678", "浙江省", "杭州市", "余杭区", "未来科技城3号", false));
+        stubAddress(first, "王五", "13712345678", "杭州市", "未来科技城3号");
         assertError(() -> snapshots.create(userId, first, ShippingSourceType.POINTS_REDEMPTION, sourceId));
+    }
+
+    private void stubAddress(long id, String contact, String mobile, String city, String street) {
+        when(hmallAddresses.getAddress(id)).thenReturn(new HmallAddressView(
+                id, "浙江省", city, "余杭区", mobile, street, contact, 0, null));
     }
 
     private long createUser() {

@@ -26,13 +26,22 @@ public class JwtTool {
      * @param userDTO 用户信息
      * @return access-token
      */
-    public String createToken(Long userId, Duration ttl) {
+    public String createToken(Long userId, String role, Duration ttl) {
         // 1.生成jws
         return JWT.create()
                 .setPayload("user", userId)
+                .setPayload("role", normalizeRole(role))
                 .setExpiresAt(new Date(System.currentTimeMillis() + ttl.toMillis()))
                 .setSigner(jwtSigner)
                 .sign();
+    }
+
+    public String createToken(Long userId, Duration ttl) {
+        return createToken(userId, "USER", ttl);
+    }
+
+    private String normalizeRole(String role) {
+        return role == null || role.trim().isEmpty() ? "USER" : role.trim();
     }
 
     /**

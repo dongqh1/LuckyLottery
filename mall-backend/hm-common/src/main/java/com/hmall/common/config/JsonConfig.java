@@ -1,23 +1,26 @@
 package com.hmall.common.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.ser.std.ToStringSerializer;
 
 import java.math.BigInteger;
 
 @Configuration
-@ConditionalOnClass(ObjectMapper.class)
+@ConditionalOnClass(JsonMapper.class)
 public class JsonConfig {
     @Bean
-    public Jackson2ObjectMapperBuilderCustomizer jackson2ObjectMapperBuilderCustomizer() {
-        return jacksonObjectMapperBuilder -> {
-            // long -> string
-            jacksonObjectMapperBuilder.serializerByType(Long.class, ToStringSerializer.instance);
-            jacksonObjectMapperBuilder.serializerByType(BigInteger.class, ToStringSerializer.instance);
+    public JsonMapperBuilderCustomizer jsonMapperBuilderCustomizer() {
+        return builder -> {
+            SimpleModule module = new SimpleModule();
+            module.addSerializer(Long.class, ToStringSerializer.instance);
+            module.addSerializer(Long.TYPE, ToStringSerializer.instance);
+            module.addSerializer(BigInteger.class, ToStringSerializer.instance);
+            builder.addModule(module);
         };
     }
 }

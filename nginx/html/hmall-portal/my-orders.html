@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>我的订单 - 黑马商城</title>
+  <link rel="stylesheet" href="css/webbase2.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <style>
+    .order-tabs{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}.order-tabs button{padding:9px 18px;border:1px solid #ddd;background:#fff;border-radius:3px;cursor:pointer}.order-tabs button.active{background:#e1251b;border-color:#e1251b;color:#fff}.order-list{display:flex;flex-direction:column;gap:14px}.order-card{border:1px solid #e7e7e7;background:#fff}.order-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#fafafa;border-bottom:1px solid #eee}.order-id{font-family:Consolas,monospace}.status-tag{padding:4px 11px;border-radius:12px;background:#fde9e7;color:#c81623}.order-body{display:grid;grid-template-columns:1.2fr 1fr auto;gap:22px;align-items:center;padding:18px 16px}.price-lines p{margin:5px 0;color:#666}.payable{font-size:20px;color:#e1251b}.order-actions{display:flex;gap:10px}.order-actions a{padding:8px 14px;border:1px solid #ddd;color:#444}.order-actions .primary{background:#e1251b;border-color:#e1251b;color:#fff}.empty,.loading,.page-error{padding:55px;text-align:center;color:#888}.page-error{color:#c81623}.pagination{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:22px}.pagination button{padding:7px 15px;border:1px solid #ddd;background:#fff;cursor:pointer}.pagination button:disabled{cursor:not-allowed;color:#aaa}.muted{color:#999}@media(max-width:850px){.order-body{grid-template-columns:1fr}.order-head{align-items:flex-start;gap:12px}.order-actions{justify-content:flex-start}}
+  </style>
+</head>
+<body>
+<div id="app">
+  <top></top>
+  <marketing-header active="orders"></marketing-header>
+  <main class="marketing-page">
+    <div class="breadcrumb">首页 &gt; 会员中心 &gt; 我的订单</div>
+    <div class="page-heading"><h1>我的订单</h1><p>查看当前账号全部订单及待付款、待发货、已发货、已完成、已取消状态</p></div>
+    <section class="panel">
+      <div class="panel-title"><h2>订单记录</h2><button class="secondary" @click="load">刷新</button></div>
+      <div class="panel-body">
+        <div class="order-tabs">
+          <button v-for="tab in tabs" :key="String(tab.value)" :class="{active:status===tab.value}" @click="selectStatus(tab.value)">{{tab.label}}</button>
+        </div>
+        <div class="page-error" v-if="error">{{error}}</div>
+        <div class="loading" v-else-if="loading">订单加载中...</div>
+        <div class="empty" v-else-if="!page.list.length">当前分类下暂无订单</div>
+        <div class="order-list" v-else>
+          <article class="order-card" v-for="order in page.list" :key="order.id">
+            <header class="order-head"><div><span class="muted">下单时间：</span>{{formatTime(order.createTime)}}　<span class="muted">订单号：</span><span class="order-id">{{order.id}}</span></div><span class="status-tag">{{statusName(order.status)}}</span></header>
+            <div class="order-body">
+              <div><strong>{{order.couponName || '商城商品订单'}}</strong><p class="muted" v-if="order.membershipLevel">下单会员：{{order.membershipLevel}}</p><p class="muted">{{progressText(order)}}</p></div>
+              <div class="price-lines"><p>商品原价：¥{{money(order.originalFee)}}</p><p>会员优惠：- ¥{{money(order.membershipDiscountFee)}}</p><p>优惠券优惠：- ¥{{money(order.couponDiscountFee)}}</p><strong class="payable">实付 ¥{{money(order.totalFee)}}</strong></div>
+              <div class="order-actions"><a :href="'/order-detail.html?orderId='+order.id">查看详情</a><a v-if="order.status===1" class="primary" :href="'/pay.html?id='+order.id">去付款</a></div>
+            </div>
+          </article>
+        </div>
+        <div class="pagination" v-if="page.pages>1"><button :disabled="pageNo<=1" @click="changePage(pageNo-1)">上一页</button><span>第 {{pageNo}} / {{page.pages}} 页，共 {{page.total}} 单</span><button :disabled="pageNo>=page.pages" @click="changePage(pageNo+1)">下一页</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
+<script>
+new Vue({el:'#app',data:{page:{total:0,pages:0,list:[]},pageNo:1,pageSize:10,status:null,loading:false,error:'',tabs:[{value:null,label:'全部订单'},{value:1,label:'待付款'},{value:2,label:'待发货'},{value:3,label:'已发货'},{value:4,label:'已签收'},{value:5,label:'已取消'},{value:6,label:'已完成'}]},created(){if(!util.isLogin()){util.store.set('return-url',location.href);location.href='/login.html';return}this.load()},methods:{load(){this.loading=true;this.error='';const params={pageNo:this.pageNo,pageSize:this.pageSize};if(this.status!==null)params.status=this.status;axios.get('/orders/me',{params}).then(resp=>{this.page=resp||{total:0,pages:0,list:[]};if(!Array.isArray(this.page.list))this.page.list=[]}).catch(error=>{this.page={total:0,pages:0,list:[]};this.error=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||'订单加载失败，请稍后重试'}).finally(()=>{this.loading=false})},selectStatus(status){this.status=status;this.pageNo=1;this.load()},changePage(page){if(page<1||page>this.page.pages)return;this.pageNo=page;this.load()},money(cent){return((cent||0)/100).toFixed(2)},formatTime(value){return value?value.replace('T',' ').slice(0,19):'-'},statusName(status){return({1:'待付款',2:'已付款，等待发货',3:'已发货，等待签收',4:'已签收',5:'已取消',6:'交易完成'})[status]||'状态更新中'},progressText(order){if(order.status===1)return '订单已创建，请及时完成支付';if(order.status===2)return '支付完成，商家正在备货';if(order.status===3)return '商品已发货，可在详情查看运单';if(order.status===4)return '订单已经签收';if(order.status===5)return '订单已关闭';if(order.status===6)return '交易已完成';return '订单状态更新中'}}})
+</script>
+</body>
+</html>

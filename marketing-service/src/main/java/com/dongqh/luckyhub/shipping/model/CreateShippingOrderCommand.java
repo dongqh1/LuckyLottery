@@ -7,6 +7,7 @@ public record CreateShippingOrderCommand(
         String sourceId,
         long targetUserId,
         long addressSnapshotId,
+        Long hmallItemId,
         String skuCode,
         String productName,
         String imageUrl,
@@ -18,11 +19,19 @@ public record CreateShippingOrderCommand(
         sourceId = required(sourceId, "sourceId", 100);
         if (targetUserId <= 0) throw new IllegalArgumentException("targetUserId必须大于0");
         if (addressSnapshotId <= 0) throw new IllegalArgumentException("addressSnapshotId必须大于0");
+        if (hmallItemId != null && hmallItemId <= 0) throw new IllegalArgumentException("hmallItemId必须大于0");
         skuCode = required(skuCode, "skuCode", 64);
         productName = required(productName, "productName", 100);
         imageUrl = optional(imageUrl, 500);
         if (quantity <= 0) throw new IllegalArgumentException("quantity必须大于0");
         claimRequestId = optional(claimRequestId, 64);
+    }
+
+    public CreateShippingOrderCommand(ShippingSourceType sourceType, String sourceId, long targetUserId,
+                                      long addressSnapshotId, String skuCode, String productName,
+                                      String imageUrl, int quantity, String claimRequestId) {
+        this(sourceType, sourceId, targetUserId, addressSnapshotId, null, skuCode, productName,
+                imageUrl, quantity, claimRequestId);
     }
 
     private static String required(String value, String field, int max) {

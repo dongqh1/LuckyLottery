@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>商城商品 - 黑马商城</title>
+  <link rel="stylesheet" href="css/webbase2.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <style>
+    .item-detail{display:grid;grid-template-columns:420px 1fr;gap:38px;padding:28px;background:#fff;border:1px solid #ddd}
+    .item-picture{height:420px;border:1px solid #eee;display:flex;align-items:center;justify-content:center;background:#fff}
+    .item-picture img{max-width:100%;max-height:100%;object-fit:contain}.item-empty-image{color:#999;font-size:14px}
+    .item-info h1{margin:0 0 18px;font:700 20px/30px "Microsoft Yahei";color:#333}.item-sub{padding:12px 16px;background:#f5f5f5;color:#666;line-height:28px}
+    .item-price{color:#e4393c;font-size:28px;font-weight:700}.item-meta{margin:18px 0;border-top:1px solid #eee;border-bottom:1px solid #eee;padding:14px 0;line-height:30px;color:#666}
+    .item-meta b{display:inline-block;width:72px;color:#999;font-weight:400}.item-actions{display:flex;gap:12px;margin-top:24px}.item-actions button{height:44px;padding:0 30px;border:0;font-size:16px;cursor:pointer}
+    .buy-now{background:#ffeded;color:#c81623;border:1px solid #c81623!important}.add-cart{background:#c81623;color:#fff}.item-error{padding:60px;text-align:center;background:#fff;border:1px solid #ddd;color:#b1191a}
+    @media(max-width:760px){.item-detail{grid-template-columns:1fr}.item-picture{height:300px}}
+  </style>
+</head>
+<body>
+<div id="app">
+  <top></top>
+  <marketing-header></marketing-header>
+  <main class="marketing-page" :class="{loading:loading}">
+    <div class="breadcrumb">首页 &gt; 商城商品 &gt; {{item ? item.name : '商品详情'}}</div>
+    <section class="item-detail" v-if="item">
+      <div class="item-picture"><img v-if="item.image" :src="item.image" :alt="item.name"><span v-else class="item-empty-image">暂无商品图片</span></div>
+      <div class="item-info">
+        <h1>{{item.name}}</h1>
+        <div class="item-sub"><span>黑马商城商品编号：{{item.id}}</span><br><span>营销奖品、积分和优惠券均通过该编号关联商城商品</span></div>
+        <div class="item-meta">
+          <div><b>商城价</b><span class="item-price">¥{{util.formatPrice(item.price)}}</span></div>
+          <div><b>分类</b>{{item.category || '-'}}</div><div><b>品牌</b>{{item.brand || '-'}}</div>
+          <div><b>库存</b>{{item.stock}}</div><div><b>规格</b>{{item.spec || '-'}}</div>
+        </div>
+        <div class="item-actions">
+          <button class="buy-now" :disabled="item.status!==1||item.stock<1" @click="buy">立即购买</button>
+          <button class="add-cart" :disabled="item.status!==1||item.stock<1" @click="addCart">加入购物车</button>
+        </div>
+      </div>
+    </section>
+    <div class="item-error" v-else-if="error">{{error}}</div>
+  </main>
+</div>
+<script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
+<script>
+new Vue({el:'#app',data:{item:null,loading:false,error:'',util},created(){util.store.set('return-url',location.href);const id=util.getUrlParam('id');if(!/^\d+$/.test(id)){this.error='商品编号不合法';return}this.loading=true;axios.get('/items/'+id).then(item=>{if(!item||item.status!==1)throw new Error('商品已下架或不存在');this.item=item;document.title=item.name+' - 黑马商城'}).catch(e=>this.error=(e.response&&e.response.data&&e.response.data.msg)||e.message||'商品加载失败').finally(()=>this.loading=false)},methods:{requireLogin(){if(util.isLogin())return true;location.href='/login.html';return false},buy(){if(!this.requireLogin())return;util.store.set('selectedCarts',[Object.assign({},this.item,{itemId:this.item.id,num:1})]);location.href='/order-confirm.html'},addCart(){if(!this.requireLogin())return;const{id,...data}=this.item;axios.post('/carts',Object.assign({},data,{itemId:id,num:1})).then(()=>location.href='/cart.html').catch(e=>alert((e.response&&e.response.data&&e.response.data.msg)||'加入购物车失败'))}}})
+</script>
+</body>
+</html>

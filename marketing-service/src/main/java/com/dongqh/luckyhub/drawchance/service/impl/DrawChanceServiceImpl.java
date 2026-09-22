@@ -120,6 +120,9 @@ public class DrawChanceServiceImpl implements DrawChanceService {
             } else if (order != null && order.getStatus() == DrawOrderStatus.FAILED) {
                 settleLocked(reservation, DrawChanceReservationStatus.RELEASED);
                 settled++;
+            } else if (order == null) {
+                settleLocked(reservation, DrawChanceReservationStatus.RELEASED);
+                settled++;
             }
         }
         return settled;

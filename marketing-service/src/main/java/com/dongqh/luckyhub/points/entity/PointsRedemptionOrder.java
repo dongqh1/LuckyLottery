@@ -23,9 +23,12 @@ public class PointsRedemptionOrder {
     private String redemptionNo;
     private Long userId;
     private Long skuId;
+    private Long offerId;
+    private Long hmallItemId;
     private Integer quantity;
     private Long unitPoints;
     private Long totalPoints;
+    private Integer cashPriceCent;
     private String productCode;
     private String productName;
     private String skuCode;

@@ -2,12 +2,14 @@ spring:
   application:
     name: hmall-marketing
   config:
-    import: optional:file:.env[.properties]
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:luckyhub}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: ${MYSQL_USER:luckyhub}
-    password: ${MYSQL_PASSWORD}
+    password: ${MYSQL_PASSWORD:${LUCKYHUB_DB_PASSWORD:}}
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -20,6 +22,26 @@ spring:
       password: ${REDIS_PASSWORD}
       database: 0
       timeout: 3s
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: ${RABBITMQ_VHOST:/dongqh}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 2
+          initial-interval: 500ms
+          multiplier: 2
+          max-interval: 2s
   servlet:
     multipart:
       max-file-size: 6MB
@@ -28,6 +50,26 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
+
+seata:
+  enabled: ${SEATA_ENABLED:true}
+  application-id: ${spring.application.name}
+  tx-service-group: hmall_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      hmall_tx_group: default
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      group: DEFAULT_GROUP
+      namespace: ""
+      cluster: default
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
 
 springdoc:
   api-docs:
@@ -63,14 +105,8 @@ luckyhub:
     outbox-batch-size: 100
   messaging:
     enabled: true
-    provider: redis-stream
-    lottery-stream: luckyhub:stream:lottery
-    lottery-group: luckyhub-lottery-consumers
     logical-consumer-name: lottery-core
-    consumer-batch-size: 20
-    consumer-poll-interval: 1s
-    consumer-initial-delay: 60s
-    claim-idle: 30s
+    publisher-confirm-timeout: 5s
     outbox-lease: 30s
   activity:
     status-refresh-interval: ${ACTIVITY_STATUS_REFRESH_INTERVAL:30000}
@@ -97,7 +133,11 @@ luckyhub:
     lease-duration: 30s
     poll-interval: 5s
     initial-delay: 60s
+    compensation-grace: 30s
+    outbox-interval: 5s
+    outbox-initial-delay: 60s
     batch-size: 50
     recovery-batch-size: 50
+    outbox-batch-size: 100
     projection-interval: 5s
     projection-initial-delay: 60s

@@ -5,7 +5,9 @@ import com.dongqh.luckyhub.auth.enums.AuthErrorCode;
 import com.dongqh.luckyhub.auth.model.JwtPayload;
 import com.dongqh.luckyhub.auth.model.LoginPrincipal;
 import com.dongqh.luckyhub.auth.security.JwtService;
+import com.dongqh.luckyhub.auth.security.AuthorizationTokenExtractor;
 import com.dongqh.luckyhub.auth.security.SessionService;
+import com.dongqh.luckyhub.auth.service.HmallUserProjectionService;
 import com.dongqh.luckyhub.common.enums.ErrorCode;
 import com.dongqh.luckyhub.common.exception.BusinessException;
 import com.dongqh.luckyhub.common.result.ErrorResponse;
@@ -27,20 +29,32 @@ public class AuthenticationFilter extends OncePerRequestFilter {
     private static final String LOGISTICS_CALLBACK_PATH = "/api/shipping/callbacks/logistics";
 
     private static final String AUTHORIZATION = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
-
     private final JwtService jwtService;
-    private final SessionService sessionService;
+    private final HmallUserProjectionService userProjectionService;
     private final ObjectMapper objectMapper;
 
     public AuthenticationFilter(
             JwtService jwtService,
-            SessionService sessionService,
+            HmallUserProjectionService userProjectionService,
             ObjectMapper objectMapper
     ) {
         this.jwtService = jwtService;
-        this.sessionService = sessionService;
+        this.userProjectionService = userProjectionService;
         this.objectMapper = objectMapper;
+    }
+
+    /** Compatibility constructor for tests that do not exercise Hmall user projection. */
+    public AuthenticationFilter(JwtService jwtService, ObjectMapper objectMapper) {
+        this(jwtService, ignored -> { }, objectMapper);
+    }
+
+    /** Compatibility constructor; Hmall authentication does not use this session service. */
+    public AuthenticationFilter(
+            JwtService jwtService,
+            SessionService ignoredSessionService,
+            ObjectMapper objectMapper
+    ) {
+        this(jwtService, ignored -> { }, objectMapper);
     }
 
     @Override
@@ -59,23 +73,14 @@ public class AuthenticationFilter extends OncePerRequestFilter {
             String token = extractToken(request);
             JwtPayload payload = jwtService.parse(token);
 
-            boolean sessionValid = sessionService.isValid(
-                    payload.sessionId(),
-                    payload.userId()
-            );
-
-            if (!sessionValid) {
-                throw new BusinessException(
-                        AuthErrorCode.INVALID_TOKEN
-                );
-            }
-
             LoginPrincipal principal = new LoginPrincipal(
                     payload.userId(),
                     payload.username(),
-                    payload.sessionId()
+                    payload.sessionId(),
+                    payload.role()
             );
 
+            userProjectionService.ensureActiveHmallUser(principal);
             LoginContext.set(principal);
 
             filterChain.doFilter(request, response);
@@ -92,27 +97,9 @@ public class AuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String extractToken(HttpServletRequest request) {
-        String authorization =
-                request.getHeader(AUTHORIZATION);
-
-        if (authorization == null
-                || !authorization.startsWith(BEARER_PREFIX)) {
-            throw new BusinessException(
-                    AuthErrorCode.INVALID_TOKEN
-            );
-        }
-
-        String token = authorization
-                .substring(BEARER_PREFIX.length())
-                .trim();
-
-        if (token.isBlank()) {
-            throw new BusinessException(
-                    AuthErrorCode.INVALID_TOKEN
-            );
-        }
-
-        return token;
+        return AuthorizationTokenExtractor.extract(
+                request.getHeader(AUTHORIZATION)
+        );
     }
 
     private void writeError(

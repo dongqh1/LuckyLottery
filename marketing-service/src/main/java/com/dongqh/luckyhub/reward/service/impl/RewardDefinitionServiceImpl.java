@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.reward.service.impl;
 
-import com.dongqh.luckyhub.catalog.entity.ProductSku;
-import com.dongqh.luckyhub.catalog.mapper.ProductSkuMapper;
 import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
 import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
+import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
+import com.dongqh.luckyhub.integration.hmall.HmallItemView;
 import com.dongqh.luckyhub.membership.entity.MembershipProduct;
 import com.dongqh.luckyhub.membership.mapper.MembershipProductMapper;
 import com.dongqh.luckyhub.common.exception.BusinessException;
@@ -27,20 +27,20 @@ public class RewardDefinitionServiceImpl implements RewardDefinitionService {
     private static final int ENABLED = 1;
 
     private final RewardDefinitionMapper rewardMapper;
-    private final ProductSkuMapper skuMapper;
+    private final HmallCatalogClient hmallCatalog;
     private final ObjectMapper objectMapper;
     private final CouponTemplateMapper couponMapper;
     private final MembershipProductMapper membershipMapper;
 
     public RewardDefinitionServiceImpl(
             RewardDefinitionMapper rewardMapper,
-            ProductSkuMapper skuMapper,
+            HmallCatalogClient hmallCatalog,
             CouponTemplateMapper couponMapper,
             MembershipProductMapper membershipMapper,
             ObjectMapper objectMapper
     ) {
         this.rewardMapper = rewardMapper;
-        this.skuMapper = skuMapper;
+        this.hmallCatalog = hmallCatalog;
         this.objectMapper = objectMapper;
         this.couponMapper = couponMapper;
         this.membershipMapper = membershipMapper;
@@ -88,8 +88,8 @@ public class RewardDefinitionServiceImpl implements RewardDefinitionService {
             throw new BusinessException(RewardErrorCode.REWARD_TARGET_INVALID);
         }
         if (type == RewardType.PRODUCT) {
-            ProductSku sku = skuMapper.selectById(targetId);
-            if (sku == null || !Integer.valueOf(ENABLED).equals(sku.getStatus())) {
+            HmallItemView item = hmallCatalog.getItem(targetId);
+            if (item == null || !item.availableForReward()) {
                 throw new BusinessException(RewardErrorCode.REWARD_TARGET_INVALID);
             }
         }

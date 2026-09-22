@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>幸运抽奖 - 黑马商城</title>
+  <link rel="stylesheet" href="css/webbase2.css">
+  <link rel="stylesheet" href="css/marketing.css">
+</head>
+<body>
+<div id="app">
+  <top></top>
+  <marketing-header active="lottery"></marketing-header>
+  <main class="marketing-page" :class="{loading:loading}">
+    <div class="breadcrumb">首页 &gt; 会员中心 &gt; 幸运抽奖</div>
+    <div class="page-heading"><h1>幸运抽奖</h1><p>抽奖请求支持安全重试，同一请求号不会重复扣减次数</p></div>
+
+    <section class="panel">
+      <div class="panel-title"><h2>我的抽奖次数</h2><button class="secondary" @click="loadChances">刷新</button></div>
+      <div class="account-summary">
+        <div><div class="metric-label">剩余次数</div><div class="metric">{{chances.availableBalance||0}}</div><div class="muted">处理中：{{chances.reservedBalance||0}} 次</div></div>
+        <div class="usage-guide"><strong>怎么参与</strong><p>① 选择下方活动　② 查看奖池　③ 点击“抽一次”或“十连抽”　④ 到对应页面查看奖励</p><p>每次抽奖消耗 1 次机会；积分自动进入“我的积分”，优惠券、会员和实物奖品进入“我的权益”。实物中奖后需选择商城收货地址。</p></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title"><h2>进行中的活动</h2><button class="secondary" @click="loadActivities">刷新</button></div>
+      <div class="panel-body">
+        <div class="activity-list" v-if="activities.length">
+          <article class="activity-row" v-for="activity in activities" :key="activity.id" :class="{active:selected&&selected.id===activity.id}" @click="selectActivity(activity)">
+            <h3>{{activity.activityName}}</h3><p>{{activity.description||'商城会员活动'}}</p>
+            <span class="activity-meta">每日 {{activity.dailyLimit}} 次　活动截止：{{activity.endTime}}</span>
+          </article>
+        </div>
+        <div class="empty" v-else>当前暂无可参与活动，请稍后再来。</div>
+      </div>
+    </section>
+
+    <section class="panel" v-if="selected">
+      <div class="panel-title"><h2>{{selected.activityName}} 奖池</h2><span class="muted">奖品库存及权重以服务端为准</span></div>
+      <div class="panel-body">
+        <div class="prize-grid" v-if="prizes.length">
+          <article class="prize-card" v-for="prize in prizes" :key="prize.prizeId">
+            <a v-if="mallItemId(prize)" :href="'/item.html?id='+mallItemId(prize)"><img v-if="prize.imageUrl" class="prize-image" :src="prize.imageUrl" :alt="prize.prizeName"><span v-else class="no-image">暂无图片</span></a>
+            <template v-else><img v-if="prize.imageUrl" class="prize-image" :src="prize.imageUrl" :alt="prize.prizeName"><span v-else class="no-image">暂无图片</span></template>
+            <h3><a v-if="mallItemId(prize)" :href="'/item.html?id='+mallItemId(prize)">{{prize.prizeName}}</a><span v-else>{{prize.prizeName}}</span></h3>
+            <span class="type-label">{{typeName(prize.prizeType)}}</span>
+          </article>
+        </div>
+        <div class="empty" v-else>该活动暂未配置奖品。</div>
+        <div class="draw-actions">
+          <span class="muted">{{drawing?'抽奖处理中，请勿重复点击':''}}</span>
+          <button class="sui-btn btn-xlarge secondary-draw" :disabled="drawing" @click="draw(10)">十连抽</button>
+          <button class="sui-btn btn-xlarge btn-danger" :disabled="drawing" @click="draw(1)">抽一次</button>
+        </div>
+        <p class="error" v-if="error">{{error}}</p>
+      </div>
+    </section>
+
+    <section class="panel" v-if="result">
+      <div class="panel-title"><h2>抽奖结果</h2><span class="result-request">请求号：{{result.requestId}}</span></div>
+      <div class="panel-body"><div class="result-list">
+        <div class="result-row" v-for="item in result.results" :key="item.sequenceNo">
+          <span>{{item.sequenceNo}}</span>
+          <img v-if="item.prizeImageUrl" :src="item.prizeImageUrl" :alt="item.prizeName"><span v-else class="no-result-image">无图</span>
+          <div><strong class="result-name">{{item.prizeName||'谢谢参与'}}</strong><p class="muted">{{item.benefitId?'权益已生成，可到“我的权益”查看':'本次未中奖'}}</p></div>
+          <span class="result-type">{{typeName(item.prizeType||item.resultType)}}</span>
+        </div>
+      </div></div>
+    </section>
+  </main>
+</div>
+<script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
+<script>
+new Vue({el:'#app',data:{activities:[],selected:null,prizes:[],result:null,chances:{availableBalance:0,reservedBalance:0},loading:false,drawing:false,error:''},created(){if(!util.isLogin()){location.href='/login.html';return}this.loadChances();this.loadActivities()},methods:{loadChances(){axios.get('/marketing/lottery/chances').then(r=>this.chances=r.data||{availableBalance:0,reservedBalance:0}).catch(this.showError)},loadActivities(){this.loading=true;this.error='';axios.get('/marketing/lottery/activities').then(r=>{this.activities=r.data||[];if(this.activities.length)this.selectActivity(this.activities[0])}).catch(this.showError).finally(()=>this.loading=false)},selectActivity(activity){this.selected=activity;this.result=null;this.error='';axios.get('/marketing/lottery/activities/'+activity.id+'/prizes').then(r=>this.prizes=r.data||[]).catch(this.showError)},draw(drawCount){if(!this.selected||this.drawing)return;this.drawing=true;this.error='';const requestId=this.newRequestId();if(!requestId){this.error='当前浏览器不支持安全随机数，请升级浏览器后重试';this.drawing=false;return}axios.post('/marketing/lottery/draws',{requestId,activityId:this.selected.id,drawCount}).then(r=>{this.result=r.data;this.loadChances()}).catch(this.showError).finally(()=>this.drawing=false)},newRequestId(){if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();if(window.crypto&&crypto.getRandomValues){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20)}return null},showError(e){this.error=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg||e.response.data.detail))||'请求失败，请稍后重试'},mallItemId(item){return item.hmallItemId||item.itemId||null},typeName(type){return({PHYSICAL:'商城商品',COUPON:'商城优惠券',POINTS:'商城积分',MEMBERSHIP:'会员权益',DRAW_CHANCE:'抽奖次数',WIN:'中奖',NO_WIN:'未中奖'})[type]||type||'-'}}})
+</script>
+</body></html>

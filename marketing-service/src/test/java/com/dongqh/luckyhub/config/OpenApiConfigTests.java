@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -23,5 +24,12 @@ class OpenApiConfigTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("LuckyHub API"))
                 .andExpect(jsonPath("$.info.version").value("v1"));
+    }
+
+    @Test
+    void legacyDocEntryRedirectsToSwaggerUi() throws Exception {
+        mockMvc.perform(get("/doc.html"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/swagger-ui.html"));
     }
 }

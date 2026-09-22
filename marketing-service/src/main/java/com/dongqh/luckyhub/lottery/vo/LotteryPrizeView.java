@@ -8,6 +8,11 @@ public record LotteryPrizeView(
         String prizeName,
         PrizeType prizeType,
         String imageUrl,
-        Integer sortOrder
+        Integer sortOrder,
+        Long hmallItemId
 ) {
+    public LotteryPrizeView(Long prizeId, String prizeName, PrizeType prizeType,
+                            String imageUrl, Integer sortOrder) {
+        this(prizeId, prizeName, prizeType, imageUrl, sortOrder, null);
+    }
 }

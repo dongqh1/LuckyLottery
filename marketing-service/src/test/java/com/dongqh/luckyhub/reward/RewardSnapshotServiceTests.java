@@ -1,6 +1,8 @@
 package com.dongqh.luckyhub.reward;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
+import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
+import com.dongqh.luckyhub.integration.hmall.HmallItemView;
 import com.dongqh.luckyhub.prize.entity.MarketingPrize;
 import com.dongqh.luckyhub.prize.enums.PrizeType;
 import com.dongqh.luckyhub.reward.enums.RewardType;
@@ -12,16 +14,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class RewardSnapshotServiceTests {
     @Autowired RewardSnapshotService snapshots;
     @Autowired JdbcTemplate jdbc;
+    @MockitoBean HmallCatalogClient hmallCatalog;
 
     @Test
     void mapsAllRewardTypesToCompatibilityPrizeTypes() {
@@ -84,6 +89,8 @@ class RewardSnapshotServiceTests {
                     VALUES(?,'P5-SKU','红色',0,0,1)
                     """, productId);
             Long skuId = id("product_sku", "sku_code", "P5-SKU");
+            when(hmallCatalog.getItem(skuId)).thenReturn(new HmallItemView(
+                    skuId, "阶段5实物", 100, 10, null, "实物", "LuckyHub", "红色", 1));
             insertReward("P5-R-COUPON", "COUPON", couponId, 2);
             insertReward("P5-R-MEMBER", "MEMBERSHIP", memberId, 2);
             insertReward("P5-R-PRODUCT", "PRODUCT", skuId, 1);
@@ -98,7 +105,10 @@ class RewardSnapshotServiceTests {
             assertThat(result.get(coupon.getId()).payloadJson())
                     .isEqualTo("{\"templateId\":" + couponId + ",\"templateCode\":\"P5-COUPON\",\"quantity\":2}");
             assertThat(result.get(member.getId()).payloadJson()).contains("\"durationDays\":60", "\"quantity\":2");
-            assertThat(result.get(product.getId()).payloadJson()).contains("\"skuId\":" + skuId, "\"productName\":\"阶段5实物\"");
+            assertThat(result.get(product.getId()).payloadJson()).contains(
+                    "\"itemId\":" + skuId,
+                    "\"itemName\":\"阶段5实物\"",
+                    "\"itemPriceCent\":100");
             assertThat(result.get(chance.getId()).payloadJson()).isEqualTo("{\"chances\":3}");
         } finally {
             cleanupTargets();

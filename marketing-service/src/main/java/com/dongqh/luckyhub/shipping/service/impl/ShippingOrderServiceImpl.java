@@ -169,6 +169,7 @@ public class ShippingOrderServiceImpl implements ShippingOrderService {
         order.setSourceId(command.sourceId());
         order.setTargetUserId(command.targetUserId());
         order.setAddressSnapshotId(command.addressSnapshotId());
+        order.setHmallItemId(command.hmallItemId());
         order.setSkuCode(command.skuCode());
         order.setProductName(command.productName());
         order.setImageUrl(command.imageUrl());
@@ -192,6 +193,7 @@ public class ShippingOrderServiceImpl implements ShippingOrderService {
                 || !Objects.equals(order.getSourceId(), command.sourceId())
                 || !Objects.equals(order.getTargetUserId(), command.targetUserId())
                 || !Objects.equals(order.getAddressSnapshotId(), command.addressSnapshotId())
+                || !Objects.equals(order.getHmallItemId(), command.hmallItemId())
                 || !Objects.equals(order.getSkuCode(), command.skuCode())
                 || !Objects.equals(order.getProductName(), command.productName())
                 || !Objects.equals(order.getImageUrl(), command.imageUrl())
@@ -228,7 +230,7 @@ public class ShippingOrderServiceImpl implements ShippingOrderService {
     private ShippingOrderView view(ShippingOrder order) {
         return new ShippingOrderView(order.getId(), order.getShippingNo(), order.getSourceType(),
                 order.getSourceId(), order.getTargetUserId(), order.getAddressSnapshotId(),
-                order.getSkuCode(), order.getProductName(), order.getImageUrl(), order.getQuantity(),
+                order.getHmallItemId(), order.getSkuCode(), order.getProductName(), order.getImageUrl(), order.getQuantity(),
                 order.getFulfillmentNo(), order.getCarrierCode(), order.getCarrierName(),
                 order.getWaybillNo(), order.getStatus(), order.getLastErrorCode(),
                 order.getLastErrorMessage(), order.getShippedAt(), order.getDeliveredAt(),

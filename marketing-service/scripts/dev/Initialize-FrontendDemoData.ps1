@@ -27,13 +27,16 @@ if ($blockedOverrides.Count -gt 0) {
     throw "检测到可能覆盖数据源的环境变量，拒绝启动 Maven：$($blockedOverrides -join ', ')"
 }
 
-$repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
-$mavenConfigurationDirectory = Join-Path $repositoryRoot '.mvn'
-foreach ($configurationName in @('maven.config', 'jvm.config')) {
-    $configurationPath = Join-Path $mavenConfigurationDirectory $configurationName
-    if ((Test-Path -LiteralPath $configurationPath -PathType Leaf) -and
-        -not [string]::IsNullOrWhiteSpace((Get-Content -Raw -LiteralPath $configurationPath))) {
-        throw "检测到非空 Maven 项目配置 .mvn/$configurationName，拒绝启动 Maven。"
+$moduleRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
+$repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $moduleRoot '..')).Path
+foreach ($mavenRoot in @($repositoryRoot, $moduleRoot)) {
+    $mavenConfigurationDirectory = Join-Path $mavenRoot '.mvn'
+    foreach ($configurationName in @('maven.config', 'jvm.config')) {
+        $configurationPath = Join-Path $mavenConfigurationDirectory $configurationName
+        if ((Test-Path -LiteralPath $configurationPath -PathType Leaf) -and
+            -not [string]::IsNullOrWhiteSpace((Get-Content -Raw -LiteralPath $configurationPath))) {
+            throw "检测到非空 Maven 项目配置 .mvn/$configurationName，拒绝启动 Maven。"
+        }
     }
 }
 
@@ -51,8 +54,8 @@ Get-Content -Encoding UTF8 -LiteralPath $envFile |
     }
 
 # 当前进程环境变量优先，便于安全测试验证远程主机一定会被拒绝。
-$mysqlHost = if (Test-Path Env:MYSQL_HOST) { $env:MYSQL_HOST } else { $settings['MYSQL_HOST'] }
-$mysqlDatabase = if (Test-Path Env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } else { $settings['MYSQL_DATABASE'] }
+$mysqlHost = if (Test-Path Env:MYSQL_HOST) { $env:MYSQL_HOST } elseif ($settings['MYSQL_HOST']) { $settings['MYSQL_HOST'] } else { 'localhost' }
+$mysqlDatabase = if (Test-Path Env:MYSQL_DATABASE) { $env:MYSQL_DATABASE } elseif ($settings['MYSQL_DATABASE']) { $settings['MYSQL_DATABASE'] } else { 'luckyhub' }
 $mysqlPort = if (Test-Path Env:MYSQL_PORT) { $env:MYSQL_PORT } else { $settings['MYSQL_PORT'] }
 
 $allowedLocalHosts = @('localhost', '127.0.0.1', '::1')
@@ -72,11 +75,11 @@ $verifiedJdbcUrl = "jdbc:mysql://${jdbcHost}:$mysqlPort/$mysqlDatabase"
 $env:SPRING_DATASOURCE_URL = $verifiedJdbcUrl
 $env:SPRING_FLYWAY_ENABLED = 'false'
 
-$mavenWrapper = Join-Path $repositoryRoot 'scripts\Invoke-Maven.ps1'
+$mavenWrapper = Join-Path $moduleRoot 'scripts\Invoke-Maven.ps1'
 Write-Host "已确认本地数据库：$mysqlHost / $mysqlDatabase"
 Write-Host '正在执行幂等演示数据初始化与安全快照测试……'
 
-Push-Location -LiteralPath $repositoryRoot
+Push-Location -LiteralPath $moduleRoot
 try {
     & pwsh -NoProfile -ExecutionPolicy Bypass -File $mavenWrapper `
         '-Dfrontend.demo.seed=true' `

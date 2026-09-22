@@ -108,7 +108,7 @@ class FrontendDemoDataSeederTests {
         assertThat(environment.getProperty("spring.flyway.enabled", Boolean.class, true)).isFalse();
         assertThat(jdbc.queryForObject("""
                 SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success = 1
-                """, Integer.class)).isEqualTo(17);
+                """, Integer.class)).isEqualTo(28);
     }
 
     @Test

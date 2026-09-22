@@ -1,6 +1,6 @@
 package com.dongqh.payservice.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 import com.dongqh.payservice.domain.dto.PayApplyDTO;
 import com.dongqh.payservice.domain.dto.PayOrderFormDTO;
 import com.dongqh.payservice.domain.po.PayOrder;

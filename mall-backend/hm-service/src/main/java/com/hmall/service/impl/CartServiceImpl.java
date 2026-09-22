@@ -2,7 +2,7 @@ package com.hmall.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.utils.BeanUtils;
@@ -114,14 +114,14 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements IC
     }
 
     private void checkCartsFull(Long userId) {
-        int count = lambdaQuery().eq(Cart::getUserId, userId).count();
+        long count = lambdaQuery().eq(Cart::getUserId, userId).count();
         if (count >= 10) {
             throw new BizIllegalException(StrUtil.format("用户购物车课程不能超过{}", 10));
         }
     }
 
     private boolean checkItemExists(Long itemId, Long userId) {
-        int count = lambdaQuery()
+        long count = lambdaQuery()
                 .eq(Cart::getUserId, userId)
                 .eq(Cart::getItemId, itemId)
                 .count();

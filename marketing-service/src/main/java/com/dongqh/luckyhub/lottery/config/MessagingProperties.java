@@ -7,31 +7,15 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "luckyhub.messaging")
 public record MessagingProperties(
         boolean enabled,
-        String provider,
-        String lotteryStream,
-        String lotteryGroup,
         String logicalConsumerName,
-        int consumerBatchSize,
-        Duration consumerPollInterval,
-        Duration claimIdle,
+        Duration publisherConfirmTimeout,
         Duration outboxLease
 ) {
     public MessagingProperties {
-        if (!hasText(lotteryStream)) {
-            throw new IllegalArgumentException("lotteryStream must not be blank");
+        if (!hasText(logicalConsumerName)) {
+            throw new IllegalArgumentException("logicalConsumerName must not be blank");
         }
-        if (!hasText(lotteryGroup)) {
-            throw new IllegalArgumentException("lotteryGroup must not be blank");
-        }
-        logicalConsumerName = hasText(logicalConsumerName) ? logicalConsumerName : "lottery-core";
-        if (consumerBatchSize <= 0) {
-            throw new IllegalArgumentException("consumerBatchSize must be positive");
-        }
-        requirePositive(consumerPollInterval, "consumerPollInterval");
-        requirePositive(claimIdle, "claimIdle");
-        if (claimIdle.compareTo(consumerPollInterval) <= 0) {
-            throw new IllegalArgumentException("claimIdle must be greater than consumerPollInterval");
-        }
+        requirePositive(publisherConfirmTimeout, "publisherConfirmTimeout");
         requirePositive(outboxLease, "outboxLease");
     }
 

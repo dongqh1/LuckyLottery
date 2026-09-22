@@ -4,16 +4,14 @@ import com.dongqh.luckyhub.auth.context.LoginContext;
 import com.dongqh.luckyhub.auth.model.LoginPrincipal;
 import com.dongqh.luckyhub.benefit.service.LotteryRewardProjectionService;
 import com.dongqh.luckyhub.fulfillment.worker.FulfillmentWorker;
+import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
+import com.dongqh.luckyhub.integration.hmall.HmallItemView;
 import com.dongqh.luckyhub.lottery.algorithm.DrawRandomSource;
-import com.dongqh.luckyhub.lottery.config.MessagingProperties;
 import com.dongqh.luckyhub.lottery.dto.DrawCommand;
 import com.dongqh.luckyhub.lottery.entity.MessageOutbox;
 import com.dongqh.luckyhub.lottery.mapper.MessageOutboxMapper;
 import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.port.DrawEventPublisher;
-import com.dongqh.luckyhub.lottery.messaging.redis.RedisStreamDrawEventConsumer;
-import com.dongqh.luckyhub.lottery.messaging.redis.RedisStreamDrawEventPublisher;
-import com.dongqh.luckyhub.lottery.messaging.redis.RedisStreamInitializer;
+import com.dongqh.luckyhub.lottery.messaging.rabbit.RabbitDrawEventListener;
 import com.dongqh.luckyhub.lottery.quota.DrawQuotaKeys;
 import com.dongqh.luckyhub.lottery.service.LotteryService;
 import com.dongqh.luckyhub.lottery.service.MessageConsumeService;
@@ -33,13 +31,13 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,8 +47,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = {
+        "seata.enabled=false",
         "spring.task.scheduling.enabled=false",
-        "luckyhub.messaging.consumer-initial-delay=24h",
+        "luckyhub.messaging.enabled=false",
         "luckyhub.fulfillment.initial-delay=24h",
         "luckyhub.fulfillment.projection-initial-delay=24h"
 })
@@ -66,11 +65,11 @@ class LotteryFiveRewardEndToEndTests {
     @Autowired StringRedisTemplate redis;
     @Autowired ObjectMapper json;
     @MockitoBean DrawRandomSource random;
+    @MockitoBean HmallCatalogClient hmallCatalog;
 
     private final String marker = "p5e2e-" + UUID.randomUUID().toString().substring(0, 8);
     private final List<String> requests = new ArrayList<>();
     private final List<Long> activities = new ArrayList<>();
-    private final List<String> streams = new ArrayList<>();
     private long userId;
 
     @BeforeEach
@@ -125,7 +124,6 @@ class LotteryFiveRewardEndToEndTests {
             redis.delete(DrawQuotaKeys.reservation(id));
             redis.opsForZSet().remove(DrawQuotaKeys.reservationTimeouts(), id);
         });
-        streams.forEach(redis::delete);
         jdbc.update("DELETE FROM marketing_prize WHERE prize_name LIKE ?", marker + "%");
         jdbc.update("DELETE FROM reward_definition WHERE reward_code LIKE ?", marker + "%");
         jdbc.update("DELETE FROM product_sku WHERE sku_code LIKE ?", marker + "%");
@@ -231,19 +229,20 @@ class LotteryFiveRewardEndToEndTests {
     private long productSku() {
         long productId = insert("INSERT INTO product(product_code,product_name,product_type,status) VALUES(?,?,'PHYSICAL',1)",
                 marker + "-product", marker + "实物");
-        return insert("""
+        long itemId = insert("""
                 INSERT INTO product_sku(product_id,sku_code,sku_name,cash_enabled,points_enabled,status)
                 VALUES(?,?,?,0,0,1)
                 """, productId, marker + "-sku", "默认规格");
+        when(hmallCatalog.getItem(itemId)).thenReturn(new HmallItemView(
+                itemId, marker + "实物", 100, 1, null, "实物", "LuckyHub", "默认规格", 1));
+        return itemId;
     }
 
     private void deliver(MessageOutbox outbox) throws Exception {
-        MessagingProperties properties = messaging();
-        new RedisStreamInitializer(redis, properties).initialize();
-        DrawEventPublisher publisher = new RedisStreamDrawEventPublisher(redis, json, properties);
-        RedisStreamDrawEventConsumer consumer = new RedisStreamDrawEventConsumer(redis, json, consumerService, properties);
-        new OutboxRelayService(scoped(outbox.getId()), publisher, json, 1).relayBatch();
-        assertThat(consumer.pollOnce()).isOne();
+        AtomicReference<DrawEventEnvelope> published = new AtomicReference<>();
+        new OutboxRelayService(scoped(outbox.getId()), published::set, json, 1).relayBatch();
+        assertThat(published.get()).isNotNull();
+        new RabbitDrawEventListener(consumerService).onMessage(published.get());
     }
 
     private MessageOutboxMapper scoped(long id) {
@@ -257,14 +256,6 @@ class LotteryFiveRewardEndToEndTests {
         when(mapper.markFailed(anyLong(), anyString(), anyString(), any(LocalDateTime.class)))
                 .thenAnswer(call -> outboxes.markFailed(call.getArgument(0), call.getArgument(1), call.getArgument(2), call.getArgument(3)));
         return mapper;
-    }
-
-    private MessagingProperties messaging() {
-        String stream = marker + ":" + UUID.randomUUID();
-        streams.add(stream);
-        return new MessagingProperties(false, "redis-stream", stream, marker + "-group-" + UUID.randomUUID(),
-                marker + "-consumer-" + UUID.randomUUID(), 20,
-                Duration.ofMillis(10), Duration.ofMillis(100), Duration.ofSeconds(30));
     }
 
     private void assertAvailable(long benefitId) {

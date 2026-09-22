@@ -97,8 +97,10 @@ abstract class ShippingTestFixture extends Task5ShippingTestFixture {
     private final List<Long> task8ShippingOrderIds = new ArrayList<>();
 
     protected long createPrivateAddress(long userId) {
-        return addresses.create(userId, new com.dongqh.luckyhub.shipping.dto.CreateShippingAddressCommand(
+        long addressId = addresses.create(userId, new com.dongqh.luckyhub.shipping.dto.CreateShippingAddressCommand(
                 receiverProbe, phoneProbe, "浙江省", "杭州市", "余杭区", detailProbe, false)).id();
+        stubHmallAddress(addressId, receiverProbe, phoneProbe, detailProbe);
+        return addressId;
     }
 
     protected CashFlow paidCashFlow() {

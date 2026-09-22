@@ -1,6 +1,7 @@
 package com.hmall.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.exception.ForbiddenException;
@@ -43,7 +44,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String username = loginDTO.getUsername();
         String password = loginDTO.getPassword();
         // 2.根据用户名或手机号查询
-        User user = lambdaQuery().eq(User::getUsername, username).one();
+        User user = baseMapper.selectOne(
+                Wrappers.lambdaQuery(User.class).eq(User::getUsername, username));
         Assert.notNull(user, "用户名错误");
         // 3.校验是否禁用
         if (user.getStatus() == UserStatus.FROZEN) {
@@ -54,7 +56,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new BadRequestException("用户名或密码错误");
         }
         // 5.生成TOKEN
-        String token = jwtTool.createToken(user.getId(), jwtProperties.getTokenTTL());
+        String token = jwtTool.createToken(user.getId(), user.getRole(), jwtProperties.getTokenTTL());
         // 6.封装VO返回
         UserLoginVO vo = new UserLoginVO();
         vo.setUserId(user.getId());
@@ -75,10 +77,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         // 2.尝试扣款
+        if (totalFee == null || totalFee <= 0) {
+            throw new BizIllegalException("扣款金额必须为正数");
+        }
+        int affectedRows;
         try {
-            baseMapper.updateMoney(UserContext.getUser(), totalFee);
+            affectedRows = baseMapper.updateMoney(UserContext.getUser(), totalFee);
         } catch (Exception e) {
-            throw new RuntimeException("扣款失败，可能是余额不足！", e);
+            throw new BizIllegalException("扣款失败！", e);
+        }
+        if (affectedRows != 1) {
+            throw new BizIllegalException("扣款失败，可能是余额不足！");
         }
         log.info("扣款成功");
     }

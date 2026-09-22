@@ -40,6 +40,8 @@ knife4j:
         api-rule-resources:
           - com.hmall.controller
 hm:
+  marketing:
+    base-url: ${MARKETING_BASE_URL:http://localhost:8080}
   jwt:
     location: classpath:hmall.jks
     alias: hmall
@@ -49,6 +51,5 @@ hm:
     excludePaths:
       - /search/**
       - /users/login
-      - /items/**
       - /hi
 # keytool -genkeypair -alias hmall -keyalg RSA -keypass hmall123 -keystore hmall.jks -storepass hmall123

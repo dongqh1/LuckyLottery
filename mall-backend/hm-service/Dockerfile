@@ -1,9 +1,13 @@
-# 基础镜像
-FROM openjdk:11.0-jre-buster
-# 设定时区
+FROM maven:3.9.9-eclipse-temurin-17 AS build
+WORKDIR /workspace
+
+COPY . .
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -ntp -pl mall-backend/hm-service -am package -Dmaven.test.skip=true
+
+FROM eclipse-temurin:17-jre
 ENV TZ=Asia/Shanghai
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-# 拷贝jar包
-COPY hm-service.jar /app.jar
-# 入口
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+WORKDIR /app
+COPY --from=build /workspace/mall-backend/hm-service/target/hm-service.jar /app/hm-service.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/hm-service.jar"]

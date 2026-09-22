@@ -13,12 +13,9 @@ public class HttpHmallCatalogClient implements HmallCatalogClient {
 
     @Autowired
     public HttpHmallCatalogClient(
+            RestClient.Builder builder,
             @Value("${luckyhub.integration.hmall.catalog-base-url:http://localhost:8081}") String baseUrl
     ) {
-        this(RestClient.builder(), baseUrl);
-    }
-
-    HttpHmallCatalogClient(RestClient.Builder builder, String baseUrl) {
         this.restClient = builder.baseUrl(stripTrailingSlash(baseUrl)).build();
     }
 

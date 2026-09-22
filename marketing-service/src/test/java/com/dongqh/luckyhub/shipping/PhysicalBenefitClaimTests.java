@@ -64,7 +64,8 @@ class PhysicalBenefitClaimTests {
         assertThat(service.claim(11, 31, new ClaimPhysicalBenefitCommand(requestId, 51L)))
                 .isEqualTo(expected);
         verify(orders).create(argThat(command -> command.claimRequestId().equals(requestId)
-                && command.skuCode().equals("SKU-1") && command.quantity() == 2));
+                && command.hmallItemId().equals(91L)
+                && command.skuCode().equals("HMALL-ITEM-91") && command.quantity() == 2));
         verify(benefits).markClaimed(eq(31L), eq(61L), any());
     }
 
@@ -147,7 +148,7 @@ class PhysicalBenefitClaimTests {
                 new ClaimPhysicalBenefitCommand(requestId, 52L)));
         assertIdempotencyConflict(() -> service.claim(11, 31,
                 new ClaimPhysicalBenefitCommand(UUID.randomUUID().toString(), 51L)));
-        benefit.setRewardPayload("{\"skuId\":91,\"skuCode\":\"CHANGED\",\"productName\":\"礼盒\",\"skuName\":\"默认\",\"quantity\":2}");
+        benefit.setRewardPayload("{\"itemId\":92,\"itemName\":\"礼盒\",\"itemImage\":null,\"itemPriceCent\":9900,\"quantity\":2}");
         assertIdempotencyConflict(() -> service.claim(11, 31,
                 new ClaimPhysicalBenefitCommand(requestId, 51L)));
     }
@@ -164,7 +165,7 @@ class PhysicalBenefitClaimTests {
         ShippingOrder order = new ShippingOrder();
         order.setId(61L); order.setShippingNo("SHIPPING-61"); order.setTargetUserId(11L);
         order.setAddressSnapshotId(41L); order.setClaimRequestId(claimRequestId);
-        order.setSkuCode("SKU-1"); order.setProductName("礼盒"); order.setQuantity(2);
+        order.setSkuCode("HMALL-ITEM-91"); order.setProductName("礼盒"); order.setQuantity(2);
         return order;
     }
 
@@ -173,7 +174,7 @@ class PhysicalBenefitClaimTests {
         row.setId(31L); row.setDrawRecordId(21L); row.setUserId(11L); row.setPrizeId(71L);
         row.setPrizeType(PrizeType.PHYSICAL); row.setRewardDefinitionId(81L);
         row.setRewardType(RewardType.PRODUCT); row.setRewardTargetId(91L); row.setRewardQuantity(2L);
-        row.setRewardPayload("{\"skuId\":91,\"skuCode\":\"SKU-1\",\"productName\":\"礼盒\",\"skuName\":\"默认\",\"quantity\":2}");
+        row.setRewardPayload("{\"itemId\":91,\"itemName\":\"礼盒\",\"itemImage\":null,\"itemPriceCent\":9900,\"quantity\":2}");
         row.setRewardFingerprint("a".repeat(64)); row.setQuantity(2);
         row.setStatus(BenefitStatus.CLAIM_PENDING); row.setClaimDeadline(deadline);
         return row;
@@ -192,7 +193,7 @@ class PhysicalBenefitClaimTests {
 
     private ShippingOrderView view() {
         return new ShippingOrderView(61L, "SHIPPING-61", ShippingSourceType.LOTTERY_BENEFIT,
-                "31", 11L, 41L, "SKU-1", "礼盒", null, 2, "LOGISTICS-61",
+                "31", 11L, 41L, "HMALL-ITEM-91", "礼盒", null, 2, "LOGISTICS-61",
                 null, null, null, ShippingStatus.FULFILLING, null, null,
                 null, null, null, null, LocalDateTime.now(), LocalDateTime.now());
     }

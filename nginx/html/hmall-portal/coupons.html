@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>我的优惠券 - 黑马商城</title>
+  <link rel="stylesheet" href="css/webbase2.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <style>
+    .coupon-tabs{display:flex;gap:12px;margin:0 0 20px}.coupon-tabs button{padding:9px 20px;border:1px solid #ddd;background:#fff;cursor:pointer;border-radius:3px}.coupon-tabs button.active{color:#fff;background:#e1251b;border-color:#e1251b}.coupon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.coupon-card{position:relative;display:flex;min-height:150px;border:1px solid #f0d8d6;background:linear-gradient(135deg,#fff8f7,#fff);border-radius:8px;overflow:hidden}.coupon-value{width:124px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#e1251b;color:#fff}.coupon-value strong{font-size:30px}.coupon-info{padding:18px;flex:1}.coupon-info h3{font-size:18px;margin:0 0 10px}.coupon-info p{line-height:1.8;margin:0;color:#666}.coupon-status{position:absolute;right:10px;top:10px;padding:3px 9px;border-radius:12px;background:#f1f1f1}.coupon-card.inactive{filter:grayscale(.72);opacity:.78}.coupon-empty{text-align:center;padding:60px 0;color:#999}@media(max-width:1000px){.coupon-grid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+<div id="app">
+  <top></top>
+  <marketing-header active="coupons"></marketing-header>
+  <main class="marketing-page">
+    <div class="breadcrumb">首页 &gt; 会员中心 &gt; 我的优惠券</div>
+    <div class="page-heading"><h1>我的优惠券</h1><p>查看优惠券的可用、占用、已使用和已过期状态</p></div>
+    <section class="panel">
+      <div class="panel-title"><h2>优惠券资产</h2><button class="secondary" @click="load">刷新</button></div>
+      <div class="panel-body">
+        <div class="coupon-tabs">
+          <button v-for="tab in tabs" :key="tab.value" :class="{active:active===tab.value}" @click="active=tab.value">{{tab.label}}（{{count(tab.value)}}）</button>
+        </div>
+        <div class="coupon-grid" v-if="visibleCoupons.length">
+          <article class="coupon-card" :class="{inactive:item.status!=='AVAILABLE'}" v-for="item in visibleCoupons" :key="item.id">
+            <div class="coupon-value"><strong>¥{{money(item.discountCent)}}</strong><span>{{condition(item)}}</span></div>
+            <div class="coupon-info">
+              <span class="coupon-status">{{statusName(item.status)}}</span>
+              <h3>{{item.templateName||'商城优惠券'}}</h3>
+              <p>适用范围：{{scopeName(item)}}</p>
+              <p>有效期至：{{formatTime(item.validUntil)}}</p>
+              <p v-if="item.status==='LOCKED'">占用订单：{{item.lockedOrderNo}}</p>
+              <p v-if="item.status==='USED'">使用订单：{{item.usedOrderNo}}</p>
+              <p v-if="item.status==='AVAILABLE'" class="available-tip">结算时可选择使用</p>
+            </div>
+          </article>
+        </div>
+        <div class="coupon-empty" v-else>当前分类下暂无优惠券</div>
+        <p class="error" v-if="error">{{error}}</p>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
+<script>
+new Vue({el:'#app',data:{coupons:[],active:'ALL',error:'',tabs:[{value:'ALL',label:'全部'},{value:'AVAILABLE',label:'可使用'},{value:'LOCKED',label:'已占用'},{value:'USED',label:'已使用'},{value:'EXPIRED',label:'已过期'}]},computed:{visibleCoupons(){return this.active==='ALL'?this.coupons:this.coupons.filter(item=>item.status===this.active)}},created(){if(!util.isLogin()){location.href='/login.html';return}this.load()},methods:{load(){this.error='';axios.get('/marketing/coupons',{params:{page:1,size:100}}).then(resp=>{this.coupons=(resp.data&&resp.data.records)||[]}).catch(error=>{this.error=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||'优惠券加载失败'})},count(status){return status==='ALL'?this.coupons.length:this.coupons.filter(item=>item.status===status).length},money(cent){return ((cent||0)/100).toFixed(0)},condition(item){return item.thresholdCent>0?'满¥'+this.money(item.thresholdCent)+'可用':'无门槛'},statusName(status){return({AVAILABLE:'可使用',LOCKED:'已占用',USED:'已使用',EXPIRED:'已过期'})[status]||status},scopeName(item){if(item.scopeType==='ITEM')return '指定商品';if(item.scopeType==='CATEGORY')return (item.hmallCategory||'指定')+'分类商品';if(item.scopeType==='BRAND')return (item.hmallBrand||'指定')+'品牌商品';return '全场商品'},formatTime(value){return value?value.replace('T',' ').slice(0,16):'-'}}})
+</script>
+</body>
+</html>

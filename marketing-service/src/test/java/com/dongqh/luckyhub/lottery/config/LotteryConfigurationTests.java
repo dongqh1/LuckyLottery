@@ -12,7 +12,10 @@ import java.time.ZoneId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "seata.enabled=false",
+        "luckyhub.messaging.enabled=false"
+})
 class LotteryConfigurationTests {
 
     @Autowired
@@ -39,31 +42,31 @@ class LotteryConfigurationTests {
     }
 
     @Test
-    void exposesRedisStreamBrokerSettings() {
-        assertThat(environment.getProperty("luckyhub.messaging.provider"))
-                .isEqualTo("redis-stream");
-        assertThat(environment.getProperty("luckyhub.messaging.lottery-stream"))
-                .isEqualTo("luckyhub:stream:lottery");
-        assertThat(environment.getProperty("luckyhub.messaging.lottery-group"))
-                .isEqualTo("luckyhub-lottery-consumers");
+    void exposesRabbitMqReliabilitySettingsWithoutRedisStreamTransportSettings() {
+        assertThat(environment.getProperty("spring.rabbitmq.virtual-host")).isEqualTo("/dongqh");
+        assertThat(environment.getProperty("spring.rabbitmq.publisher-confirm-type"))
+                .isEqualTo("correlated");
+        assertThat(environment.getProperty("spring.rabbitmq.publisher-returns", Boolean.class))
+                .isTrue();
+        assertThat(environment.getProperty("spring.rabbitmq.template.mandatory", Boolean.class))
+                .isTrue();
+        assertThat(environment.getProperty("luckyhub.messaging.publisher-confirm-timeout", Duration.class))
+                .isEqualTo(Duration.ofSeconds(5));
+        assertThat(environment.getProperty("luckyhub.messaging.provider")).isNull();
+        assertThat(environment.getProperty("luckyhub.messaging.lottery-stream")).isNull();
+        assertThat(environment.getProperty("luckyhub.messaging.lottery-group")).isNull();
     }
 
     @Test
     void rejectsUnsafeMessagingAndOutboxSettings() {
-        assertThatThrownBy(() -> new MessagingProperties(true, "redis-stream", " ", "group",
-                "consumer", 20, Duration.ofSeconds(1), Duration.ofSeconds(30), Duration.ofSeconds(30)))
+        assertThatThrownBy(() -> new MessagingProperties(
+                true, " ", Duration.ofSeconds(5), Duration.ofSeconds(30)))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new MessagingProperties(true, "redis-stream", "stream", " ",
-                "consumer", 20, Duration.ofSeconds(1), Duration.ofSeconds(30), Duration.ofSeconds(30)))
+        assertThatThrownBy(() -> new MessagingProperties(
+                true, "consumer", Duration.ZERO, Duration.ofSeconds(30)))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new MessagingProperties(true, "redis-stream", "stream", "group",
-                "consumer", 20, Duration.ZERO, Duration.ofSeconds(30), Duration.ofSeconds(30)))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new MessagingProperties(true, "redis-stream", "stream", "group",
-                "consumer", 20, Duration.ofSeconds(1), Duration.ZERO, Duration.ofSeconds(30)))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new MessagingProperties(true, "redis-stream", "stream", "group",
-                "consumer", 20, Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(30)))
+        assertThatThrownBy(() -> new MessagingProperties(
+                true, "consumer", Duration.ofSeconds(5), Duration.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new LotteryProperties(ZoneId.of("Asia/Shanghai"), Duration.ofSeconds(1),
                 Duration.ofMinutes(2), Duration.ofSeconds(30), Duration.ofSeconds(1), 100,

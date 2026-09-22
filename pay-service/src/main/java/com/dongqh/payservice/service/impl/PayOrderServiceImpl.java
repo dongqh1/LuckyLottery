@@ -3,27 +3,30 @@ package com.dongqh.payservice.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.dongqh.hmapi.client.TradeClient;
 import com.dongqh.hmapi.client.UserClient;
 import com.dongqh.hmapi.dto.OrderPaymentDTO;
+import com.dongqh.hmapi.dto.PaySuccessMessage;
 import com.dongqh.payservice.domain.dto.PayApplyDTO;
 import com.dongqh.payservice.domain.dto.PayOrderFormDTO;
 import com.dongqh.payservice.domain.po.PayOrder;
 import com.dongqh.payservice.enums.PayStatus;
 import com.dongqh.payservice.mapper.PayOrderMapper;
-import com.dongqh.payservice.marketing.CouponCheckoutClient;
+import com.dongqh.payservice.messaging.PayOutboxService;
 import com.dongqh.payservice.service.IPayOrderService;
 import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.common.utils.UserContext;
+import org.apache.seata.spring.annotation.GlobalTransactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * <p>
@@ -43,7 +46,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
 
     private final PayOrderMapper payOrderMapper;
 
-    private final CouponCheckoutClient couponCheckoutClient;
+    private final PayOutboxService payOutboxService;
 
 
 
@@ -68,6 +71,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     }
 
     @Override
+    @GlobalTransactional(name = "pay-by-balance")
     @Transactional
     public void tryPayOrderByBalance(PayOrderFormDTO payOrderFormDTO) {
         if (payOrderFormDTO == null || payOrderFormDTO.getId() == null) {
@@ -111,10 +115,14 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
 
         // 后续任一步失败都会由当前事务回滚支付单 CAS。
         userService.deductMoney(payOrderFormDTO.getPw(), order.getTotalFee());
-        tradeClient.markOrderPaySuccess(order.getId(), order.getUserId(), order.getTotalFee());
-        if (order.getCouponId() != null) {
-            couponCheckoutClient.use(order.getCouponId(), order.getId());
-        }
+
+        payOutboxService.append(new PaySuccessMessage(
+                UUID.randomUUID().toString(),
+                order.getId(),
+                order.getUserId(),
+                order.getTotalFee(),
+                order.getCouponId(),
+                paidAt));
     }
 
     @Override

@@ -6,6 +6,10 @@ import com.dongqh.luckyhub.catalog.service.CatalogService;
 import com.dongqh.luckyhub.inventory.channel.dto.AllocateChannelStockCommand;
 import com.dongqh.luckyhub.inventory.channel.dto.InitializeSkuStockCommand;
 import com.dongqh.luckyhub.inventory.channel.service.ChannelInventoryService;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressClient;
+import com.dongqh.luckyhub.integration.hmall.HmallAddressView;
+import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
+import com.dongqh.luckyhub.integration.hmall.HmallItemView;
 import com.dongqh.luckyhub.rbac.entity.SysUser;
 import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
 import com.dongqh.luckyhub.shipping.dto.CreateShippingAddressCommand;
@@ -16,10 +20,13 @@ import com.dongqh.luckyhub.shipping.service.ShippingAddressSnapshotService;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import static org.mockito.Mockito.when;
 
 abstract class Task5ShippingTestFixture {
     @Autowired protected JdbcTemplate jdbc;
@@ -28,6 +35,8 @@ abstract class Task5ShippingTestFixture {
     @Autowired protected ShippingAddressSnapshotService snapshots;
     @Autowired protected CatalogService catalog;
     @Autowired protected ChannelInventoryService inventory;
+    @MockitoBean protected HmallAddressClient hmallAddresses;
+    @MockitoBean protected HmallCatalogClient hmallCatalog;
 
     private final List<Long> userIds = new ArrayList<>();
     private final List<Long> skuIds = new ArrayList<>();
@@ -73,8 +82,15 @@ abstract class Task5ShippingTestFixture {
     }
 
     protected long createAddress(long userId) {
-        return addresses.create(userId, new CreateShippingAddressCommand(
+        long addressId = addresses.create(userId, new CreateShippingAddressCommand(
                 "张三", "13812345678", "浙江省", "杭州市", "余杭区", "文一西路1号", false)).id();
+        stubHmallAddress(addressId, "张三", "13812345678", "文一西路1号");
+        return addressId;
+    }
+
+    protected void stubHmallAddress(long addressId, String contact, String mobile, String street) {
+        when(hmallAddresses.getAddress(addressId)).thenReturn(new HmallAddressView(
+                addressId, "浙江省", "杭州市", "余杭区", mobile, street, contact, 0, null));
     }
 
     protected ShippingAddressSnapshot createSnapshot(
@@ -91,6 +107,9 @@ abstract class Task5ShippingTestFixture {
                 "TASK5-S-" + suffix, "默认规格", cash ? 100L : null,
                 points ? 100L : null, cash, points));
         long skuId = product.skus().get(0).id();
+        when(hmallCatalog.getItem(skuId)).thenReturn(new HmallItemView(
+                skuId, product.productName(), cash ? 100 : null, 10,
+                product.imageUrl(), "实物", "LuckyHub", "默认规格", 1));
         productIds.add(product.id());
         skuIds.add(skuId);
         inventory.initialize(new InitializeSkuStockCommand(skuId, 10, "TASK5-INIT-" + suffix));

@@ -12,12 +12,14 @@ public interface PointsRedemptionOrderMapper extends BaseMapper<PointsRedemption
 
     @Insert("""
             INSERT IGNORE INTO points_redemption_order (
-                redemption_no, user_id, sku_id, quantity, unit_points, total_points,
+                redemption_no, user_id, sku_id, offer_id, hmall_item_id, quantity,
+                unit_points, total_points, cash_price_cent,
                 product_code, product_name, sku_code, sku_name, product_type, image_url,
                 status, created_at, updated_at
             ) VALUES (
-                #{order.redemptionNo}, #{order.userId}, #{order.skuId}, #{order.quantity},
-                #{order.unitPoints}, #{order.totalPoints}, #{order.productCode},
+                #{order.redemptionNo}, #{order.userId}, #{order.skuId}, #{order.offerId},
+                #{order.hmallItemId}, #{order.quantity}, #{order.unitPoints},
+                #{order.totalPoints}, #{order.cashPriceCent}, #{order.productCode},
                 #{order.productName}, #{order.skuCode}, #{order.skuName},
                 #{order.productType}, #{order.imageUrl}, #{order.status},
                 CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)

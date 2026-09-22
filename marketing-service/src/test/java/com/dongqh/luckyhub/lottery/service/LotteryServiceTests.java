@@ -142,7 +142,9 @@ class LotteryServiceTests {
 
     @Test
     void rejectsInvalidUuidAndUnsupportedDrawCountBeforeDependencies() {
-        assertError(() -> service.draw(new DrawCommand("not-uuid", 20L, 1)), LotteryErrorCode.DRAW_PARAMETER_INVALID);
+        assertError(() -> service.draw(new DrawCommand(" ", 20L, 1)), LotteryErrorCode.DRAW_PARAMETER_INVALID);
+        assertError(() -> service.draw(new DrawCommand("hmall-1788418028039-12345", 20L, 1)),
+                LotteryErrorCode.DRAW_PARAMETER_INVALID);
         assertError(() -> service.draw(new DrawCommand(UUID.randomUUID().toString(), 20L, 2)), LotteryErrorCode.DRAW_PARAMETER_INVALID);
         verifyNoInteractions(orderMapper, eligibility, lock, quota, lifecycle, transaction);
     }
@@ -204,6 +206,22 @@ class LotteryServiceTests {
         verify(lifecycle, never()).markFailedAndRequestRelease(any(), anyString(), any());
         verify(quota).release(requestId);
         verify(drawChances).release(requestId);
+    }
+
+    @Test
+    void reservationReleasedByReconciliationBeforeExecutionFailsCreatedOrder() {
+        when(drawChances.reserve(any())).thenReturn(
+                new DrawChanceReservationResult(requestId, 20L, 10L, 1, drawDate, 1, 1,
+                        DrawChanceReservationStatus.RESERVED, false),
+                new DrawChanceReservationResult(requestId, 20L, 10L, 1, drawDate, 1, 0,
+                        DrawChanceReservationStatus.RELEASED, true));
+
+        assertError(() -> service.draw(command), LotteryErrorCode.DRAW_ORDER_FAILED);
+
+        verify(drawChances, times(2)).reserve(any());
+        verifyNoInteractions(transaction);
+        verify(lifecycle).markFailedAndRequestRelease(
+                argThat(o -> o.getId() == 99L), eq("DRAW_TRANSACTION_FAILED"), eq(now));
     }
 
     @Test

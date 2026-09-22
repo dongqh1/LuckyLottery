@@ -3,6 +3,7 @@ package com.dongqh.luckyhub.auth.security;
 import com.dongqh.luckyhub.auth.enums.AuthErrorCode;
 import com.dongqh.luckyhub.auth.model.AuthenticatedUser;
 import com.dongqh.luckyhub.auth.model.JwtPayload;
+import com.dongqh.luckyhub.auth.model.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.BusinessException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -10,6 +11,8 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -22,15 +25,28 @@ public class JwtService {
 
     private final SecretKey secretKey;
     private final long expireSeconds;
+    private final HmallJwtService hmallJwtService;
 
+    @Autowired
     public JwtService(
             @Value("${luckyhub.security.jwt.secret}") String secret,
-            @Value("${luckyhub.security.jwt.expiration}") long expireSeconds
+            @Value("${luckyhub.security.jwt.expiration}") long expireSeconds,
+            HmallJwtService hmallJwtService
     ) {
         this.secretKey = Keys.hmacShaKeyFor(
                 Decoders.BASE64.decode(secret)
         );
         this.expireSeconds = expireSeconds;
+        this.hmallJwtService = hmallJwtService;
+    }
+
+    /** Compatibility constructor retained for original LuckyHub unit tests. */
+    public JwtService(String secret, long expireSeconds) {
+        this(
+                secret,
+                expireSeconds,
+                new HmallJwtService(new ClassPathResource("hmall-public.pem"))
+        );
     }
 
     public String generate(
@@ -51,36 +67,13 @@ public class JwtService {
     }
 
     public JwtPayload parse(String token) {
-        try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-
-            Long userId = Long.valueOf(claims.getSubject());
-            String username = claims.get(
-                    "username",
-                    String.class
-            );
-            String sessionId = claims.getId();
-
-            if (username == null
-                    || username.isBlank()
-                    || sessionId == null
-                    || sessionId.isBlank()) {
-                throw invalidToken();
-            }
-
-            return new JwtPayload(
-                    userId,
-                    username,
-                    sessionId
-            );
-        } catch (JwtException
-                 | IllegalArgumentException exception) {
-            throw invalidToken();
-        }
+        LoginPrincipal principal = hmallJwtService.parse(token);
+        return new JwtPayload(
+                principal.userId(),
+                principal.username(),
+                principal.sessionId(),
+                principal.role()
+        );
     }
 
     public String newSessionId() {

@@ -16,12 +16,14 @@ import com.dongqh.luckyhub.points.dto.PointsRedemptionQuery;
 import com.dongqh.luckyhub.points.dto.PointsReversalCommand;
 import com.dongqh.luckyhub.points.dto.ReversePointsRedemptionCommand;
 import com.dongqh.luckyhub.points.entity.PointsRedemptionOrder;
+import com.dongqh.luckyhub.points.entity.PointsRedemptionOffer;
 import com.dongqh.luckyhub.points.enums.PointsBusinessType;
 import com.dongqh.luckyhub.points.enums.PointsErrorCode;
 import com.dongqh.luckyhub.points.enums.PointsRedemptionStatus;
 import com.dongqh.luckyhub.points.mapper.PointsRedemptionOrderMapper;
 import com.dongqh.luckyhub.points.service.PointsAccountService;
 import com.dongqh.luckyhub.points.service.PointsRedemptionService;
+import com.dongqh.luckyhub.points.service.PointsRedemptionOfferService;
 import com.dongqh.luckyhub.points.vo.PointsRedemptionView;
 import com.dongqh.luckyhub.shipping.entity.ShippingAddressSnapshot;
 import com.dongqh.luckyhub.shipping.enums.ShippingErrorCode;
@@ -33,6 +35,7 @@ import com.dongqh.luckyhub.shipping.vo.ShippingAddressSnapshotView;
 import com.dongqh.luckyhub.shipping.entity.ShippingOrder;
 import com.dongqh.luckyhub.shipping.mapper.ShippingOrderMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +54,28 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
     private final ShippingAddressSnapshotService snapshotService;
     private final ShippingOrderService shippingOrderService;
     private final ShippingOrderMapper shippingOrderMapper;
+    private final PointsRedemptionOfferService offerService;
+
+    @Autowired
+    public PointsRedemptionServiceImpl(
+            CatalogService catalogService,
+            PointsAccountService accountService,
+            ChannelInventoryService inventoryService,
+            PointsRedemptionOrderMapper orderMapper,
+            ShippingAddressSnapshotService snapshotService,
+            ShippingOrderService shippingOrderService,
+            ShippingOrderMapper shippingOrderMapper,
+            PointsRedemptionOfferService offerService
+    ) {
+        this.catalogService = catalogService;
+        this.accountService = accountService;
+        this.inventoryService = inventoryService;
+        this.orderMapper = orderMapper;
+        this.snapshotService = snapshotService;
+        this.shippingOrderService = shippingOrderService;
+        this.shippingOrderMapper = shippingOrderMapper;
+        this.offerService = offerService;
+    }
 
     public PointsRedemptionServiceImpl(
             CatalogService catalogService,
@@ -61,13 +86,8 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
             ShippingOrderService shippingOrderService,
             ShippingOrderMapper shippingOrderMapper
     ) {
-        this.catalogService = catalogService;
-        this.accountService = accountService;
-        this.inventoryService = inventoryService;
-        this.orderMapper = orderMapper;
-        this.snapshotService = snapshotService;
-        this.shippingOrderService = shippingOrderService;
-        this.shippingOrderMapper = shippingOrderMapper;
+        this(catalogService, accountService, inventoryService, orderMapper, snapshotService,
+                shippingOrderService, shippingOrderMapper, null);
     }
 
     @Override
@@ -76,8 +96,13 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
         String redemptionNo = command.redemptionNo().trim();
         PointsRedemptionOrder existing = find(redemptionNo);
         if (existing != null) {
-            validateIdentity(existing, userId, command.skuId(), command.quantity(), command.addressId());
+            validateIdentity(existing, userId, command.skuId(), command.offerId(),
+                    command.quantity(), command.addressId());
             return view(existing);
+        }
+
+        if (command.offerId() != null) {
+            return createHmallOffer(userId, command, redemptionNo);
         }
 
         RedeemableSkuSnapshot sku = catalogService.findRedeemableSku(command.skuId())
@@ -94,7 +119,8 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                 redemptionNo, userId, command.quantity(), sku, totalPoints);
         if (orderMapper.claim(order) != 1) {
             PointsRedemptionOrder winner = require(redemptionNo);
-            validateIdentity(winner, userId, command.skuId(), command.quantity(), command.addressId());
+            validateIdentity(winner, userId, command.skuId(), null,
+                    command.quantity(), command.addressId());
             return view(winner);
         }
 
@@ -125,6 +151,56 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                 throw shippingError(ShippingErrorCode.SHIPPING_IDEMPOTENCY_CONFLICT);
             }
         }
+        return view(require(redemptionNo));
+    }
+
+    private PointsRedemptionView createHmallOffer(
+            long userId,
+            CreatePointsRedemptionCommand command,
+            String redemptionNo
+    ) {
+        PointsRedemptionOffer offer = offerService.requireAvailable(command.offerId());
+        validateAddressShape(ProductType.PHYSICAL, command.addressId());
+        long totalPoints;
+        try {
+            totalPoints = Math.multiplyExact(offer.getUnitPoints(), command.quantity().longValue());
+        } catch (ArithmeticException exception) {
+            throw error(PointsErrorCode.POINTS_AMOUNT_INVALID);
+        }
+
+        PointsRedemptionOrder order = newHmallOrder(
+                redemptionNo, userId, command.quantity(), offer, totalPoints);
+        if (orderMapper.claim(order) != 1) {
+            PointsRedemptionOrder winner = require(redemptionNo);
+            validateIdentity(winner, userId, null, command.offerId(),
+                    command.quantity(), command.addressId());
+            return view(winner);
+        }
+
+        ShippingAddressSnapshot snapshot = snapshotService.create(userId, command.addressId(),
+                ShippingSourceType.POINTS_REDEMPTION, String.valueOf(order.getId()));
+        if (orderMapper.attachAddressSnapshot(order.getId(), snapshot.getId()) != 1) {
+            throw shippingError(ShippingErrorCode.SHIPPING_IDEMPOTENCY_CONFLICT);
+        }
+        order.setAddressSnapshotId(snapshot.getId());
+
+        offerService.deductStock(offer.getId(), command.quantity());
+        accountService.debit(new PointsMutationCommand(
+                userId, PointsBusinessType.REDEMPTION, redemptionNo,
+                totalPoints, "积分兑换商城商品"));
+        if (orderMapper.completeProcessing(redemptionNo) != 1) {
+            throw error(PointsErrorCode.REDEMPTION_STATE_CONFLICT);
+        }
+        order.setStatus(PointsRedemptionStatus.COMPLETED);
+
+        var shipping = shippingOrderService.create(new CreateShippingOrderCommand(
+                ShippingSourceType.POINTS_REDEMPTION, String.valueOf(order.getId()), order.getUserId(),
+                order.getAddressSnapshotId(), order.getHmallItemId(), order.getSkuCode(),
+                order.getProductName(), order.getImageUrl(), order.getQuantity(), null));
+        if (orderMapper.attachShippingOrder(order.getId(), shipping.id()) != 1) {
+            throw shippingError(ShippingErrorCode.SHIPPING_IDEMPOTENCY_CONFLICT);
+        }
+        order.setShippingOrderId(shipping.id());
         return view(require(redemptionNo));
     }
 
@@ -189,7 +265,11 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
             }
             throw exception;
         }
-        inventoryService.reverseConfirmed(redemptionNo);
+        if (order.getOfferId() != null) {
+            offerService.restoreStock(order.getOfferId(), order.getQuantity());
+        } else {
+            inventoryService.reverseConfirmed(redemptionNo);
+        }
         if (orderMapper.reverseCompleted(redemptionNo, reversalNo, reason) != 1) {
             throw error(PointsErrorCode.REDEMPTION_STATE_CONFLICT);
         }
@@ -220,6 +300,32 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
         return order;
     }
 
+    private PointsRedemptionOrder newHmallOrder(
+            String redemptionNo,
+            long userId,
+            int quantity,
+            PointsRedemptionOffer offer,
+            long totalPoints
+    ) {
+        PointsRedemptionOrder order = new PointsRedemptionOrder();
+        order.setRedemptionNo(redemptionNo);
+        order.setUserId(userId);
+        order.setOfferId(offer.getId());
+        order.setHmallItemId(offer.getHmallItemId());
+        order.setQuantity(quantity);
+        order.setUnitPoints(offer.getUnitPoints());
+        order.setTotalPoints(totalPoints);
+        order.setCashPriceCent(offer.getCashPriceCent());
+        order.setProductCode("HMALL-ITEM-" + offer.getHmallItemId());
+        order.setProductName(offer.getItemName());
+        order.setSkuCode("HMALL-ITEM-" + offer.getHmallItemId());
+        order.setSkuName(offer.getItemName());
+        order.setProductType(ProductType.PHYSICAL);
+        order.setImageUrl(offer.getImageUrl());
+        order.setStatus(PointsRedemptionStatus.PROCESSING);
+        return order;
+    }
+
     private PointsRedemptionOrder find(String redemptionNo) {
         return orderMapper.selectOne(new LambdaQueryWrapper<PointsRedemptionOrder>()
                 .eq(PointsRedemptionOrder::getRedemptionNo, redemptionNo));
@@ -236,12 +342,14 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
     private void validateIdentity(
             PointsRedemptionOrder order,
             long userId,
-            long skuId,
+            Long skuId,
+            Long offerId,
             int quantity,
             Long addressId
     ) {
         if (!Objects.equals(order.getUserId(), userId)
                 || !Objects.equals(order.getSkuId(), skuId)
+                || !Objects.equals(order.getOfferId(), offerId)
                 || !Objects.equals(order.getQuantity(), quantity)
                 || !sameAddress(order, addressId)) {
             throw error(PointsErrorCode.POINTS_IDEMPOTENCY_CONFLICT);
@@ -253,7 +361,8 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                 : shippingOrderMapper.selectById(order.getShippingOrderId());
         return new PointsRedemptionView(
                 order.getId(), order.getRedemptionNo(), order.getUserId(), order.getSkuId(),
-                order.getQuantity(), order.getUnitPoints(), order.getTotalPoints(),
+                order.getOfferId(), order.getHmallItemId(), order.getQuantity(),
+                order.getUnitPoints(), order.getTotalPoints(), order.getCashPriceCent(),
                 order.getProductCode(), order.getProductName(), order.getSkuCode(),
                 order.getSkuName(), order.getProductType(), order.getImageUrl(),
                 order.getStatus(), order.getReversalNo(), order.getFailureReason(),

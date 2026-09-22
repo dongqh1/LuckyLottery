@@ -20,9 +20,10 @@ public class HttpHmallAddressClient implements HmallAddressClient {
 
     @Autowired
     public HttpHmallAddressClient(
+            RestClient.Builder builder,
             @Value("${luckyhub.integration.hmall.address-base-url:http://localhost:8083}") String baseUrl
     ) {
-        this(RestClient.builder(), baseUrl, HttpHmallAddressClient::currentAuthorization);
+        this(builder, baseUrl, HttpHmallAddressClient::currentAuthorization);
     }
 
     HttpHmallAddressClient(RestClient.Builder builder, String baseUrl, Supplier<String> authorization) {

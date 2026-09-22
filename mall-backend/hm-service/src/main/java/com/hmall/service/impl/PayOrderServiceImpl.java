@@ -2,7 +2,7 @@ package com.hmall.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.common.utils.UserContext;
@@ -12,6 +12,7 @@ import com.hmall.domain.po.Order;
 import com.hmall.domain.po.PayOrder;
 import com.hmall.enums.PayStatus;
 import com.hmall.mapper.PayOrderMapper;
+import com.hmall.integration.marketing.CouponCheckoutClient;
 import com.hmall.service.IOrderService;
 import com.hmall.service.IPayOrderService;
 import com.hmall.service.IUserService;
@@ -37,8 +38,18 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
 
     private final IOrderService orderService;
 
+    private final CouponCheckoutClient couponCheckoutClient;
+
     @Override
+    @Transactional
     public String applyPayOrder(PayApplyDTO applyDTO) {
+        if (applyDTO == null || applyDTO.getBizOrderNo() == null) throw new BizIllegalException("订单不能为空");
+        Order order = orderService.lockOrder(applyDTO.getBizOrderNo());
+        if (order == null || UserContext.getUser() == null || !UserContext.getUser().equals(order.getUserId())
+                || !Integer.valueOf(1).equals(order.getStatus()) || order.getTotalFee() == null || order.getTotalFee() <= 0) {
+            throw new BizIllegalException("业务订单不可支付");
+        }
+        applyDTO.setAmount(order.getTotalFee()); // Never accept browser pricing.
         // 1.幂等性校验
         PayOrder payOrder = checkIdempotent(applyDTO);
         // 2.返回结果
@@ -48,26 +59,66 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     @Override
     @Transactional
     public void tryPayOrderByBalance(PayOrderFormDTO payOrderFormDTO) {
-        // 1.查询支付单
-        PayOrder po = getById(payOrderFormDTO.getId());
-        // 2.判断状态
-        if(!PayStatus.WAIT_BUYER_PAY.equalsValue(po.getStatus())){
-            // 订单不是未支付，状态异常
+        if (payOrderFormDTO == null || payOrderFormDTO.getId() == null) {
+            throw new BizIllegalException("支付单不能为空！");
+        }
+
+        PayOrder payOrder = getById(payOrderFormDTO.getId());
+        if (payOrder == null) {
+            throw new BizIllegalException("支付单不存在！");
+        }
+
+        Long currentUserId = UserContext.getUser();
+        if (currentUserId == null || !currentUserId.equals(payOrder.getBizUserId())) {
+            throw new BizIllegalException("无权支付该订单！");
+        }
+        // The initial non-locking lookup is for identity only; it can predate a coupon commit.
+        Order order = orderService.lockOrder(payOrder.getBizOrderNo());
+        payOrder = baseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PayOrder>()
+                .eq("id", payOrderFormDTO.getId()).last("FOR UPDATE"));
+        if (payOrder == null || !currentUserId.equals(payOrder.getBizUserId())
+                || order == null || !order.getId().equals(payOrder.getBizOrderNo())) {
+            throw new BizIllegalException("业务订单信息与支付单不一致！");
+        }
+        if (payOrder.getAmount() == null || payOrder.getAmount() <= 0) {
+            throw new BizIllegalException("支付金额不合法！");
+        }
+        if (!PayStatus.WAIT_BUYER_PAY.equalsValue(payOrder.getStatus())) {
             throw new BizIllegalException("交易已支付或关闭！");
         }
-        // 3.尝试扣减余额
-        userService.deductMoney(payOrderFormDTO.getPw(), po.getAmount());
-        // 4.修改支付单状态
-        boolean success = markPayOrderSuccess(payOrderFormDTO.getId(), LocalDateTime.now());
-        if (!success) {
+
+        // order was loaded with a current locking read above.
+        if (order == null
+                || !currentUserId.equals(order.getUserId())
+                || !Integer.valueOf(1).equals(order.getStatus())
+                || !payOrder.getAmount().equals(order.getTotalFee())) {
+            throw new BizIllegalException("业务订单信息与支付单不一致！");
+        }
+
+        LocalDateTime paidAt = LocalDateTime.now();
+        if (!markPayOrderSuccess(payOrder.getId(), paidAt)) {
             throw new BizIllegalException("交易已支付或关闭！");
         }
-        // 5.修改订单状态
-        Order order = new Order();
-        order.setId(po.getBizOrderNo());
-        order.setStatus(2);
-        order.setPayTime(LocalDateTime.now());
-        orderService.updateById(order);
+
+        // 后续任一步失败都会由当前事务回滚支付单 CAS。
+        userService.deductMoney(payOrderFormDTO.getPw(), order.getTotalFee());
+        if (!markBusinessOrderPaid(order, paidAt)) {
+            throw new BizIllegalException("订单状态已变更，支付失败！");
+        }
+        if (order.getCouponId() != null) {
+            couponCheckoutClient.use(order.getCouponId(), order.getId());
+        }
+    }
+
+    public boolean markBusinessOrderPaid(Order order, LocalDateTime paidAt) {
+        return orderService.lambdaUpdate()
+                .set(Order::getStatus, 2)
+                .set(Order::getPayTime, paidAt)
+                .eq(Order::getId, order.getId())
+                .eq(Order::getUserId, order.getUserId())
+                .eq(Order::getTotalFee, order.getTotalFee())
+                .eq(Order::getStatus, 1)
+                .update();
     }
 
     public boolean markPayOrderSuccess(Long id, LocalDateTime successTime) {
@@ -112,7 +163,13 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
             payOrder.setPayOrderNo(oldOrder.getPayOrderNo());
             return payOrder;
         }
-        // 6.旧单已经存在，且可能是未支付或未提交，且支付渠道一致，直接返回旧数据
+        // Refresh any legacy waiting payment using the authoritative, locked business-order amount.
+        if (!applyDTO.getAmount().equals(oldOrder.getAmount())) {
+            if (!updateById(new PayOrder().setId(oldOrder.getId()).setAmount(applyDTO.getAmount()))) {
+                throw new BizIllegalException("支付金额更新失败");
+            }
+            oldOrder.setAmount(applyDTO.getAmount());
+        }
         return oldOrder;
     }
 

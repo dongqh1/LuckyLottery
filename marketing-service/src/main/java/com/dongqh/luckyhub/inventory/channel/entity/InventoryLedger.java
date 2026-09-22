@@ -19,6 +19,7 @@ public class InventoryLedger {
     private Long id;
     private String businessNo;
     private Long skuId;
+    private Long hmallItemId;
     private String channelCode;
     private InventoryOperation operation;
     private Integer quantity;

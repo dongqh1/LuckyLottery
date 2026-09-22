@@ -1,0 +1,63 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: user-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  config:
+    import:
+      - "optional:nacos:shared.jdbc.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:shared.logger.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:shared.swagger.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+      - "optional:nacos:${spring.application.name}.yaml?group=DEFAULT_GROUP&refreshEnabled=true"
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      config:
+        group: DEFAULT_GROUP
+      discovery:
+        enabled: true
+        register-enabled: true
+        group: DEFAULT_GROUP
+feign:
+  okhttp:
+    enabled: true
+hm:
+  swagger:
+    title: 黑马商城用户管理接口文档
+    description: 黑马商城用户管理接口文档
+    package: com.dongqh.userservice.controller
+  marketing:
+    base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+  jwt:
+    location: classpath:hmall.jks
+    alias: hmall
+    password: hmall123
+    tokenTTL: 30m
+  auth:
+    excludePaths:
+      - /search/**
+      - /users/login
+      - /hi
+seata:
+  enabled: ${SEATA_ENABLED:true}
+  application-id: ${spring.application.name}
+  tx-service-group: hmall_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      hmall_tx_group: default
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      group: DEFAULT_GROUP
+      namespace: ""
+      cluster: default
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}

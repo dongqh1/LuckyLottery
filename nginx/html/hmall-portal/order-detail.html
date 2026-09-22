@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>订单详情 - 黑马商城</title>
+  <link rel="stylesheet" href="css/webbase2.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <style>
+    .order-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+    .summary-item{padding:18px;background:#fafafa;border:1px solid #eee}
+    .summary-item span{display:block;color:#888;margin-bottom:8px}.summary-item strong{font-size:18px;color:#333}
+    .delivery-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:24px}.delivery-box{padding:18px;border:1px solid #eee;background:#fff}
+    .delivery-box h3{margin:0 0 14px;font-size:17px}.delivery-box p{margin:8px 0;color:#555;line-height:1.7}
+    .tracking-number{font-family:Consolas,monospace;color:#e1251b!important}
+    .progress{position:relative;margin:8px 0 0;padding-left:28px}.progress:before{content:"";position:absolute;left:8px;top:9px;bottom:16px;width:2px;background:#e7e7e7}
+    .progress-step{position:relative;padding:0 0 24px 14px}.progress-step:last-child{padding-bottom:0}.progress-step:before{content:"";position:absolute;left:-25px;top:5px;width:10px;height:10px;border-radius:50%;background:#e1251b;box-shadow:0 0 0 4px #fde9e7}
+    .progress-step strong{display:block;margin-bottom:5px}.progress-step time{color:#999}.status-tag{display:inline-block;padding:4px 11px;border-radius:12px;background:#fde9e7;color:#c81623}
+    .loading,.page-error{padding:50px;text-align:center;color:#888}.page-error{color:#c81623}
+    @media(max-width:900px){.order-summary{grid-template-columns:repeat(2,1fr)}.delivery-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div id="app">
+  <top></top>
+  <marketing-header></marketing-header>
+  <main class="marketing-page">
+    <div class="breadcrumb">首页 &gt; 我的订单 &gt; 订单详情</div>
+    <div class="page-heading"><h1>订单详情</h1><p>订单价格、收货地址和配送进度均来自黑马商城订单记录</p></div>
+
+    <div class="page-error" v-if="error">{{error}}</div>
+    <div class="loading" v-else-if="!order.id">订单信息加载中...</div>
+    <template v-else>
+      <section class="panel">
+        <div class="panel-title"><h2>订单 {{order.id}}</h2><span class="status-tag">{{statusName(order.status)}}</span></div>
+        <div class="panel-body order-summary">
+          <div class="summary-item"><span>商品原价</span><strong>¥{{money(order.originalFee)}}</strong></div>
+          <div class="summary-item"><span>会员优惠</span><strong>- ¥{{money(order.membershipDiscountFee)}}</strong></div>
+          <div class="summary-item"><span>优惠券优惠</span><strong>- ¥{{money(order.couponDiscountFee)}}</strong></div>
+          <div class="summary-item"><span>实付金额</span><strong>¥{{money(order.totalFee)}}</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title"><h2>配送信息</h2><button class="secondary" @click="load">刷新</button></div>
+        <div class="panel-body delivery-grid" v-if="order.delivery">
+          <div class="delivery-box">
+            <h3>承运与收货信息</h3>
+            <p>承运商：<strong>{{order.delivery.carrier||'商家备货中'}}</strong></p>
+            <p class="tracking-number">运单号：{{order.delivery.trackingNumber||'发货后生成'}}</p>
+            <template v-if="order.delivery.addressSnapshot">
+              <p>收件人：{{order.delivery.addressSnapshot.contact}}　{{order.delivery.addressSnapshot.mobile}}</p>
+              <p>收货地址：{{order.delivery.addressSnapshot.fullAddress}}</p>
+            </template>
+          </div>
+          <div class="delivery-box">
+            <h3>物流进度</h3>
+            <div class="progress" v-if="progressSteps.length">
+              <div class="progress-step" v-for="step in progressSteps" :key="step.code">
+                <strong>{{step.title}}</strong><time>{{formatTime(step.time)}}</time>
+              </div>
+            </div>
+            <p v-else>暂无物流节点</p>
+          </div>
+        </div>
+        <div class="panel-body empty" v-else>配送信息正在生成，请稍后刷新。</div>
+      </section>
+    </template>
+  </main>
+</div>
+<script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
+<script>
+new Vue({el:'#app',data:{order:{},error:''},created(){if(!util.isLogin()){util.store.set('return-url',location.href);location.href='/login.html';return}this.load()},computed:{progressSteps(){return[{code:'CREATED',title:'订单已创建',time:this.order.createTime},{code:'PAID',title:'支付完成',time:this.order.payTime},{code:'SHIPPED',title:'商品已发货',time:this.order.consignTime},{code:'DELIVERED',title:'订单已签收',time:this.order.endTime}].filter(step=>step.time)}},methods:{load(){const orderId=util.getUrlParam('orderId');if(!orderId){this.error='缺少订单号，无法查询订单';return}this.error='';axios.get("/orders/"+orderId).then(resp=>{this.order=resp}).catch(error=>{this.error=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||'订单详情加载失败'})},money(cent){return((cent||0)/100).toFixed(2)},formatTime(value){return value?value.replace('T',' ').slice(0,19):'-'},statusName(status){return({1:'待付款',2:'已付款，等待发货',3:'已发货',4:'已签收',5:'已取消',6:'交易完成'})[status]||'状态更新中'}}})
+</script>
+</body>
+</html>

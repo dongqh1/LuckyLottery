@@ -37,6 +37,30 @@ public class Order implements Serializable {
      */
     private Integer totalFee;
 
+    /** 商品原价总额，单位为分 */
+    private Integer originalFee;
+
+    /** 会员优惠金额，单位为分 */
+    private Integer membershipDiscountFee;
+
+    /** 下单时冻结的会员等级 */
+    private String membershipLevel;
+
+    /** 下单时冻结的会员折扣基点，10000 表示不打折 */
+    private Integer membershipDiscountBasisPoints;
+
+    /** 下单时预占的 LuckyHub 用户优惠券 ID */
+    private Long couponId;
+
+    /** 优惠券模板 ID 快照 */
+    private Long couponTemplateId;
+
+    /** 优惠券名称快照 */
+    private String couponName;
+
+    /** 优惠券优惠金额，单位为分 */
+    private Integer couponDiscountFee;
+
     /**
      * 支付类型，1、支付宝，2、微信，3、扣减余额
      */

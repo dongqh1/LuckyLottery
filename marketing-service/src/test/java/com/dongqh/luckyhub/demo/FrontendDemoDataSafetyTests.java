@@ -306,6 +306,9 @@ class FrontendDemoDataSafetyTests {
     }
 
     private ProcessResult runWrapper(Map<String, String> environment, String... arguments) throws Exception {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows"),
+                "PowerShell wrapper contract is Windows-only");
         Path script = Path.of("scripts", "dev", "Initialize-FrontendDemoData.ps1").toAbsolutePath();
         var command = new java.util.ArrayList<String>();
         command.add("pwsh");

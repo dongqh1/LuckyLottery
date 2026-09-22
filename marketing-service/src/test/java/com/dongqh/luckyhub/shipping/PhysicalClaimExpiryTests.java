@@ -189,7 +189,7 @@ class PhysicalClaimExpiryTests {
         row.setId(31L); row.setDrawRecordId(21L); row.setUserId(11L); row.setPrizeId(71L);
         row.setPrizeType(PrizeType.PHYSICAL); row.setRewardDefinitionId(81L);
         row.setRewardType(RewardType.PRODUCT); row.setRewardTargetId(91L); row.setRewardQuantity(2L);
-        row.setRewardPayload("{\"skuId\":91,\"skuCode\":\"SKU-1\",\"productName\":\"礼盒\",\"skuName\":\"默认\",\"quantity\":2}");
+        row.setRewardPayload("{\"itemId\":91,\"itemName\":\"礼盒\",\"itemImage\":null,\"itemPriceCent\":9900,\"quantity\":2}");
         row.setRewardFingerprint("a".repeat(64)); row.setQuantity(2);
         row.setStatus(BenefitStatus.CLAIM_PENDING); row.setClaimDeadline(deadline);
         return row;

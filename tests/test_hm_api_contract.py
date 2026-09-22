@@ -22,7 +22,8 @@ class HmApiContractTest(unittest.TestCase):
         self.assertIn("hm-api", modules)
         self.assertLess(modules.index("hm-api"), modules.index("cart-service"))
 
-    def test_hm_api_matches_hmall_java_11_baseline(self):
+    def test_hm_api_inherits_the_java_17_hmall_baseline(self):
+        root = parse_pom("pom.xml")
         api = parse_pom("hm-api/pom.xml")
         parent = api.find("m:parent", NS)
         self.assertIsNotNone(parent)
@@ -31,7 +32,7 @@ class HmApiContractTest(unittest.TestCase):
         self.assertEqual("1.0.0", value(parent, "m:version"))
         self.assertEqual("../mall-backend/pom.xml", value(parent, "m:relativePath"))
         self.assertEqual("hm-api", value(api, "m:artifactId"))
-        self.assertEqual("11", value(api, "m:properties/m:java.version"))
+        self.assertEqual("17", value(root, "m:properties/m:java.version"))
 
     def test_hm_api_is_a_non_runnable_openfeign_contract_jar(self):
         api = parse_pom("hm-api/pom.xml")
@@ -39,7 +40,13 @@ class HmApiContractTest(unittest.TestCase):
             (value(node, "m:groupId"), value(node, "m:artifactId"))
             for node in api.findall("m:dependencies/m:dependency", NS)
         }
-        self.assertEqual({("org.springframework.cloud", "spring-cloud-starter-openfeign")}, dependencies)
+        self.assertEqual(
+            {
+                ("org.springframework.cloud", "spring-cloud-starter-openfeign"),
+                ("com.heima", "hm-common"),
+            },
+            dependencies,
+        )
         self.assertIsNone(api.find("m:build/m:plugins/m:plugin", NS))
         self.assertFalse((ROOT / "hm-api/src/main/java/com/dongqh/hmapi/HmApiApplication.java").exists())
         self.assertFalse((ROOT / "hm-api/src/main/resources/application.yaml").exists())

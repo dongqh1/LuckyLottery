@@ -24,10 +24,10 @@ public class ActivityPrizeInventoryServiceImpl implements ActivityPrizeInventory
     }
 
     @Override
-    public void returnExpiredClaim(long activityPrizeId, long skuId, String businessNo) {
+    public void returnExpiredClaim(long activityPrizeId, long hmallItemId, String businessNo) {
         InventoryLedger ledger = new InventoryLedger();
         ledger.setBusinessNo(businessNo);
-        ledger.setSkuId(skuId);
+        ledger.setHmallItemId(hmallItemId);
         ledger.setChannelCode("LOTTERY");
         ledger.setOperation(InventoryOperation.CLAIM_RETURN);
         ledger.setQuantity(1);

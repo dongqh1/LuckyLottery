@@ -72,13 +72,12 @@ class DatabaseSplitContractTest(unittest.TestCase):
             self.assertIn("optional:file:.env[.properties]", local)
             self.assertIn("optional:file:../.env[.properties]", local)
 
-    def test_trade_and_pay_base_yaml_define_datasource(self):
+    def test_trade_and_pay_base_yaml_import_the_shared_datasource(self):
         for domain in ("trade", "pay"):
             application = self.read(f"{domain}-service/src/main/resources/application.yaml")
             self.assertIn("active: ${SPRING_PROFILES_ACTIVE:local}", application)
-            self.assertIn("jdbc:mysql://${hm.db.host}:${hm.db.port}/${hm.db.database}", application)
-            self.assertIn("username: ${hm.db.username}", application)
-            self.assertIn("password: ${hm.db.password}", application)
+            self.assertIn("optional:nacos:shared.jdbc.yaml", application)
+            self.assertNotIn("jdbc:mysql://${hm.db.host}:${hm.db.port}/${hm.db.database}", application)
 
 
 if __name__ == "__main__":
