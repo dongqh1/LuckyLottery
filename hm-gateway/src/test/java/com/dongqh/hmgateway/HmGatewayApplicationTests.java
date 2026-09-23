@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinitionLocator;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -30,12 +31,12 @@ class HmGatewayApplicationTests {
     }
 
     @Test
-    void keepsTheFiveServiceRoutes() {
-        Map<String, String> routes = routeDefinitionLocator.getRouteDefinitions()
+    void keepsHmRoutesAndOrdersMarketingCallbacksBeforeLegacyFallback() {
+        List<RouteDefinition> routeDefinitions = routeDefinitionLocator.getRouteDefinitions()
                 .collectList()
                 .blockOptional()
-                .orElseThrow()
-                .stream()
+                .orElseThrow();
+        Map<String, String> routes = routeDefinitions.stream()
                 .collect(Collectors.toMap(RouteDefinition::getId, route -> route.getUri().toString()));
 
         assertEquals(Map.of(
@@ -43,8 +44,21 @@ class HmGatewayApplicationTests {
                 "cart-service", "lb://cart-service",
                 "user-service", "lb://user-service",
                 "trade-service", "lb://trade-service",
-                "pay-service", "lb://pay-service"
+                "pay-service", "lb://pay-service",
+                "marketing-payment-callback-compat", "lb://marketing-service",
+                "marketing-payment-callback-native", "lb://marketing-service",
+                "marketing-legacy", "lb://marketing-service"
         ), routes);
+        assertEquals(List.of(
+                "item-service",
+                "cart-service",
+                "user-service",
+                "trade-service",
+                "pay-service",
+                "marketing-payment-callback-compat",
+                "marketing-payment-callback-native",
+                "marketing-legacy"
+        ), routeDefinitions.stream().map(RouteDefinition::getId).toList());
     }
 
     @Test

@@ -38,6 +38,20 @@ spring:
               uri: lb://pay-service
               predicates:
                 - Path=/pay-orders/**
+            - id: marketing-payment-callback-compat
+              uri: lb://marketing-service
+              predicates:
+                - Path=/api/callbacks/payments,/api/callbacks/payments/**
+              filters:
+                - StripPrefix=1
+            - id: marketing-payment-callback-native
+              uri: lb://marketing-service
+              predicates:
+                - Path=/callbacks/payments,/callbacks/payments/**
+            - id: marketing-legacy
+              uri: lb://marketing-service
+              predicates:
+                - Path=/api/**
 hm:
   marketing:
     base-url: ${MARKETING_BASE_URL:http://localhost:8080}
@@ -50,3 +64,4 @@ hm:
       - POST /users/login
       - GET /items/**
       - GET /hi
+      - POST /api/shipping/callbacks/logistics
