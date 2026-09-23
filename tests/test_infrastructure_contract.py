@@ -667,6 +667,7 @@ class NginxRoutingContractTest(unittest.TestCase):
         )
         self.assertIn("- POST /api/shipping/callbacks/logistics", application)
         self.assertNotIn("POST /api/auth/login", application)
+        self.assertNotIn("POST /api/callbacks/payments", application)
         self.assertNotIn("POST /callbacks/payments", application)
         self.assertIn("- id: marketing-payment-callback-native", application)
         self.assertIn("Path=/callbacks/payments,/callbacks/payments/**", application)

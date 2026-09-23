@@ -92,6 +92,13 @@ class AuthGlobalFilterTest {
         filter.filter(get, capture(forwarded)).block();
         assertThat(forwarded.get()).isNull();
         assertThat(get.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        forwarded.set(null);
+        MockServerWebExchange nestedPost = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/shipping/callbacks/logistics/extra"));
+        filter.filter(nestedPost, capture(forwarded)).block();
+        assertThat(forwarded.get()).isNull();
+        assertThat(nestedPost.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
