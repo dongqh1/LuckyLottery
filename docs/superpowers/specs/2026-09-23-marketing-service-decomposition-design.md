@@ -72,7 +72,7 @@ hmall-lottery/
 - `FulfillmentClient`：履约任务创建和状态查询；
 - 事件 DTO：`OrderPaidEventV1`、`LotteryRewardCreatedEventV1`、`PointsRedemptionCreatedEventV1`、`FulfillmentStatusChangedEventV1`。
 
-只将真实跨服务调用所需的契约加入 `hm-api`。服务提供方不反向依赖 `hm-api` 中的客户端实现；契约使用普通 Java 类型，不暴露 ORM Entity、Servlet 类型或业务实现。
+只将真实跨服务调用所需的契约加入 `hm-api`。上述接口清单是迁移期间的契约盘点，不提前添加无调用方/提供方的空接口；每个服务 API 在提供方实现、调用方接入的同一迁移阶段定义并测试。服务提供方不反向依赖 `hm-api` 中的客户端实现；契约使用普通 Java 类型，不暴露 ORM Entity、Servlet 类型或业务实现。
 
 ### hm-security
 
@@ -82,7 +82,7 @@ hmall-lottery/
 
 ### 浏览器入口兼容
 
-浏览器现有 `/api/marketing/**` URL 保持不变。Nginx 特殊 location 保留现有改写规则 `^/api/marketing/(.*)$ -> /api/$1`，但上游从 `marketing-service:8080` 改为 `hm-gateway:8080`。Gateway 将收到的 `/api/**` 路径原样转发给对应服务；各服务暂时保留现有 `/api/...` Controller 路径，避免同一阶段重写前端和业务接口。
+浏览器现有 `/api/marketing/**` URL 保持不变。Nginx 特殊 location 保留现有改写规则 `^/api/marketing/(.*)$ -> /api/$1`，营销 API 上游改为 `hm-gateway:8080`。唯一的阶段性例外是精确登录 URL `/api/marketing/auth/login`：旧 Marketing 登录签发 HS256 并写入 Redis session，Gateway 只验证 HMall RS256；在 `user-service` 提供兼容登录响应并签发可被现有服务接受的 RS256 token 前，Nginx 以精确 location 继续把该登录请求送至 `marketing-service`，不经过 Gateway。完成用户/认证归并后移除此例外，不新增 Gateway 的 HS256 验证器。Gateway 将收到的其他 `/api/**` 路径原样转发给对应服务；各服务暂时保留现有 `/api/...` Controller 路径，避免同一阶段重写前端和业务接口。
 
 商城现有 `/api/**` 请求继续由 Nginx 改写后进入 Gateway，现有 `/items/**`、`/carts/**`、`/users/**`、`/addresses/**`、`/orders/**`、`/pay-orders/**` 路由行为保持不变。外部传入的 `user-info` 由 Nginx 清除，Gateway 再清除一次并仅在 JWT 验证成功后写入用户 ID。
 
@@ -102,9 +102,9 @@ Gateway 增加显式、互不含糊的营销路径规则，目标服务通过 Na
 | `/api/orders/**` | `trade-service` |
 | `/api/payments/**`、`/api/admin/payments/**`、`/callbacks/payments/**` | `pay-service` |
 
-为兼容当前 Nginx marketing rewrite 可能生成的 `/api/callbacks/payments/**`，Gateway 增加一条精确兼容规则并仅剥离开头的 `/api`，转发到服务原有 `/callbacks/payments/**`。Nginx 也为原生 `/callbacks/payments/**` 增加直达 Gateway 的入口，不额外改写路径。物流回调保留 `/api/shipping/callbacks/logistics`，在 Gateway 只豁免 `POST` 这一精确路径的 JWT 检查，继续要求履约服务执行现有签名、时间窗和去重校验。
+为兼容当前 Nginx marketing rewrite 可能生成的 `/api/callbacks/payments/**`，Gateway 增加一条兼容规则并仅剥离开头的 `/api`，转发到服务原有 `/callbacks/payments/**`；迁移完成后由 `pay-service` 接管。支付回调当前签名密钥为本地模拟用途，不构成生产级外部回调认证依据，因此该路径保留 JWT 默认校验，不新增 JWT 豁免，也不新增 Nginx 公网入口。物流回调保留 `/api/shipping/callbacks/logistics`，在 Gateway 只豁免 `POST` 这一精确路径的 JWT 检查，继续要求履约服务执行现有签名、时间窗和去重校验。
 
-`/api/users/login` 继续走商城现有 `user-service` 登录路由；营销兼容别名 `/api/auth/**` 也由同一 `user-service` 处理。Gateway 只将 `POST /users/login` 和 `POST /api/auth/login` 配成登录白名单；其他营销 API 仍要求 JWT。除当前物流回调的精确 `POST /api/shipping/callbacks/logistics` 例外外，回调认证行为遵循现有合同；任何支付回调免 JWT 的改动都需单独验证签名与防重放边界。
+`/api/users/login` 继续走商城现有 `user-service` 登录路由；身份归并后营销兼容别名 `/api/auth/**` 也由同一 `user-service` 处理，并以兼容 DTO/响应封装保留当前营销登录 JSON 字段和错误语义。只有兼容登录 API 已通过 token/响应契约测试且切换 Nginx 精确 location 后，Gateway 才将 `POST /api/auth/login` 加入登录白名单；在此前该精确浏览器 URL 不经过 Gateway。其他营销 API 仍要求 RS256 JWT。除当前物流回调的精确 `POST /api/shipping/callbacks/logistics` 例外外，回调认证行为遵循现有合同；任何支付回调免 JWT 的改动都需单独验证签名与防重放边界。
 
 ### 迁移期旧路由
 
@@ -145,11 +145,26 @@ Gateway 增加显式、互不含糊的营销路径规则，目标服务通过 Na
 
 所有参与 Seata 的新服务继续使用现有 `hmall_tx_group`、Nacos 发现的 TC 和各自数据库 `undo_log`。逐条盘点现存 `@GlobalTransactional` 业务入口与本设计标出的跨库强一致流程：对仍需跨服务数据库原子回滚的流程，保留或补齐 Seata AT 客户端；只有经过业务不变量评审和故障补偿验证后才改为 saga。Redis、RabbitMQ、Outbox 和外部 HTTP 副作用不因 Seata 而变成原子操作，继续使用幂等、Outbox、状态机和补偿。
 
-抽奖配额继续使用 Redis Lua 原子预留和确认；抽奖最终奖品数量继续使用 MySQL 条件扣减。Outbox 租约、Redis Stream Pending 重领、幂等消费、指数退避、隔离及对账补偿随原逻辑迁移。不得假设数据库本地事务可以覆盖多个服务或 Redis、RabbitMQ、HTTP 副作用。
+抽奖配额继续使用 Redis Lua 原子预留和确认；抽奖最终奖品数量继续使用 MySQL 条件扣减。数据库 Outbox 租约、RabbitMQ 消息重投、幂等消费、指数退避、隔离及对账补偿随原逻辑迁移。当前实现没有 Redis Stream 消费机制，不在拆分中额外引入。不得假设数据库本地事务可以覆盖多个服务或 Redis、RabbitMQ、HTTP 副作用。
+
+### 抽奖 Redis 与分布式锁契约（核心，不可降级）
+
+Redis 在抽奖链路中不是可选缓存：每日配额 Lua 脚本和用户/活动分布式锁属于并发正确性边界，拆分后必须由 `lottery-service` 原样继承其行为。迁移是代码和部署所有权变化，不是重新设计配额或锁协议；未经单独设计、故障注入和并发验证，不改键名、状态机、过期规则、锁粒度或 Redis 数据结构。
+
+- 保留三个脚本及其原子职责：`reserve_draw_quota.lua` 原子校验每日上限并创建预占；`confirm_draw_quota.lua` 将 `RESERVED` 单向转换为 `CONFIRMED`；`release_draw_quota.lua` 将 `RESERVED` 单向转换为 `RELEASED` 并返还配额。确认/释放重复调用仍须幂等；终态不能反向转换；不完整或身份不一致的预占不能被猜测性修复。
+- 保留现有键协议：`draw:quota:{activityId}:{userId}:{yyyyMMdd}`、`draw:reservation:{requestId}`、有序集合 `draw:reservation:timeouts`、锁 `lock:draw:{activityId}:{userId}`。配额日期继续由 `luckyhub.lottery.zone-id`（现值 `Asia/Shanghai`）计算；预占记录和配额沿用绝对过期时间及当前 `reservation-retention`（现值 72 小时）。迁移期间不得清空这些键或切换 Redis database/命名空间；未结束的请求必须能由新旧版本共同理解并完成对账。
+- 保留请求幂等语义：`requestId` 是全局预占标识；已存在预占的身份按 `activityId/userId/drawCount` 校验，重试返回 Redis 中原有日期和状态；当前 `dailyLimit` 仅是新建时的策略快照，不参与既有请求身份。合法抽奖次数为 1 或 10。单纯重命名键、把脚本改成多次客户端读写、或让重试重新计数都属于行为变更。
+- 保留锁的粒度和边界：同一活动下同一用户使用 `lock:draw:{activityId}:{userId}` 串行化抽奖及预占对账，等待时间由 `luckyhub.lottery.lock-wait` 控制（现值 3 秒）。仅锁获取成功且当前线程仍持有锁时执行临界区；`finally` 中只由持有者释放；中断时恢复线程中断标记并按当前业务错误返回。继续使用 Redisson 分布式锁，不得替换为 JVM 本地锁；不要擅自指定新的固定 lease time 或缩短 Redisson watchdog 保护。
+- 保留超时恢复闭环：预占写入 timeout 有序集合，扫描任务按配置的初始延迟、间隔和批量大小读取到期请求，获取相同活动/用户锁，再以 MySQL 抽奖订单状态作为判断依据，确认或释放 Redis 配额；损坏或暂不可处理成员须延后重试，不能阻塞整个批次。当前 processing timeout 为 2 分钟、reconcile interval 为 30 秒、initial delay 为 60 秒、batch size 为 100，这些值继续配置化，不硬编码到脚本或业务分支。
+- Redis 配额是并发准入计数，不是抽奖最终账本。MySQL 抽奖订单/预占状态和奖品剩余数量条件扣减继续作为业务事实；Redis 不可用时，抽奖配额操作继续按现有错误语义失败关闭，不能跳过限额继续抽奖。Redis、数据库、消息之间继续依靠 Outbox、幂等消费和对账，不声称由单个数据库事务原子覆盖。
+- 保留 RBAC 权限缓存于 `user-service`：键前缀 `rbac:permissions:user:`、10 分钟 TTL、空权限集合缓存、损坏缓存删除后回源、Redis 读取失败作为缓存未命中回源数据库，以及权限变更时立即和数据库提交后再次失效。缓存不能搬到 `hm-security` 或复制到多个服务；Redis 缓存异常不能导致授权绕过。
+- 将登录会话 Redis 状态随 `auth` 一并归入 `user-service`：保留 `luckyhub:auth:session:{sessionId}` 键、用户 ID 字符串值、与 JWT 有效期相同的 TTL，以及登录创建/登出删除行为；切流期间不更换前缀或 Redis database，以免丢失旧会话清理状态。当前 `SessionService.isValid` 没有生产调用点，拆分时保留其现有 API/存储行为但不要悄悄改变 JWT 验证语义；若要把它接入每次鉴权，须另行评审安全影响并补充专门迁移兼容测试。
+
+迁移验收必须把当前 `RedisDrawQuotaServiceTests`、`LotteryConcurrencyTests`、`LotteryOrchestrationIntegrationTests`、`LotteryReconciliationServiceTests` 和 `RedissonDrawLockServiceTests` 迁到新所有者并保留覆盖，不得因模块移动而删除。除此之外，要在 Redis 支持的集成环境验证多实例并发预占不会超日限、重复 requestId 不重复计数、确认/释放重复调用及互斥终态、TTL 与跨日时区边界、锁竞争/超时/中断/持有者安全释放，以及进程中断后的 timeout 对账恢复；权限缓存需验证命中/未命中、无权限缓存、事务提交后失效和 Redis 故障回源；会话需验证登录写入用户 ID 和 TTL、登出精确删除会话键。迁移验收前，新旧代码需读写同一 Redis 协议并通过在途预占/会话清点；不得用删除旧键或重置计数作为切流手段。
 
 ## 8. 渐进实施顺序
 
-1. **契约与统一入口**：扩展 `hm-api`，抽取 `hm-security`，新增 Gateway 服务发现路由和路由契约，Nginx 将营销路径送至 Gateway；未迁移功能使用旧服务兼容路由。
+1. **契约与统一入口**：建立 `hm-api` 契约边界和 Gateway 服务发现/路由契约，抽取 `hm-security`；Nginx 将除精确旧登录兼容 URL 外的营销路径送至 Gateway，未迁移功能使用旧服务兼容路由。完成第二阶段的 user-service 登录别名后再把该精确 URL 一并切入 Gateway。
 2. **身份、商品与库存归并**：将 RBAC 关联到现有 `user-service` 用户；把营销目录/SKU 映射到商城商品，迁移渠道库存至 `item-service`。保留抽奖奖品库存独立事实。
 3. **订单与支付归并**：把营销现金订单并入 `trade-service`，支付记录和回调并入 `pay-service`；以 Outbox 事件替代 Marketing Base URL 中的点对点支付奖励调用。
 4. **资产服务拆分**：依次迁移 `coupon-service`、`points-service`、`membership-service`，每个服务独立回填数据、切换 Gateway 路由并删除旧写入代码。
@@ -163,6 +178,7 @@ Gateway 增加显式、互不含糊的营销路径规则，目标服务通过 Na
 
 - RS256 JWT 用户 ID 与角色语义、请求身份头清洗和用户本人数据范围；
 - 活动发布状态、抽奖请求幂等、单用户/活动并发锁、Redis Lua 配额和 MySQL 条件扣减；
+- 抽奖 Redis 键协议、Lua 预占/确认/释放状态机、timeout 对账恢复、Redisson 锁持有者语义，以及用户服务的 RBAC Redis 缓存与失效策略；
 - 积分不可变流水与反向冲正、优惠券状态 CAS、会员有效期和折扣规则；
 - 支付成功 Outbox、库存预占/确认/释放、抽奖奖励快照、履约租约与补偿；
 - 物流回调验签、时间窗、去重、合法状态迁移和敏感数据脱敏；
