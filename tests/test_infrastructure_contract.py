@@ -296,6 +296,19 @@ class ComposeContractTest(unittest.TestCase):
         self.assertIn("127.0.0.1:18080", healthcheck)
         self.assertIn("127.0.0.1:18081/items.html", healthcheck)
 
+    def test_nginx_mounts_the_shared_marketing_login_exception_read_only(self):
+        mounts = [
+            mount for mount in self.services["nginx"].get("volumes", [])
+            if mount["target"] == "/etc/nginx/snippets/marketing-auth-login.conf"
+        ]
+        self.assertEqual(1, len(mounts))
+        self.assertEqual("bind", mounts[0]["type"])
+        self.assertEqual(
+            ROOT / "nginx" / "snippets" / "marketing-auth-login.conf",
+            Path(mounts[0]["source"]),
+        )
+        self.assertTrue(mounts[0]["read_only"])
+
     def test_gateway_joins_the_default_stack_and_waits_for_discovery_and_routes(self):
         gateway = self.services["hm-gateway"]
         self.assertEqual("hm-gateway/Dockerfile", gateway["build"]["dockerfile"].replace("\\", "/"))
@@ -307,7 +320,9 @@ class ComposeContractTest(unittest.TestCase):
             "user-service",
             "trade-service",
             "pay-service",
+            "marketing-service",
         ):
+            self.assertIn(dependency, gateway["depends_on"])
             self.assertEqual("service_healthy", gateway["depends_on"][dependency]["condition"])
         self.assertEqual("nacos:8848", gateway["environment"]["NACOS_SERVER_ADDR"])
         self.assertIn("healthcheck", gateway)
@@ -548,15 +563,36 @@ class NginxRoutingContractTest(unittest.TestCase):
         self.assertIn("/usr/share/nginx/html/hmall-admin", self.conf)
 
     def test_marketing_routes_keep_api_prefix_after_stripping_marketing_segment(self):
-        self.assertGreaterEqual(len(re.findall(r"location\s+\^~\s+/api/marketing/", self.conf)), 2)
-        self.assertGreaterEqual(
-            len(re.findall(r"rewrite\s+\^/api/marketing/\(\.\*\)\$\s+/api/\$1\s+break;", self.conf)),
-            2,
+        locations = re.findall(
+            r"location\s+\^~\s+/api/marketing/\s*\{([^}]+)\}", self.conf, re.S
         )
-        self.assertEqual(
-            2,
-            len(re.findall(r"proxy_pass\s+http://\$marketing_backend;", self.conf)),
+        self.assertEqual(2, len(locations))
+        for body in locations:
+            self.assertIn("set $gateway_backend hm-gateway:8080;", body)
+            self.assertRegex(body, r"rewrite\s+\^/api/marketing/\(\.\*\)\$\s+/api/\$1\s+break;")
+            self.assertIn("proxy_pass http://$gateway_backend;", body)
+
+    def test_exact_legacy_marketing_login_stays_on_marketing_until_identity_cutover(self):
+        servers = re.findall(r"(?ms)^    server\s*\{(.*?)^    \}", self.conf)
+        self.assertEqual(2, len(servers))
+        for server in servers:
+            self.assertEqual(
+                1,
+                server.count("include /etc/nginx/snippets/marketing-auth-login.conf;"),
+            )
+        snippet_path = ROOT / "nginx" / "snippets" / "marketing-auth-login.conf"
+        self.assertTrue(snippet_path.is_file(), "shared marketing login snippet must exist")
+        snippet = read("nginx/snippets/marketing-auth-login.conf")
+        locations = re.findall(
+            r"location\s*=\s*/api/marketing/auth/login\s*\{([^}]+)\}",
+            snippet,
+            re.S,
         )
+        self.assertEqual(1, len(locations))
+        body = locations[0]
+        self.assertIn("set $marketing_backend marketing-service:8080;", body)
+        self.assertIn("rewrite ^/api/marketing/auth/login$ /api/auth/login break;", body)
+        self.assertIn("proxy_pass http://$marketing_backend;", body)
 
     def test_hmall_api_routes_are_sent_through_the_authenticating_gateway(self):
         self.assertGreaterEqual(
@@ -564,7 +600,7 @@ class NginxRoutingContractTest(unittest.TestCase):
             4,
         )
         self.assertEqual(
-            2,
+            4,
             len(re.findall(r"proxy_pass\s+http://\$gateway_backend;", self.conf)),
         )
         self.assertGreaterEqual(
@@ -588,28 +624,28 @@ class NginxRoutingContractTest(unittest.TestCase):
             r"resolver\s+127\.0\.0\.11\s+valid=10s\s+ipv6=off;",
         )
         self.assertEqual(
-            2,
+            0,
             len(re.findall(r"set\s+\$marketing_backend\s+marketing-service:8080;", self.conf)),
         )
         self.assertEqual(
-            2,
+            0,
             len(re.findall(r"proxy_pass\s+http://\$marketing_backend;", self.conf)),
         )
         self.assertEqual(
-            2,
+            4,
             len(re.findall(r"set\s+\$gateway_backend\s+hm-gateway:8080;", self.conf)),
         )
         self.assertEqual(
-            2,
+            4,
             len(re.findall(r"proxy_pass\s+http://\$gateway_backend;", self.conf)),
         )
 
     def test_runtime_upstream_is_initialized_before_rewrite_breaks(self):
         marketing_location = (
             r"location\s+\^~\s+/api/marketing/\s*\{\s*"
-            r"set\s+\$marketing_backend\s+marketing-service:8080;\s*"
+            r"set\s+\$gateway_backend\s+hm-gateway:8080;\s*"
             r"rewrite\s+\^/api/marketing/\(\.\*\)\$\s+/api/\$1\s+break;\s*"
-            r"proxy_pass\s+http://\$marketing_backend;"
+            r"proxy_pass\s+http://\$gateway_backend;"
         )
         gateway_location = (
             r"location\s+\^~\s+/api/\s*\{\s*"
@@ -619,6 +655,38 @@ class NginxRoutingContractTest(unittest.TestCase):
         )
         self.assertEqual(2, len(re.findall(marketing_location, self.conf)))
         self.assertEqual(2, len(re.findall(gateway_location, self.conf)))
+
+    def test_gateway_keeps_marketing_compatibility_and_callback_rewrite(self):
+        application = read("hm-gateway/src/main/resources/application.yaml")
+        self.assertRegex(
+            application,
+            r"(?ms)^\s+- id: marketing-payment-callback-compat\s+"
+            r"uri: lb://marketing-service\s+predicates:\s+"
+            r"- Path=/api/callbacks/payments,/api/callbacks/payments/\*\*\s+"
+            r"filters:\s+- StripPrefix=1\s*$",
+        )
+        self.assertIn("- POST /api/shipping/callbacks/logistics", application)
+        self.assertNotIn("POST /api/auth/login", application)
+        self.assertNotIn("POST /callbacks/payments", application)
+        self.assertIn("- id: marketing-payment-callback-native", application)
+        self.assertIn("Path=/callbacks/payments,/callbacks/payments/**", application)
+        legacy = re.search(r"(?ms)^\s+- id: marketing-legacy\s+.*?(?=^\s+- id:|\Z)", application)
+        self.assertIsNotNone(legacy)
+        self.assertIn("uri: lb://marketing-service", legacy.group(0))
+        self.assertIn("Path=/api/**", legacy.group(0))
+        for route_id in (
+            "item-service",
+            "cart-service",
+            "user-service",
+            "trade-service",
+            "pay-service",
+            "marketing-payment-callback-native",
+        ):
+            self.assertLess(application.index(f"id: {route_id}"), legacy.start())
+        self.assertLess(
+            application.index("id: marketing-payment-callback-compat"),
+            application.index("id: marketing-legacy"),
+        )
 
 
 class MarketingHmallAdapterContractTest(unittest.TestCase):

@@ -73,6 +73,41 @@ class AuthGlobalFilterTest {
                 .containsExactly("42");
     }
 
+    @Test
+    void onlyExactPostLogisticsCallbackIsAnonymousAndSanitizesIdentity() {
+        AuthGlobalFilter filter = new AuthGlobalFilter(
+                properties("POST /api/shipping/callbacks/logistics"), rejectingJwtTool());
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+
+        MockServerWebExchange post = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/shipping/callbacks/logistics")
+                        .header("user-info", "999"));
+        filter.filter(post, capture(forwarded)).block();
+        assertThat(forwarded.get()).isNotNull();
+        assertThat(forwarded.get().getRequest().getHeaders().getFirst("user-info")).isNull();
+
+        forwarded.set(null);
+        MockServerWebExchange get = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/shipping/callbacks/logistics"));
+        filter.filter(get, capture(forwarded)).block();
+        assertThat(forwarded.get()).isNull();
+        assertThat(get.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void paymentCallbackIsNotAnonymousWithoutJwt() {
+        AuthGlobalFilter filter = new AuthGlobalFilter(
+                properties("POST /api/shipping/callbacks/logistics"), rejectingJwtTool());
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/callbacks/payments"));
+
+        filter.filter(exchange, capture(forwarded)).block();
+
+        assertThat(forwarded.get()).isNull();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
     private AuthProperties properties(String... excludePaths) {
         AuthProperties properties = new AuthProperties();
         properties.setExcludePaths(List.of(excludePaths));
