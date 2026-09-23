@@ -193,13 +193,13 @@ git commit -m "test: define marketing gateway compatibility contract"
 
 **Files:**
 - Modify: `hm-gateway/src/main/resources/application.yaml`
-- Modify: `hm-gateway/src/test/java/com/dongqh/hmgateway/filters/AuthGlobalFilterTest.java`
+- Modify: `hm-gateway/src/test/java/com/dongqh/hmgateway/HmGatewayApplicationTests.java`
 
 **Interfaces:**
 - Consumes: current HMall Gateway routes and `AuthGlobalFilter` method/path matching.
 - Produces: `marketing-legacy` (`lb://marketing-service`), callback compatibility routing, and the exact Gateway logistics-callback exception. The legacy Marketing login remains outside Gateway until the identity cutover.
 
-- [ ] **Step 1: Add the compatibility routes after all existing HMall routes**
+- [x] **Step 1: Add the compatibility routes after all existing HMall routes**
 
 Append these routes to `spring.cloud.gateway.server.webflux.routes`. Keep them after the current `/items`, `/carts`, `/users`, `/orders`, and `/pay-orders` routes. The payment callback compatibility path is specific and appears before the catch-all.
 
@@ -222,7 +222,7 @@ Append these routes to `spring.cloud.gateway.server.webflux.routes`. Keep them a
 
 The `marketing-legacy` route is temporary. Future service-specific paths must be listed before it and point to their Nacos service IDs; remove the legacy route only after every Marketing domain has passed data and API cutover.
 
-- [ ] **Step 2: Add only the exact Gateway callback exception**
+- [x] **Step 2: Add only the exact Gateway callback exception**
 
 In the existing `hm.auth.excludePaths` list, add:
 
@@ -232,16 +232,16 @@ In the existing `hm.auth.excludePaths` list, add:
 
 Keep `POST /users/login` and the existing public HMall reads. Do not add `/api/auth/login` or either payment callback path to this list. The legacy Marketing login bypasses Gateway only through the exact Nginx location in Task 3; it is not a Gateway authentication exception. `AuthGlobalFilter` already strips caller-supplied `user-info` before both anonymous and authenticated handling; keep that behavior unchanged.
 
-- [ ] **Step 3: Run Gateway unit tests**
+- [x] **Step 3: Run Gateway unit tests**
 
 Run: `mvn -pl :hm-gateway -am -Dtest=AuthGlobalFilterTest -Dsurefire.failIfNoSpecifiedTests=false test`
 
 Expected: `AuthGlobalFilterTest` passes, including the POST-only logistics exception, spoofed-header removal, and payment callback rejection without JWT.
 
-- [ ] **Step 4: Commit the Gateway compatibility layer**
+- [x] **Step 4: Commit the Gateway compatibility layer**
 
 ```powershell
-git add hm-gateway/src/main/resources/application.yaml hm-gateway/src/test/java/com/dongqh/hmgateway/filters/AuthGlobalFilterTest.java
+git add hm-gateway/src/main/resources/application.yaml hm-gateway/src/test/java/com/dongqh/hmgateway/HmGatewayApplicationTests.java
 git commit -m "feat: route legacy marketing APIs through gateway"
 ```
 
