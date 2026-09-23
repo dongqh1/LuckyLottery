@@ -92,6 +92,13 @@ Add the following methods to `AuthGlobalFilterTest`. Use the existing `propertie
         filter.filter(get, capture(forwarded)).block();
         assertThat(forwarded.get()).isNull();
         assertThat(get.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        forwarded.set(null);
+        MockServerWebExchange nestedPost = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/shipping/callbacks/logistics/extra"));
+        filter.filter(nestedPost, capture(forwarded)).block();
+        assertThat(forwarded.get()).isNull();
+        assertThat(nestedPost.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
@@ -123,6 +130,7 @@ In `NginxRoutingContractTest`, make the two `/api/marketing/` prefix locations u
             self.assertIn("set $gateway_backend hm-gateway:8080;", body)
             self.assertRegex(body, r"rewrite\s+\^/api/marketing/\(\.\*\)\$\s+/api/\$1\s+break;")
             self.assertIn("proxy_pass http://$gateway_backend;", body)
+
     def test_exact_legacy_marketing_login_stays_on_marketing_until_identity_cutover(self):
         servers = re.findall(r"(?ms)^    server\s*\{(.*?)^    \}", self.conf)
         self.assertEqual(2, len(servers))
@@ -154,6 +162,7 @@ In `NginxRoutingContractTest`, make the two `/api/marketing/` prefix locations u
         )
         self.assertIn("- POST /api/shipping/callbacks/logistics", application)
         self.assertNotIn("POST /api/auth/login", application)
+        self.assertNotIn("POST /api/callbacks/payments", application)
         self.assertNotIn("POST /callbacks/payments", application)
         self.assertIn("- id: marketing-payment-callback-native", application)
         self.assertIn("Path=/callbacks/payments,/callbacks/payments/**", application)
