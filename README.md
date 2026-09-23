@@ -20,7 +20,7 @@
 mvn -B -ntp clean test-compile -DskipTests
 ```
 
-先根据 `.env.example` 准备被 Git 忽略的 `.env`，并为数据库、Redis、JWT 和地址加密配置真实的本地开发值。默认启动命令会运行商品、购物车、用户、交易和支付五个拆分服务，以及商城网关、Marketing、Nacos、MySQL、Redis 和 Nginx。Nginx 将商城 API 转发到网关，由网关校验登录令牌并向业务服务传递用户身份；Marketing API 仍由 Nginx 直接转发：
+先根据 `.env.example` 准备被 Git 忽略的 `.env`，并为数据库、Redis、JWT 和地址加密配置真实的本地开发值。默认启动命令会运行商品、购物车、用户、交易和支付五个拆分服务，以及商城网关、Marketing、Nacos、MySQL、Redis 和 Nginx。Nginx 将商城 API 转发到网关，由网关校验登录令牌并向业务服务传递用户身份。Nginx rewrites `/api/marketing/**` to the existing backend `/api/**` path and forwards Marketing APIs to `hm-gateway`; the Gateway temporarily routes unmigrated APIs to `marketing-service`. The exact `/api/marketing/auth/login` path remains on Marketing until `user-service` provides the compatible RS256 login response. As each domain is extracted, its explicit Nacos route takes precedence over the Gateway fallback.
 
 ```powershell
 docker compose --env-file .env up --build -d
