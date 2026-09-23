@@ -324,7 +324,7 @@ Expected: all infrastructure contract tests pass, including Compose config rende
 - [ ] **Step 5: Commit the runtime cutover**
 
 ```powershell
-git add nginx/nginx.conf compose.yaml tests/test_infrastructure_contract.py
+git add nginx/nginx.conf nginx/snippets/marketing-auth-login.conf compose.yaml tests/test_infrastructure_contract.py
 git commit -m "feat: proxy marketing traffic through gateway"
 ```
 
