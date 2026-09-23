@@ -249,6 +249,7 @@ git commit -m "feat: route legacy marketing APIs through gateway"
 
 **Files:**
 - Modify: `nginx/nginx.conf`
+- Modify: `nginx/Dockerfile`
 - Create: `nginx/snippets/marketing-auth-login.conf`
 - Modify: `compose.yaml`
 - Modify: `tests/test_infrastructure_contract.py`
@@ -257,7 +258,7 @@ git commit -m "feat: route legacy marketing APIs through gateway"
 - Consumes: Gateway compatibility routes from Task 2.
 - Produces: both Portal and Admin proxying Marketing APIs to `hm-gateway:8080`, with only the exact legacy login proxied to `marketing-service:8080`; Compose startup dependencies match both paths.
 
-- [ ] **Step 1: Change the two active Marketing Nginx locations**
+- [x] **Step 1: Change the two active Marketing Nginx locations**
 
 In each `location ^~ /api/marketing/` block in `nginx/nginx.conf`, replace only its upstream assignment; retain rewrite and proxy headers:
 
@@ -284,7 +285,7 @@ Create the shared snippet with the exact `/api/marketing/auth/login` location, r
 
 Do not add `/callbacks/payments` to Nginx: it is not an existing public route and its local simulation signature is not a production callback credential.
 
-- [ ] **Step 2: Make Compose startup reflect the new routing dependency**
+- [x] **Step 2: Make Compose startup reflect the new routing dependency**
 
 Under `hm-gateway.depends_on`, add:
 
@@ -311,20 +312,20 @@ Mount the shared snippet read-only into the Nginx container:
 
 Do not remove the `marketing-service` dependency. Gateway also needs the old service as its low-priority fallback.
 
-- [ ] **Step 3: Update Compose/Nginx contract assertions**
+- [x] **Step 3: Update Compose/Nginx contract assertions**
 
 Keep `ComposeContractTest.test_nginx_exposes_portal_and_admin` asserting healthy dependencies on both `hm-gateway` and `marketing-service`, and that the shared snippet is mounted read-only. Extend `test_gateway_joins_the_default_stack_and_waits_for_discovery_and_routes` to assert healthy `marketing-service` dependency. Change `NginxRoutingContractTest.test_hmall_api_routes_are_sent_through_the_authenticating_gateway` to expect four Gateway proxy locations; change `test_proxy_upstreams_use_docker_runtime_dns` so the Marketing prefix locations use `$gateway_backend`, the one shared exact-login location uses `$marketing_backend`, and all proxy variables are initialized. Keep `test_runtime_upstream_is_initialized_before_rewrite_breaks` asserting both backend variables are set before their rewrites/proxy calls.
 
-- [ ] **Step 4: Run routing contracts**
+- [x] **Step 4: Run routing contracts**
 
 Run: `python -m unittest tests.test_infrastructure_contract`
 
 Expected: all infrastructure contract tests pass, including Compose config rendering, Gateway dependency health ordering, and both Nginx server blocks.
 
-- [ ] **Step 5: Commit the runtime cutover**
+- [x] **Step 5: Commit the runtime cutover**
 
 ```powershell
-git add nginx/nginx.conf nginx/snippets/marketing-auth-login.conf compose.yaml tests/test_infrastructure_contract.py
+git add nginx/nginx.conf nginx/Dockerfile nginx/snippets/marketing-auth-login.conf compose.yaml tests/test_infrastructure_contract.py
 git commit -m "feat: proxy marketing traffic through gateway"
 ```
 
