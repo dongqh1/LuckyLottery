@@ -540,6 +540,11 @@ class DockerfileContractTest(unittest.TestCase):
         self.assertIn("copy html/hmall-portal", dockerfile)
         self.assertIn("copy html/hmall-admin", dockerfile)
 
+    def test_nginx_image_creates_directory_for_shared_snippet_mount(self):
+        dockerfile = read("nginx/Dockerfile").lower()
+        self.assertRegex(dockerfile, r"(?m)^run\s+mkdir\s+-p\s+/etc/nginx/snippets\s*$")
+        self.assertNotRegex(dockerfile, r"(?m)^copy\s+.*marketing-auth-login\.conf")
+
     def test_gateway_packages_only_the_jwt_verification_certificate(self):
         resources = ROOT / "hm-gateway" / "src" / "main" / "resources"
         self.assertTrue((resources / "hmall-public.pem").is_file())

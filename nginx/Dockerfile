@@ -1,5 +1,7 @@
 FROM nginx:1.27-alpine
 
+RUN mkdir -p /etc/nginx/snippets
+
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY html/hmall-portal /usr/share/nginx/html/hmall-portal
 COPY html/hmall-admin /usr/share/nginx/html/hmall-admin
