@@ -340,7 +340,7 @@ git commit -m "feat: proxy marketing traffic through gateway"
 - Consumes: final route order, Nginx rewrite, and Compose dependencies.
 - Produces: accurate operator documentation and executable evidence that existing paths pass through the authenticating Gateway.
 
-- [ ] **Step 1: Update the runtime description in README**
+- [x] **Step 1: Update the runtime description in README**
 
 Replace the sentence that says Marketing API is forwarded directly by Nginx with:
 
@@ -348,7 +348,7 @@ Replace the sentence that says Marketing API is forwarded directly by Nginx with
 Nginx rewrites `/api/marketing/**` to the existing backend `/api/**` path and forwards Marketing APIs to `hm-gateway`; the Gateway temporarily routes unmigrated APIs to `marketing-service`. The exact `/api/marketing/auth/login` path remains on Marketing until `user-service` provides the compatible RS256 login response. As each domain is extracted, its explicit Nacos route takes precedence over the Gateway fallback.
 ```
 
-- [ ] **Step 2: Run the focused Java and infrastructure contracts**
+- [x] **Step 2: Run the focused Java and infrastructure contracts**
 
 ```powershell
 mvn -pl :hm-gateway -am test
@@ -358,7 +358,7 @@ docker compose --env-file .env.example config --quiet
 
 Expected: Maven reports `BUILD SUCCESS`, Python reports `OK`, and Compose exits with code 0. Do not claim runtime routing is verified from static tests alone.
 
-- [ ] **Step 3: Verify Nginx configuration and HTTP routing in the local stack**
+- [x] **Step 3: Verify Nginx configuration and HTTP routing in an isolated local runtime**
 
 ```powershell
 docker compose --env-file .env up -d --build hm-gateway nginx
@@ -369,7 +369,9 @@ curl.exe -i http://localhost:18080/api/items
 
 Expected: Nginx reports syntax OK; the Marketing request reaches Gateway authentication and returns its expected unauthenticated response (401, not a Gateway 404); the HMall request reaches the existing item route. If a local endpoint intentionally permits anonymous access, use its existing API contract and assert the response body/service signature rather than weakening the route.
 
-- [ ] **Step 4: Commit the operator-facing path documentation**
+Validation note: the custom Nginx image passed `nginx -t`. An isolated Nginx + real Gateway test returned HTTP 401 (not 404) for unauthenticated `/api/marketing/lottery/activities`; the exact login POST reached a temporary Marketing stub as `/api/auth/login`. A separate stub smoke verified `/api/items` is rewritten and proxied to Gateway as `/items`, with forged `user-info` removed. The full Compose stack and actual item-service backend were not started because this Compose project already has active stateful containers; item-service routing is covered by the Gateway route-context test.
+
+- [x] **Step 4: Commit the operator-facing path documentation**
 
 ```powershell
 git add README.md
