@@ -576,9 +576,11 @@ class NginxRoutingContractTest(unittest.TestCase):
         servers = re.findall(r"(?ms)^    server\s*\{(.*?)^    \}", self.conf)
         self.assertEqual(2, len(servers))
         for server in servers:
-            self.assertEqual(
-                1,
-                server.count("include /etc/nginx/snippets/marketing-auth-login.conf;"),
+            include = "include /etc/nginx/snippets/marketing-auth-login.conf;"
+            self.assertEqual(1, server.count(include))
+            self.assertLess(
+                server.index(include),
+                server.index("location ^~ /api/marketing/"),
             )
         snippet_path = ROOT / "nginx" / "snippets" / "marketing-auth-login.conf"
         self.assertTrue(snippet_path.is_file(), "shared marketing login snippet must exist")
@@ -589,16 +591,24 @@ class NginxRoutingContractTest(unittest.TestCase):
             re.S,
         )
         self.assertEqual(1, len(locations))
+        self.assertEqual(1, len(re.findall(r"location\s", snippet)))
         body = locations[0]
         self.assertIn("set $marketing_backend marketing-service:8080;", body)
         self.assertIn("rewrite ^/api/marketing/auth/login$ /api/auth/login break;", body)
         self.assertIn("proxy_pass http://$marketing_backend;", body)
+        for header in (
+            "proxy_set_header Host $host;",
+            "proxy_set_header X-Real-IP $remote_addr;",
+            "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
+            "proxy_set_header X-Forwarded-Proto $scheme;",
+            'proxy_set_header user-info "";',
+        ):
+            self.assertIn(header, body)
+        self.assertNotIn("/callbacks/payments", self.conf)
+        self.assertNotIn("/callbacks/payments", snippet)
 
     def test_hmall_api_routes_are_sent_through_the_authenticating_gateway(self):
-        self.assertGreaterEqual(
-            len(re.findall(r"location\s+\^~\s+/api/", self.conf)),
-            4,
-        )
+        self.assertEqual(4, len(re.findall(r"location\s+\^~\s+/api/", self.conf)))
         self.assertEqual(
             4,
             len(re.findall(r"proxy_pass\s+http://\$gateway_backend;", self.conf)),
@@ -623,18 +633,20 @@ class NginxRoutingContractTest(unittest.TestCase):
             self.conf,
             r"resolver\s+127\.0\.0\.11\s+valid=10s\s+ipv6=off;",
         )
-        self.assertEqual(
-            0,
-            len(re.findall(r"set\s+\$marketing_backend\s+marketing-service:8080;", self.conf)),
-        )
-        self.assertEqual(
-            0,
-            len(re.findall(r"proxy_pass\s+http://\$marketing_backend;", self.conf)),
-        )
-        self.assertEqual(
-            4,
-            len(re.findall(r"set\s+\$gateway_backend\s+hm-gateway:8080;", self.conf)),
-        )
+        snippet = read("nginx/snippets/marketing-auth-login.conf")
+        for content, backend, upstream, count in (
+            (self.conf, "gateway_backend", "hm-gateway:8080", 4),
+            (snippet, "marketing_backend", "marketing-service:8080", 1),
+        ):
+            with self.subTest(backend=backend):
+                self.assertEqual(
+                    count,
+                    len(re.findall(rf"set\s+\${backend}\s+{re.escape(upstream)};", content)),
+                )
+                self.assertEqual(
+                    count,
+                    len(re.findall(rf"proxy_pass\s+http://\${backend};", content)),
+                )
         self.assertEqual(
             4,
             len(re.findall(r"proxy_pass\s+http://\$gateway_backend;", self.conf)),
@@ -653,8 +665,16 @@ class NginxRoutingContractTest(unittest.TestCase):
             r"rewrite\s+\^/api/\(\.\*\)\$\s+/\$1\s+break;\s*"
             r"proxy_pass\s+http://\$gateway_backend;"
         )
+        login_location = (
+            r"location\s*=\s*/api/marketing/auth/login\s*\{\s*"
+            r"set\s+\$marketing_backend\s+marketing-service:8080;\s*"
+            r"rewrite\s+\^/api/marketing/auth/login\$\s+/api/auth/login\s+break;\s*"
+            r"proxy_pass\s+http://\$marketing_backend;"
+        )
         self.assertEqual(2, len(re.findall(marketing_location, self.conf)))
         self.assertEqual(2, len(re.findall(gateway_location, self.conf)))
+        snippet = read("nginx/snippets/marketing-auth-login.conf")
+        self.assertEqual(1, len(re.findall(login_location, snippet)))
 
     def test_gateway_keeps_marketing_compatibility_and_callback_rewrite(self):
         application = read("hm-gateway/src/main/resources/application.yaml")

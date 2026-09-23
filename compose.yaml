@@ -392,6 +392,8 @@ services:
         condition: service_healthy
       pay-service:
         condition: service_healthy
+      marketing-service:
+        condition: service_healthy
 
   marketing-service:
     build:
@@ -454,6 +456,8 @@ services:
     ports:
       - "${PORTAL_PORT:-18080}:18080"
       - "${ADMIN_PORT:-18081}:18081"
+    volumes:
+      - ./nginx/snippets/marketing-auth-login.conf:/etc/nginx/snippets/marketing-auth-login.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:18080/ && wget -q -O /dev/null http://127.0.0.1:18081/items.html"]
       interval: 10s
