@@ -68,7 +68,7 @@ git commit -m "fix: guard optional amqp auto configuration"
 - Consumes: `AuthGlobalFilter`, `AuthProperties`, the current Compose topology, and active `nginx/nginx.conf`.
 - Produces: regression tests proving the exact logistics exception, payment callback protection, legacy Gateway routing, the temporary login Nginx exception, and Compose startup ordering.
 
-- [ ] **Step 1: Add filter tests for the exact logistics and payment callback rules**
+- [x] **Step 1: Add filter tests for the exact logistics and payment callback rules**
 
 Add the following methods to `AuthGlobalFilterTest`. Use the existing `properties`, `rejectingJwtTool`, and `capture` helpers. These pin the method/path matching and spoofed-header behavior; the static application-config assertions in Step 2 fail until the matching exact allow-list entries are added.
 
@@ -116,7 +116,7 @@ Add the following methods to `AuthGlobalFilterTest`. Use the existing `propertie
     }
 ```
 
-- [ ] **Step 2: Update the existing Python infrastructure assertions to the target behavior**
+- [x] **Step 2: Update the existing Python infrastructure assertions to the target behavior**
 
 In `NginxRoutingContractTest`, make the two `/api/marketing/` prefix locations use Gateway and assert each virtual host includes `/etc/nginx/snippets/marketing-auth-login.conf`. Read that shared snippet once and verify its single exact `/api/marketing/auth/login` location targets Marketing. In `ComposeContractTest`, verify the snippet is mounted read-only, keep Nginx waiting for both healthy Gateway and Marketing, and add the Marketing dependency to Gateway because its low-priority route uses the legacy service. Add assertions that `hm-gateway/src/main/resources/application.yaml` contains the `/api/**` legacy route after specific routes and the `/api/callbacks/payments/**` compatibility route with `StripPrefix=1`.
 
@@ -182,7 +182,7 @@ Run: `python -m unittest tests.test_infrastructure_contract`
 
 Expected: FAIL only on the new Gateway/Nginx/Compose contract assertions; do not weaken assertions to match the current topology.
 
-- [ ] **Step 3: Commit the failing contracts**
+- [x] **Step 3: Commit the failing contracts**
 
 ```powershell
 git add hm-gateway/src/test/java/com/dongqh/hmgateway/filters/AuthGlobalFilterTest.java tests/test_infrastructure_contract.py
