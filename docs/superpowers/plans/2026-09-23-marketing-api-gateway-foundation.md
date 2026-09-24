@@ -402,7 +402,7 @@ Run: `mvn -pl :hm-gateway -am -Dtest=AuthGlobalFilterTest -Dsurefire.failIfNoSpe
 
 Expected: the filter tests pass for both bare JWT and Bearer JWT, and continue checking identity-header sanitization.
 
-- [ ] **Step 4: Review and commit the follow-up**
+- [x] **Step 4: Review and commit the follow-up**
 
 Run task-scoped and whole-branch reviews, then commit the focused fix and plan update.
 
