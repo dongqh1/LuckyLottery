@@ -378,6 +378,34 @@ git add README.md
 git commit -m "docs: document marketing gateway compatibility routing"
 ```
 
+### Task 5: Restore Bearer-token compatibility found during final review
+
+**Files:**
+- Modify: `hm-gateway/src/main/java/com/dongqh/hmgateway/filters/AuthGlobalFilter.java`
+- Test: `hm-gateway/src/test/java/com/dongqh/hmgateway/filters/AuthGlobalFilterTest.java`
+
+**Interfaces:**
+- Consumes: the existing `Authorization` header contract accepted by Marketing authentication (`bare JWT` or case-insensitive `Bearer <JWT>`).
+- Produces: Gateway verifies the extracted JWT while preserving the original `Authorization` header for downstream services.
+
+- [x] **Step 1: Add a regression test and confirm the old filter rejects Bearer tokens**
+
+Add coverage proving mixed-case Bearer authorization verifies the underlying JWT, replaces forged `user-info` with the verified identity, and forwards the original Authorization header unchanged.
+
+- [x] **Step 2: Normalize only the value passed to JWT verification**
+
+Trim the header and remove a case-insensitive Bearer scheme only when followed by whitespace. Keep bare JWT support and leave the downstream request header untouched. Do not change Marketing's existing extractor, signing keys, Redis state, quota scripts, or lock behavior.
+
+- [x] **Step 3: Verify the Gateway filter regression test**
+
+Run: `mvn -pl :hm-gateway -am -Dtest=AuthGlobalFilterTest -Dsurefire.failIfNoSpecifiedTests=false test`
+
+Expected: the filter tests pass for both bare JWT and Bearer JWT, and continue checking identity-header sanitization.
+
+- [ ] **Step 4: Review and commit the follow-up**
+
+Run task-scoped and whole-branch reviews, then commit the focused fix and plan update.
+
 ## Phase Boundary and Follow-On Plans
 
 This plan establishes the entry point only; it does not move database ownership or delete any Marketing implementation. The exact login exception remains until the identity/item plan merges authentication and RBAC into `user-service`, preserves the old response shape and Redis session semantics, and proves that returned RS256 tokens work through Gateway and all migrated services. The following plans cover trade/pay, coupon, points, membership, lottery (including the Redis/Lua/Redisson contract in `docs/superpowers/specs/2026-09-23-marketing-service-decomposition-design.md`), and fulfillment. Each such plan adds its `hm-api` contracts alongside the service APIs and has its own migration and rollback verification before the Gateway route changes owner.

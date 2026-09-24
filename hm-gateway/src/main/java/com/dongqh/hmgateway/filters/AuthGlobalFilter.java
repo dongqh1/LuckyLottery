@@ -24,6 +24,7 @@ import java.util.Locale;
 public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
     private static final String USER_INFO_HEADER = "user-info";
+    private static final String BEARER_PREFIX = "Bearer";
 
     private final AuthProperties authProperties;
 
@@ -44,7 +45,7 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         }
 
         //3.获取token
-        String token = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        String token = tokenForVerification(request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION));
         //4.校验并解析token
         Long userId = null;
         try {
@@ -64,6 +65,20 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
         //方向
         return chain.filter(swe);
+    }
+
+    private String tokenForVerification(String authorization) {
+        if (authorization == null) {
+            return null;
+        }
+
+        String value = authorization.trim();
+        if (value.length() > BEARER_PREFIX.length()
+                && value.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())
+                && Character.isWhitespace(value.charAt(BEARER_PREFIX.length()))) {
+            return value.substring(BEARER_PREFIX.length()).trim();
+        }
+        return value;
     }
 
     private boolean isExclude(HttpMethod method, String path) {

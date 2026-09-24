@@ -74,6 +74,34 @@ class AuthGlobalFilterTest {
     }
 
     @Test
+    void authenticatedBearerTokenIsNormalizedForVerificationAndPreservedWhenForwarded() {
+        AuthProperties properties = properties();
+        JwtTool jwtTool = mock(JwtTool.class);
+        when(jwtTool.parseToken(any())).thenAnswer(invocation -> {
+            if ("valid-token".equals(invocation.getArgument(0))) {
+                return 42L;
+            }
+            throw new UnauthorizedException("未登录");
+        });
+        AuthGlobalFilter filter = new AuthGlobalFilter(properties, jwtTool);
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+        String authorization = "bEaReR valid-token";
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/orders/me")
+                        .header(HttpHeaders.AUTHORIZATION, authorization)
+                        .header("user-info", "999")
+        );
+
+        filter.filter(exchange, capture(forwarded)).block();
+
+        assertThat(forwarded.get()).isNotNull();
+        assertThat(forwarded.get().getRequest().getHeaders().get("user-info"))
+                .containsExactly("42");
+        assertThat(forwarded.get().getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION))
+                .isEqualTo(authorization);
+    }
+
+    @Test
     void onlyExactPostLogisticsCallbackIsAnonymousAndSanitizesIdentity() {
         AuthGlobalFilter filter = new AuthGlobalFilter(
                 properties("POST /api/shipping/callbacks/logistics"), rejectingJwtTool());
