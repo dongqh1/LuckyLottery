@@ -41,7 +41,7 @@ class PayStatusQueryTest {
 
     @BeforeEach
     void setUp() {
-        service = new PayOrderServiceImpl(null, null, payOrderMapper, null);
+        service = new PayOrderServiceImpl(null, null, payOrderMapper, null, null);
         UserContext.setUser(7L);
     }
 

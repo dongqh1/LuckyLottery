@@ -58,6 +58,12 @@ class MarketingCatalogInventoryPreflightTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, self.sql_without_comments)
 
+    def test_script_reports_mysql_server_version(self):
+        self.assertIn(
+            "SELECT VERSION() AS mysql_server_version",
+            self.sql_without_comments,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

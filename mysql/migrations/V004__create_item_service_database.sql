@@ -22,7 +22,8 @@ PREPARE alter_hm_item_user_stmt FROM @alter_hm_item_user_sql;
 EXECUTE alter_hm_item_user_stmt;
 DEALLOCATE PREPARE alter_hm_item_user_stmt;
 
-GRANT SELECT, INSERT, UPDATE, DELETE
+-- Item runs Flyway at startup, so keep DDL rights scoped to its own schema.
+GRANT ALL PRIVILEGES
      ON `hm_item`.*
      TO 'hm_item_app'@'%';
 

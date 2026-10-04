@@ -2,6 +2,7 @@ package com.dongqh.payservice.domain.po;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -33,6 +34,10 @@ public class PayOrder implements Serializable {
      * 业务订单号
      */
     private Long bizOrderNo;
+
+    /** Owning business service; existing rows default to TRADE. */
+    @TableField(exist = false)
+    private String orderDomain;
 
     /**
      * 支付单号

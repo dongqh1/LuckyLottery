@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: fulfillment-service
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      discovery:
+        enabled: true
+        register-enabled: ${NACOS_DISCOVERY_REGISTER_ENABLED:true}
+        group: DEFAULT_GROUP
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: ${RABBITMQ_VHOST:/dongqh}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 2
+          initial-interval: 500ms
+          multiplier: 2
+          max-interval: 2s
+  datasource:
+    url: ${FULFILLMENT_DATABASE_URL}
+    username: ${FULFILLMENT_DATABASE_USERNAME:}
+    password: ${FULFILLMENT_DATABASE_PASSWORD:}
+  flyway:
+    enabled: ${FULFILLMENT_FLYWAY_ENABLED:false}
+
+luckyhub:
+  messaging:
+    enabled: ${FULFILLMENT_MESSAGING_ENABLED:true}
+    publisher-confirm-timeout: ${FULFILLMENT_PUBLISHER_CONFIRM_TIMEOUT:5s}
+    outbox-lease: ${FULFILLMENT_OUTBOX_LEASE:30s}
+  fulfillment:
+    base-delay: ${FULFILLMENT_BASE_DELAY:1s}
+    max-delay: ${FULFILLMENT_MAX_DELAY:1m}
+    lease-duration: ${FULFILLMENT_LEASE_DURATION:30s}
+    poll-interval: ${FULFILLMENT_POLL_INTERVAL:1s}
+    initial-delay: ${FULFILLMENT_INITIAL_DELAY:0s}
+    projection-interval: ${FULFILLMENT_PROJECTION_INTERVAL:5s}
+    projection-initial-delay: ${FULFILLMENT_PROJECTION_INITIAL_DELAY:60s}
+    compensation-grace: ${FULFILLMENT_COMPENSATION_GRACE:30s}
+    outbox-interval: ${FULFILLMENT_OUTBOX_INTERVAL:1s}
+    outbox-initial-delay: ${FULFILLMENT_OUTBOX_INITIAL_DELAY:0s}
+    batch-size: ${FULFILLMENT_BATCH_SIZE:100}
+    recovery-batch-size: ${FULFILLMENT_RECOVERY_BATCH_SIZE:100}
+    outbox-batch-size: ${FULFILLMENT_OUTBOX_BATCH_SIZE:100}
+    shipping-callback:
+      secret: ${FULFILLMENT_SHIPPING_CALLBACK_SECRET:}
+      window: ${FULFILLMENT_SHIPPING_CALLBACK_WINDOW:5m}
+    address-cipher:
+      key-version: ${FULFILLMENT_ADDRESS_CIPHER_KEY_VERSION:v1}
+      key-base64: ${FULFILLMENT_ADDRESS_CIPHER_KEY:}
+    user-service:
+      base-url: ${USER_SERVICE_BASE_URL:http://localhost:8083}

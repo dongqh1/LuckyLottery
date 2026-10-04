@@ -3,6 +3,7 @@ package com.dongqh.userservice.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.dongqh.userservice.domain.po.User;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /**
@@ -14,6 +15,12 @@ import org.apache.ibatis.annotations.Update;
  * @since 2023-05-05
  */
 public interface UserMapper extends BaseMapper<User> {
+    @Select("SELECT status FROM user WHERE id = #{id} LIMIT 1")
+    Integer selectStatusValueById(@Param("id") Long id);
+
+    @Select("SELECT role FROM user WHERE id = #{id} AND status = 1 LIMIT 1")
+    String selectPermissionRoleById(@Param("id") Long id);
+
     @Update("UPDATE user SET balance = balance - #{totalFee} " +
             "WHERE id = #{userId} AND #{totalFee} > 0 AND balance >= #{totalFee}")
     int updateMoney(@Param("userId") Long userId, @Param("totalFee") Integer totalFee);

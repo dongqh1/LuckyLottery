@@ -31,7 +31,7 @@ class HmGatewayApplicationTests {
     }
 
     @Test
-    void keepsHmRoutesAndOrdersMarketingCallbacksBeforeLegacyFallback() {
+    void routesMarketingDomainsToExtractedServices() {
         List<RouteDefinition> routeDefinitions = routeDefinitionLocator.getRouteDefinitions()
                 .collectList()
                 .blockOptional()
@@ -39,15 +39,17 @@ class HmGatewayApplicationTests {
         Map<String, String> routes = routeDefinitions.stream()
                 .collect(Collectors.toMap(RouteDefinition::getId, route -> route.getUri().toString()));
 
-        assertEquals(Map.of(
-                "item-service", "lb://item-service",
-                "cart-service", "lb://cart-service",
-                "user-service", "lb://user-service",
-                "trade-service", "lb://trade-service",
-                "pay-service", "lb://pay-service",
-                "marketing-payment-callback-compat", "lb://marketing-service",
-                "marketing-payment-callback-native", "lb://marketing-service",
-                "marketing-legacy", "lb://marketing-service"
+        assertEquals(Map.ofEntries(
+                Map.entry("item-service", "lb://item-service"),
+                Map.entry("cart-service", "lb://cart-service"),
+                Map.entry("user-service", "lb://user-service"),
+                Map.entry("trade-service", "lb://trade-service"),
+                Map.entry("pay-service", "lb://pay-service"),
+                Map.entry("points-service", "lb://points-service"),
+                Map.entry("coupon-service", "lb://coupon-service"),
+                Map.entry("membership-service", "lb://membership-service"),
+                Map.entry("lottery-service", "lb://lottery-service"),
+                Map.entry("fulfillment-service", "lb://fulfillment-service")
         ), routes);
         assertEquals(List.of(
                 "item-service",
@@ -55,9 +57,11 @@ class HmGatewayApplicationTests {
                 "user-service",
                 "trade-service",
                 "pay-service",
-                "marketing-payment-callback-compat",
-                "marketing-payment-callback-native",
-                "marketing-legacy"
+                "points-service",
+                "coupon-service",
+                "membership-service",
+                "lottery-service",
+                "fulfillment-service"
         ), routeDefinitions.stream().map(RouteDefinition::getId).toList());
     }
 

@@ -12,6 +12,8 @@ import java.util.Objects;
  * @param amount paid amount in cents
  * @param couponId locked coupon to consume, or {@code null}
  * @param paidAt authoritative payment time
+ * @param orderDomain owning business domain
+ * @param membershipPurchase immutable paid membership terms, for membership orders
  */
 public record PaySuccessMessage(
         String eventId,
@@ -19,7 +21,9 @@ public record PaySuccessMessage(
         Long userId,
         Integer amount,
         Long couponId,
-        LocalDateTime paidAt
+        LocalDateTime paidAt,
+        OrderDomain orderDomain,
+        MembershipPurchaseSnapshotDTO membershipPurchase
 ) {
     public PaySuccessMessage {
         if (eventId == null || eventId.isBlank()) {
@@ -39,5 +43,19 @@ public record PaySuccessMessage(
         }
         eventId = eventId.trim();
         Objects.requireNonNull(paidAt, "paidAt must not be null");
+        orderDomain = orderDomain == null ? OrderDomain.TRADE : orderDomain;
+        if (orderDomain == OrderDomain.MEMBERSHIP) {
+            if (membershipPurchase == null || couponId != null
+                    || amount.longValue() != membershipPurchase.priceCent()) {
+                throw new IllegalArgumentException("membership payment event snapshot is invalid");
+            }
+        } else if (membershipPurchase != null) {
+            throw new IllegalArgumentException("trade payment event must not contain membership terms");
+        }
+    }
+
+    public PaySuccessMessage(String eventId, Long orderId, Long userId, Integer amount,
+                             Long couponId, LocalDateTime paidAt) {
+        this(eventId, orderId, userId, amount, couponId, paidAt, OrderDomain.TRADE, null);
     }
 }

@@ -17,6 +17,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>hm-security</module>
         <module>mall-backend</module>
         <module>item-service</module>
         <module>hm-api</module>
@@ -25,6 +26,11 @@
         <module>user-service</module>
         <module>trade-service</module>
         <module>pay-service</module>
+        <module>lottery-service</module>
+        <module>points-service</module>
+        <module>coupon-service</module>
+        <module>membership-service</module>
+        <module>fulfillment-service</module>
         <module>marketing-service</module>
     </modules>
 

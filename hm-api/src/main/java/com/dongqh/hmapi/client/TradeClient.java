@@ -15,6 +15,11 @@ public interface TradeClient {
             @PathVariable("orderId") Long orderId,
             @RequestParam("userId") Long userId);
 
+    @GetMapping("/internal/orders/memberships/{orderId}/payment")
+    OrderPaymentDTO queryMembershipOrderForPayment(
+            @PathVariable("orderId") Long orderId,
+            @RequestParam("userId") Long userId);
+
     @PutMapping("/orders/{orderId}/pay-success")
     void markOrderPaySuccess(
             @PathVariable("orderId") Long orderId,

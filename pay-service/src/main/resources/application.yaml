@@ -57,6 +57,9 @@ hm:
     outbox-initial-delay: 10s
     outbox-batch-size: 100
     outbox-lease: 30s
+pay:
+  membership-purchases:
+    enabled: ${PAY_MEMBERSHIP_PURCHASES_ENABLED:false}
 seata:
   enabled: ${SEATA_ENABLED:true}
   application-id: ${spring.application.name}

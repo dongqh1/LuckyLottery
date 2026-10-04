@@ -27,8 +27,10 @@ public class PaySuccessPublisher {
 
     public void publish(PaySuccessMessage event) {
         CorrelationData correlation = new CorrelationData(event.eventId());
+        String routingKey = event.orderDomain() == com.dongqh.hmapi.dto.OrderDomain.MEMBERSHIP
+                ? PayMessaging.MEMBERSHIP_PAY_SUCCESS_KEY : PayMessaging.PAY_SUCCESS_KEY;
         rabbitTemplate.convertAndSend(PayMessaging.EVENT_EXCHANGE,
-                PayMessaging.PAY_SUCCESS_KEY, event, correlation);
+                routingKey, event, correlation);
         try {
             CorrelationData.Confirm confirm = correlation.getFuture()
                     .get(confirmTimeout.toMillis(), TimeUnit.MILLISECONDS);

@@ -1,6 +1,9 @@
 package com.dongqh.luckyhub.config;
 
+import com.dongqh.hmsecurity.permission.PermissionLookup;
 import com.dongqh.luckyhub.rbac.interceptor.PermissionInterceptor;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -9,11 +12,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class PermissionInterceptorConfig
         implements WebMvcConfigurer {
 
+    @Bean
+    public com.dongqh.hmsecurity.permission.PermissionInterceptor hmSecurityPermissionInterceptor(
+            PermissionLookup permissionLookup
+    ) {
+        return new com.dongqh.hmsecurity.permission.PermissionInterceptor(permissionLookup);
+    }
+
     private final PermissionInterceptor
             permissionInterceptor;
 
     public PermissionInterceptorConfig(
-            PermissionInterceptor permissionInterceptor
+            @Lazy PermissionInterceptor permissionInterceptor
     ) {
         this.permissionInterceptor =
                 permissionInterceptor;

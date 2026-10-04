@@ -9,4 +9,6 @@ public class OrderPaymentDTO {
     private Integer status;
     private Integer totalFee;
     private Long couponId;
+    private OrderDomain orderDomain = OrderDomain.TRADE;
+    private MembershipPurchaseSnapshotDTO membershipPurchase;
 }

@@ -6,6 +6,7 @@ import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.restclient.RestTemplateBuilder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -15,6 +16,8 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDateTime;
 
 @Component
+@ConditionalOnProperty(prefix = "trade.membership-benefit-service", name = "enabled",
+        havingValue = "false", matchIfMissing = true)
 public class HttpMembershipBenefitClient implements MembershipBenefitClient {
     private static final int FULL_PRICE_BASIS_POINTS = 10_000;
 

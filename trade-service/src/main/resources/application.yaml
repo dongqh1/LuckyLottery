@@ -63,6 +63,13 @@ hm:
     outbox-initial-delay: 10s
     outbox-batch-size: 100
     outbox-lease: 30s
+trade:
+  coupon-checkout-service:
+    enabled: ${TRADE_COUPON_CHECKOUT_SERVICE_ENABLED:false}
+  membership-benefit-service:
+    enabled: ${TRADE_MEMBERSHIP_BENEFIT_SERVICE_ENABLED:false}
+  membership-purchases:
+    enabled: ${TRADE_MEMBERSHIP_PURCHASES_ENABLED:false}
 seata:
   enabled: ${SEATA_ENABLED:true}
   application-id: ${spring.application.name}

@@ -16,6 +16,8 @@ import com.dongqh.luckyhub.fulfillment.enums.FulfillmentStatus;
 import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
 import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
 import com.dongqh.luckyhub.rbac.interceptor.PermissionInterceptor;
+import com.dongqh.luckyhub.rbac.service.MarketingPermissionLookup;
+import com.dongqh.luckyhub.rbac.service.RolePermissionResolver;
 import com.dongqh.luckyhub.rbac.service.UserPermissionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,8 +54,13 @@ class BenefitControllerTests {
         LoginContext.set(new LoginPrincipal(77L, "tester", "session"));
         when(permissionService.findPermissionCodes(77L)).thenReturn(java.util.Set.of(PermissionCodes.BENEFIT_READ));
         mockMvc = MockMvcBuilders.standaloneSetup(new BenefitController(service, claims))
-                .addInterceptors(new PermissionInterceptor(permissionService))
+                .addInterceptors(permissionInterceptor())
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
+    }
+
+    private PermissionInterceptor permissionInterceptor() {
+        return new PermissionInterceptor(new com.dongqh.hmsecurity.permission.PermissionInterceptor(
+                new MarketingPermissionLookup(permissionService, new RolePermissionResolver())));
     }
 
     @AfterEach void tearDown() { LoginContext.clear(); }

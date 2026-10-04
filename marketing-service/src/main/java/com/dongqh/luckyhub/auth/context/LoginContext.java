@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.auth.context;
 
+import com.dongqh.hmsecurity.context.TrustedUserContext;
 import com.dongqh.luckyhub.auth.model.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.UnauthorizedException;
-import lombok.val;
 
 //ThreadLocal
 public final class LoginContext {
@@ -13,6 +13,7 @@ public final class LoginContext {
     private LoginContext(){}
     public static void set(LoginPrincipal principal) {
         HOLDER.set(principal);
+        TrustedUserContext.setUserId(principal == null ? null : principal.userId());
     }
 
     public static LoginPrincipal get() {
@@ -29,6 +30,7 @@ public final class LoginContext {
 
     public static void clear() {
         HOLDER.remove();
+        TrustedUserContext.clear();
     }
 
 

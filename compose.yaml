@@ -136,6 +136,46 @@ services:
           --init-command="SET @seata_db_password = CONVERT(X'$${seata_password_hex}' USING utf8mb4)" \
           < /migrations/seata-tc.sql
 
+  marketing-extraction-schema-init:
+    image: mysql:8.4
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      schema-init:
+        condition: service_completed_successfully
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      COUPON_DB_PASSWORD: ${COUPON_DB_PASSWORD:-}
+      POINTS_DB_PASSWORD: ${POINTS_DB_PASSWORD:-}
+      MEMBERSHIP_DB_PASSWORD: ${MEMBERSHIP_DB_PASSWORD:-}
+      LOTTERY_DB_PASSWORD: ${LOTTERY_DB_PASSWORD:-}
+      FULFILLMENT_DB_PASSWORD: ${FULFILLMENT_DB_PASSWORD:-}
+    volumes:
+      - ./mysql/migrations/V011__create_marketing_domain_service_databases.sql:/migrations/V011__create_marketing_domain_service_databases.sql:ro
+      - ./mysql/migrations/V012__create_trade_membership_order.sql:/migrations/V012__create_trade_membership_order.sql:ro
+      - ./mysql/migrations/V013__add_pay_order_domain.sql:/migrations/V013__add_pay_order_domain.sql:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        test -n "$$COUPON_DB_PASSWORD" || { echo "COUPON_DB_PASSWORD is required for the extracted marketing services" >&2; exit 1; }
+        test -n "$$POINTS_DB_PASSWORD" || { echo "POINTS_DB_PASSWORD is required for the extracted marketing services" >&2; exit 1; }
+        test -n "$$MEMBERSHIP_DB_PASSWORD" || { echo "MEMBERSHIP_DB_PASSWORD is required for the extracted marketing services" >&2; exit 1; }
+        test -n "$$LOTTERY_DB_PASSWORD" || { echo "LOTTERY_DB_PASSWORD is required for the extracted marketing services" >&2; exit 1; }
+        test -n "$$FULFILLMENT_DB_PASSWORD" || { echo "FULFILLMENT_DB_PASSWORD is required for the extracted marketing services" >&2; exit 1; }
+        coupon_password_hex="$$(printf '%s' "$$COUPON_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        points_password_hex="$$(printf '%s' "$$POINTS_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        membership_password_hex="$$(printf '%s' "$$MEMBERSHIP_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        lottery_password_hex="$$(printf '%s' "$$LOTTERY_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        fulfillment_password_hex="$$(printf '%s' "$$FULFILLMENT_DB_PASSWORD" | od -An -tx1 | tr -d ' \n')"
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          --init-command="SET @hm_coupon_password = CONVERT(X'$${coupon_password_hex}' USING utf8mb4), @hm_points_password = CONVERT(X'$${points_password_hex}' USING utf8mb4), @hm_membership_password = CONVERT(X'$${membership_password_hex}' USING utf8mb4), @hm_lottery_password = CONVERT(X'$${lottery_password_hex}' USING utf8mb4), @hm_fulfillment_password = CONVERT(X'$${fulfillment_password_hex}' USING utf8mb4)" \
+          < /migrations/V011__create_marketing_domain_service_databases.sql
+        mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          < /migrations/V012__create_trade_membership_order.sql
+        exec mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          < /migrations/V013__add_pay_order_domain.sql
+
   nacos:
     image: nacos/nacos-server:v3.1.1
     restart: unless-stopped
@@ -146,6 +186,8 @@ services:
       NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:?set NACOS_AUTH_TOKEN in .env}
       NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:?set NACOS_AUTH_IDENTITY_KEY in .env}
       NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:?set NACOS_AUTH_IDENTITY_VALUE in .env}
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
       NACOS_CONSOLE_PORT: "8080"
       TZ: Asia/Shanghai
     ports:
@@ -158,7 +200,7 @@ services:
       schema-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/v3/console/health/readiness || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/v3/console/health/readiness >/dev/null && bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9848' && curl -fsS -o /dev/null -X POST -d \"username=$$NACOS_USERNAME&password=$$NACOS_PASSWORD\" http://127.0.0.1:8848/nacos/v1/auth/login"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -226,6 +268,7 @@ services:
       HM_ITEM_DB_HOST: mysql
       HM_ITEM_DB_PORT: "3306"
       HM_ITEM_DB_PASSWORD: ${HM_ITEM_DB_PASSWORD:?set HM_ITEM_DB_PASSWORD in .env}
+      ITEM_FLYWAY_ENABLED: "true"
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
@@ -312,6 +355,9 @@ services:
       HM_TRADE_DB_HOST: mysql
       HM_TRADE_DB_PORT: "3306"
       HM_TRADE_DB_PASSWORD: ${HM_TRADE_DB_PASSWORD:?set HM_TRADE_DB_PASSWORD in .env}
+      TRADE_MEMBERSHIP_PURCHASES_ENABLED: "false"
+      TRADE_MEMBERSHIP_BENEFIT_SERVICE_ENABLED: "false"
+      TRADE_COUPON_CHECKOUT_SERVICE_ENABLED: "false"
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
@@ -344,6 +390,7 @@ services:
       HM_PAY_DB_HOST: mysql
       HM_PAY_DB_PORT: "3306"
       HM_PAY_DB_PASSWORD: ${HM_PAY_DB_PASSWORD:?set HM_PAY_DB_PASSWORD in .env}
+      PAY_MEMBERSHIP_PURCHASES_ENABLED: "false"
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
@@ -366,6 +413,197 @@ services:
       seata-server:
         condition: service_healthy
 
+  coupon-service:
+    build:
+      context: .
+      dockerfile: coupon-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      COUPON_DATABASE_URL: "jdbc:mysql://mysql:3306/hm_coupon?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
+      COUPON_DATABASE_USERNAME: hm_coupon_app
+      COUPON_DATABASE_PASSWORD: ${COUPON_DB_PASSWORD:-}
+      COUPON_FLYWAY_ENABLED: "true"
+      COUPON_MESSAGING_ENABLED: "false"
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      NACOS_DISCOVERY_REGISTER_ENABLED: "true"
+      ITEM_SERVICE_BASE_URL: http://item-service:8081
+      USER_SERVICE_BASE_URL: http://user-service:8083
+      MEMBERSHIP_SERVICE_BASE_URL: http://membership-service:8080
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
+      TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+    depends_on:
+      marketing-extraction-schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+
+  points-service:
+    build:
+      context: .
+      dockerfile: points-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      POINTS_DATABASE_URL: "jdbc:mysql://mysql:3306/hm_points?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
+      POINTS_DATABASE_USERNAME: hm_points_app
+      POINTS_DATABASE_PASSWORD: ${POINTS_DB_PASSWORD:-}
+      POINTS_FLYWAY_ENABLED: "true"
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      NACOS_DISCOVERY_REGISTER_ENABLED: "true"
+      ITEM_SERVICE_BASE_URL: http://item-service:8081
+      USER_SERVICE_BASE_URL: http://user-service:8083
+      FULFILLMENT_SERVICE_BASE_URL: http://fulfillment-service:8080
+      TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+    depends_on:
+      marketing-extraction-schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+      fulfillment-service:
+        condition: service_healthy
+
+  membership-service:
+    build:
+      context: .
+      dockerfile: membership-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      MEMBERSHIP_DATABASE_URL: "jdbc:mysql://mysql:3306/hm_membership?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
+      MEMBERSHIP_DATABASE_USERNAME: hm_membership_app
+      MEMBERSHIP_DATABASE_PASSWORD: ${MEMBERSHIP_DB_PASSWORD:-}
+      MEMBERSHIP_FLYWAY_ENABLED: "true"
+      MEMBERSHIP_MESSAGING_ENABLED: "false"
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      NACOS_DISCOVERY_REGISTER_ENABLED: "true"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
+      TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+    depends_on:
+      marketing-extraction-schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  lottery-service:
+    build:
+      context: .
+      dockerfile: lottery-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      LOTTERY_DATABASE_URL: "jdbc:mysql://mysql:3306/hm_lottery?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
+      LOTTERY_DATABASE_USERNAME: hm_lottery_app
+      LOTTERY_DATABASE_PASSWORD: ${LOTTERY_DB_PASSWORD:-}
+      LOTTERY_FLYWAY_ENABLED: "true"
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      NACOS_DISCOVERY_REGISTER_ENABLED: "true"
+      LOTTERY_REDIS_HOST: redis
+      LOTTERY_REDIS_PORT: "6379"
+      LOTTERY_REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+      LOTTERY_REDIS_DATABASE: "1"
+      LOTTERY_OUTBOX_ENABLED: "false"
+      LOTTERY_RECONCILIATION_ENABLED: "false"
+      LOTTERY_BENEFIT_CLAIM_EXPIRY_ENABLED: "false"
+      OSS_ENABLED: ${OSS_ENABLED:-false}
+      OSS_REGION: ${OSS_REGION:-}
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-}
+      OSS_BUCKET: ${OSS_BUCKET:-}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
+      TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+    depends_on:
+      marketing-extraction-schema-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  fulfillment-service:
+    build:
+      context: .
+      dockerfile: fulfillment-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      FULFILLMENT_DATABASE_URL: "jdbc:mysql://mysql:3306/hm_fulfillment?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
+      FULFILLMENT_DATABASE_USERNAME: hm_fulfillment_app
+      FULFILLMENT_DATABASE_PASSWORD: ${FULFILLMENT_DB_PASSWORD:-}
+      FULFILLMENT_FLYWAY_ENABLED: "true"
+      FULFILLMENT_MESSAGING_ENABLED: "false"
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      NACOS_DISCOVERY_REGISTER_ENABLED: "true"
+      FULFILLMENT_ADDRESS_CIPHER_KEY: ${SHIPPING_ADDRESS_KEY:?set SHIPPING_ADDRESS_KEY in .env}
+      FULFILLMENT_SHIPPING_CALLBACK_SECRET: ${SHIPPING_CALLBACK_SECRET:?set SHIPPING_CALLBACK_SECRET in .env}
+      USER_SERVICE_BASE_URL: http://user-service:8083
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
+      TZ: Asia/Shanghai
+    healthcheck:
+      <<: *java-healthcheck
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+    depends_on:
+      marketing-extraction-schema-init:
+        condition: service_completed_successfully
+      nacos:
+        condition: service_healthy
+
+  marketing-data-migration:
+    image: mysql:8.4
+    restart: "no"
+    depends_on:
+      coupon-service:
+        condition: service_healthy
+      points-service:
+        condition: service_healthy
+      membership-service:
+        condition: service_healthy
+      lottery-service:
+        condition: service_healthy
+      fulfillment-service:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - ./mysql/migrations/V014__migrate_marketing_domain_data.sql:/migrations/V014__migrate_marketing_domain_data.sql:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        exec mysql --protocol=TCP -h mysql -uroot -p"$$MYSQL_ROOT_PASSWORD" \
+          < /migrations/V014__migrate_marketing_domain_data.sql
+
   hm-gateway:
     build:
       context: .
@@ -375,6 +613,11 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
+      POINTS_SERVICE_URI: ${POINTS_SERVICE_URI:-http://points-service:8080}
+      COUPON_SERVICE_URI: ${COUPON_SERVICE_URI:-http://coupon-service:8080}
+      MEMBERSHIP_SERVICE_URI: ${MEMBERSHIP_SERVICE_URI:-http://membership-service:8080}
+      LOTTERY_SERVICE_URI: ${LOTTERY_SERVICE_URI:-http://lottery-service:8080}
+      FULFILLMENT_SERVICE_URI: ${FULFILLMENT_SERVICE_URI:-http://fulfillment-service:8080}
       TZ: Asia/Shanghai
     healthcheck:
       <<: *java-healthcheck
@@ -392,10 +635,21 @@ services:
         condition: service_healthy
       pay-service:
         condition: service_healthy
-      marketing-service:
+      coupon-service:
         condition: service_healthy
+      points-service:
+        condition: service_healthy
+      membership-service:
+        condition: service_healthy
+      lottery-service:
+        condition: service_healthy
+      fulfillment-service:
+        condition: service_healthy
+      marketing-data-migration:
+        condition: service_completed_successfully
 
   marketing-service:
+    profiles: ["legacy-marketing"]
     build:
       context: .
       dockerfile: marketing-service/Dockerfile
@@ -466,8 +720,6 @@ services:
       start_period: 10s
     depends_on:
       hm-gateway:
-        condition: service_healthy
-      marketing-service:
         condition: service_healthy
 
 volumes:

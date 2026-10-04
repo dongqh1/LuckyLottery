@@ -7,6 +7,7 @@ import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.restclient.RestTemplateBuilder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -21,6 +22,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
+@ConditionalOnProperty(prefix = "trade.coupon-checkout-service", name = "enabled",
+        havingValue = "false", matchIfMissing = true)
 public class HttpCouponCheckoutClient implements CouponCheckoutClient {
     private final RestTemplate restTemplate;
     private final String checkoutUrl;

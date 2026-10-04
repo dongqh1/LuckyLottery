@@ -9,6 +9,7 @@ import com.dongqh.payservice.domain.dto.PayOrderFormDTO;
 import com.dongqh.payservice.domain.po.PayOrder;
 import com.dongqh.payservice.enums.PayStatus;
 import com.dongqh.payservice.mapper.PayOrderMapper;
+import com.dongqh.payservice.mapper.PayOrderDomainMapper;
 import com.dongqh.payservice.messaging.PayOutboxService;
 import com.hmall.common.utils.UserContext;
 import org.junit.jupiter.api.AfterEach;
@@ -32,8 +33,9 @@ class PaySuccessOutboxTest {
         UserClient users = mock(UserClient.class);
         TradeClient trades = mock(TradeClient.class);
         PayOrderMapper payments = mock(PayOrderMapper.class);
+        PayOrderDomainMapper paymentDomains = mock(PayOrderDomainMapper.class);
         PayOutboxService outbox = mock(PayOutboxService.class);
-        PayOrderServiceImpl service = spy(new PayOrderServiceImpl(users, trades, payments, outbox));
+        PayOrderServiceImpl service = spy(new PayOrderServiceImpl(users, trades, payments, paymentDomains, outbox));
         ReflectionTestUtils.setField(service, "baseMapper", payments);
 
         PayOrder payment = new PayOrder().setId(501L).setBizOrderNo(101L)

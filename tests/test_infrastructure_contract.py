@@ -373,12 +373,11 @@ class ItemDatabaseIsolationContractTest(unittest.TestCase):
         self.assertIn("create user if not exists 'hm_item_app'@'%'", self.normalized)
         self.assertIn("alter user 'hm_item_app'@'%'", self.normalized)
 
-    def test_runtime_user_receives_only_item_database_dml_permissions(self):
+    def test_runtime_user_receives_item_database_scoped_flyway_permissions(self):
         self.assertRegex(
             self.normalized,
-            r"grant\s+select\s*,\s*insert\s*,\s*update\s*,\s*delete\s+on\s+`?hm_item`?\.\*\s+to\s+'hm_item_app'@'%'",
+            r"grant\s+all privileges\s+on\s+`?hm_item`?\.\*\s+to\s+'hm_item_app'@'%'",
         )
-        self.assertNotRegex(self.normalized, r"grant\s+all privileges.*'hm_item_app'")
         self.assertNotRegex(self.normalized, r"grant.*`?hmall`?\.\*.*'hm_item_app'")
 
     def test_item_table_is_cloned_and_seeded_without_removing_the_source(self):

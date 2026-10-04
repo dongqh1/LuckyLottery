@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: points-service
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      discovery:
+        enabled: true
+        register-enabled: ${NACOS_DISCOVERY_REGISTER_ENABLED:true}
+        group: DEFAULT_GROUP
+    openfeign:
+      client:
+        config:
+          item-service:
+            url: ${ITEM_SERVICE_BASE_URL:http://localhost:8081}
+          user-service:
+            url: ${USER_SERVICE_BASE_URL:http://localhost:8083}
+          fulfillment-service:
+            url: ${FULFILLMENT_SERVICE_BASE_URL:http://localhost:8080}
+  datasource:
+    url: ${POINTS_DATABASE_URL:}
+    username: ${POINTS_DATABASE_USERNAME:}
+    password: ${POINTS_DATABASE_PASSWORD:}
+  flyway:
+    enabled: ${POINTS_FLYWAY_ENABLED:false}

@@ -4,7 +4,10 @@ import com.dongqh.hmapi.dto.OrderDetailDTO;
 import com.dongqh.hmapi.dto.OrderPaymentDTO;
 import com.dongqh.tradeservice.domain.dto.OrderCouponFormDTO;
 import com.dongqh.tradeservice.domain.dto.OrderFormDTO;
+import com.dongqh.tradeservice.domain.dto.CreateMembershipOrderRequest;
 import com.dongqh.tradeservice.domain.vo.OrderVO;
+import com.dongqh.tradeservice.service.TradeMembershipOrderService;
+import com.hmall.common.utils.UserContext;
 import com.dongqh.tradeservice.service.IOrderService;
 import com.hmall.common.domain.PageDTO;
 import com.hmall.common.domain.PageQuery;
@@ -24,6 +27,7 @@ import jakarta.validation.Valid;
 public class OrderController {
 
     private final IOrderService orderService;
+    private final TradeMembershipOrderService membershipOrders;
 
     @ApiOperation("根据id查询订单")
     @GetMapping("{id}")
@@ -61,6 +65,12 @@ public class OrderController {
     @PostMapping
     public Long createOrder(@RequestBody OrderFormDTO orderFormDTO){
         return orderService.createOrder(orderFormDTO);
+    }
+
+    @ApiOperation("创建会员购买订单")
+    @PostMapping("/memberships")
+    public Long createMembershipOrder(@Valid @RequestBody CreateMembershipOrderRequest request) {
+        return membershipOrders.create(request, UserContext.getUser());
     }
 
     @ApiOperation("标记订单已支付")

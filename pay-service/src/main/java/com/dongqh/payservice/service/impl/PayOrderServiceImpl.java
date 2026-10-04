@@ -7,12 +7,15 @@ import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.dongqh.hmapi.client.TradeClient;
 import com.dongqh.hmapi.client.UserClient;
 import com.dongqh.hmapi.dto.OrderPaymentDTO;
+import com.dongqh.hmapi.dto.OrderDomain;
 import com.dongqh.hmapi.dto.PaySuccessMessage;
 import com.dongqh.payservice.domain.dto.PayApplyDTO;
 import com.dongqh.payservice.domain.dto.PayOrderFormDTO;
 import com.dongqh.payservice.domain.po.PayOrder;
+import com.dongqh.payservice.domain.po.PayOrderDomain;
 import com.dongqh.payservice.enums.PayStatus;
 import com.dongqh.payservice.mapper.PayOrderMapper;
+import com.dongqh.payservice.mapper.PayOrderDomainMapper;
 import com.dongqh.payservice.messaging.PayOutboxService;
 import com.dongqh.payservice.service.IPayOrderService;
 import com.hmall.common.exception.BizIllegalException;
@@ -22,6 +25,7 @@ import com.hmall.common.utils.UserContext;
 import org.apache.seata.spring.annotation.GlobalTransactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -46,7 +50,12 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
 
     private final PayOrderMapper payOrderMapper;
 
+    private final PayOrderDomainMapper payOrderDomainMapper;
+
     private final PayOutboxService payOutboxService;
+
+    @Value("${pay.membership-purchases.enabled:false}")
+    private boolean membershipPurchasesEnabled;
 
 
 
@@ -58,9 +67,14 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         if (currentUserId == null) {
             throw new BizIllegalException("用户未登录");
         }
-        OrderPaymentDTO order = tradeClient.queryOrderForPayment(applyDTO.getBizOrderNo(), currentUserId);
+        OrderDomain domain = resolveDomain(applyDTO.getOrderDomain());
+        requireMembershipPurchasesEnabled(domain);
+        applyDTO.setOrderDomain(domain);
+        OrderPaymentDTO order = queryBusinessOrder(domain, applyDTO.getBizOrderNo(), currentUserId);
         if (order == null || !currentUserId.equals(order.getUserId())
-                || !Integer.valueOf(1).equals(order.getStatus()) || order.getTotalFee() == null || order.getTotalFee() <= 0) {
+                || order.getOrderDomain() != domain
+                || !Integer.valueOf(1).equals(order.getStatus()) || order.getTotalFee() == null || order.getTotalFee() <= 0
+                || (domain == OrderDomain.MEMBERSHIP && order.getMembershipPurchase() == null)) {
             throw new BizIllegalException("业务订单不可支付");
         }
         applyDTO.setAmount(order.getTotalFee()); // Never accept browser pricing.
@@ -87,11 +101,14 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         if (currentUserId == null || !currentUserId.equals(payOrder.getBizUserId())) {
             throw new BizIllegalException("无权支付该订单！");
         }
-        OrderPaymentDTO order = tradeClient.queryOrderForPayment(payOrder.getBizOrderNo(), currentUserId);
+        OrderDomain domain = orderDomain(payOrder);
+        requireMembershipPurchasesEnabled(domain);
+        OrderPaymentDTO order = queryBusinessOrder(domain, payOrder.getBizOrderNo(), currentUserId);
         payOrder = baseMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PayOrder>()
                 .eq("id", payOrderFormDTO.getId()).last("FOR UPDATE"));
         if (payOrder == null || !currentUserId.equals(payOrder.getBizUserId())
-                || order == null || !order.getId().equals(payOrder.getBizOrderNo())) {
+                || order == null || !payOrder.getBizOrderNo().equals(order.getId())
+                || order.getOrderDomain() != domain) {
             throw new BizIllegalException("业务订单信息与支付单不一致！");
         }
         if (payOrder.getAmount() == null || payOrder.getAmount() <= 0) {
@@ -104,7 +121,9 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         if (order == null
                 || !currentUserId.equals(order.getUserId())
                 || !Integer.valueOf(1).equals(order.getStatus())
-                || !payOrder.getAmount().equals(order.getTotalFee())) {
+                || !payOrder.getAmount().equals(order.getTotalFee())
+                || (domain == OrderDomain.MEMBERSHIP && (order.getMembershipPurchase() == null
+                || order.getCouponId() != null))) {
             throw new BizIllegalException("业务订单信息与支付单不一致！");
         }
 
@@ -122,7 +141,9 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
                 order.getUserId(),
                 order.getTotalFee(),
                 order.getCouponId(),
-                paidAt));
+                paidAt,
+                domain,
+                order.getMembershipPurchase()));
     }
 
     @Override
@@ -137,6 +158,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
                         .eq("biz_order_no", orderId)
                         .last("FOR UPDATE"));
         for (PayOrder payment : payments) {
+            if (orderDomain(payment) == OrderDomain.MEMBERSHIP) continue;
             if (!userId.equals(payment.getBizUserId())) {
                 throw new BizIllegalException("无权修改该支付单");
             }
@@ -179,6 +201,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
 
     private PayOrder checkIdempotent(PayApplyDTO applyDTO) {
         // 1.首先查询支付单
+        OrderDomain requestedDomain = resolveDomain(applyDTO.getOrderDomain());
         PayOrder oldOrder = queryByBizOrderNo(applyDTO.getBizOrderNo());
         // 2.判断是否存在
         if (oldOrder == null) {
@@ -186,7 +209,11 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
             PayOrder payOrder = buildPayOrder(applyDTO);
             payOrder.setPayOrderNo(IdWorker.getId());
             save(payOrder);
+            persistOrderDomain(payOrder, requestedDomain);
             return payOrder;
+        }
+        if (orderDomain(oldOrder) != requestedDomain) {
+            throw new BizIllegalException("业务订单类型与已有支付单不一致");
         }
         // 3.旧单已经存在，判断是否支付成功
         if (PayStatus.TRADE_SUCCESS.equalsValue(oldOrder.getStatus())) {
@@ -225,11 +252,54 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         payOrder.setPayOverTime(LocalDateTime.now().plusMinutes(120L));
         payOrder.setStatus(PayStatus.WAIT_BUYER_PAY.getValue());
         payOrder.setBizUserId(UserContext.getUser());
+        payOrder.setOrderDomain(resolveDomain(payApplyDTO.getOrderDomain()).name());
         return payOrder;
     }
     public PayOrder queryByBizOrderNo(Long bizOrderNo) {
         return lambdaQuery()
                 .eq(PayOrder::getBizOrderNo, bizOrderNo)
                 .one();
+    }
+
+    private OrderDomain orderDomain(PayOrder order) {
+        if (order == null || !membershipPurchasesEnabled) return OrderDomain.TRADE;
+        PayOrderDomain domain = payOrderDomainMapper.selectByPayOrderId(order.getId());
+        return domain == null ? OrderDomain.TRADE : resolveDomain(domain.getOrderDomain());
+    }
+
+    private void persistOrderDomain(PayOrder order, OrderDomain domain) {
+        order.setOrderDomain(domain.name());
+        if (domain != OrderDomain.MEMBERSHIP) return;
+        PayOrderDomain mapping = new PayOrderDomain();
+        mapping.setPayOrderId(order.getId());
+        mapping.setBizOrderNo(order.getBizOrderNo());
+        mapping.setOrderDomain(domain.name());
+        mapping.setCreatedAt(LocalDateTime.now());
+        payOrderDomainMapper.insert(mapping);
+    }
+
+    private OrderPaymentDTO queryBusinessOrder(OrderDomain domain, Long orderId, Long userId) {
+        return domain == OrderDomain.MEMBERSHIP
+                ? tradeClient.queryMembershipOrderForPayment(orderId, userId)
+                : tradeClient.queryOrderForPayment(orderId, userId);
+    }
+
+    private OrderDomain resolveDomain(OrderDomain domain) {
+        return domain == null ? OrderDomain.TRADE : domain;
+    }
+
+    private OrderDomain resolveDomain(String domain) {
+        if (domain == null || domain.isBlank()) return OrderDomain.TRADE;
+        try {
+            return OrderDomain.valueOf(domain);
+        } catch (IllegalArgumentException exception) {
+            throw new BizIllegalException("业务订单类型无效");
+        }
+    }
+
+    private void requireMembershipPurchasesEnabled(OrderDomain domain) {
+        if (domain == OrderDomain.MEMBERSHIP && !membershipPurchasesEnabled) {
+            throw new BizIllegalException("会员购买支付流程尚未启用");
+        }
     }
 }

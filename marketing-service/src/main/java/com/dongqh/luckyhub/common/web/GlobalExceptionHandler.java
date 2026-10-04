@@ -1,5 +1,8 @@
 package com.dongqh.luckyhub.common.web;
 
+import com.dongqh.hmsecurity.permission.MissingTrustedUserException;
+import com.dongqh.hmsecurity.permission.PermissionDeniedException;
+import com.dongqh.hmsecurity.permission.PermissionLookupUnavailableException;
 import com.dongqh.luckyhub.common.enums.CommonErrorCode;
 import com.dongqh.luckyhub.common.enums.ErrorCode;
 import com.dongqh.luckyhub.common.exception.BusinessException;
@@ -59,6 +62,31 @@ public class GlobalExceptionHandler {
         log.warn("Business exception, requestId={}, code={}, message={}",
                 RequestIdSupport.getRequestId(request), exception.getErrorCode().code(), exception.getMessage());
         return build(exception.getErrorCode(), exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(MissingTrustedUserException.class)
+    public ResponseEntity<ErrorResponse> handleMissingTrustedUser(
+            MissingTrustedUserException exception,
+            HttpServletRequest request
+    ) {
+        return build(CommonErrorCode.UNAUTHORIZED, CommonErrorCode.UNAUTHORIZED.message(), request);
+    }
+
+    @ExceptionHandler(PermissionDeniedException.class)
+    public ResponseEntity<ErrorResponse> handlePermissionDenied(
+            PermissionDeniedException exception,
+            HttpServletRequest request
+    ) {
+        return build(CommonErrorCode.FORBIDDEN, CommonErrorCode.FORBIDDEN.message(), request);
+    }
+
+    @ExceptionHandler(PermissionLookupUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handlePermissionLookupUnavailable(
+            PermissionLookupUnavailableException exception,
+            HttpServletRequest request
+    ) {
+        log.error("Permission authority unavailable, requestId={}", RequestIdSupport.getRequestId(request), exception);
+        return build(CommonErrorCode.SERVICE_UNAVAILABLE, CommonErrorCode.SERVICE_UNAVAILABLE.message(), request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

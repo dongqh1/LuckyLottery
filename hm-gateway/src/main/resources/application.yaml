@@ -1,6 +1,8 @@
 server:
   port: 8080
 spring:
+  main:
+    web-application-type: reactive
   application:
     name: gateway
   cloud:
@@ -38,23 +40,27 @@ spring:
               uri: lb://pay-service
               predicates:
                 - Path=/pay-orders/**
-            - id: marketing-payment-callback-compat
-              uri: lb://marketing-service
+            - id: points-service
+              uri: ${POINTS_SERVICE_URI:lb://points-service}
               predicates:
-                - Path=/api/callbacks/payments,/api/callbacks/payments/**
-              filters:
-                - StripPrefix=1
-            - id: marketing-payment-callback-native
-              uri: lb://marketing-service
+                - Path=/api/points/**,/api/admin/points/**
+            - id: coupon-service
+              uri: ${COUPON_SERVICE_URI:lb://coupon-service}
               predicates:
-                - Path=/callbacks/payments,/callbacks/payments/**
-            - id: marketing-legacy
-              uri: lb://marketing-service
+                - Path=/api/coupons/**,/api/admin/coupon-templates/**,/api/admin/coupons/**
+            - id: membership-service
+              uri: ${MEMBERSHIP_SERVICE_URI:lb://membership-service}
               predicates:
-                - Path=/api/**
+                - Path=/api/memberships/**,/api/admin/membership-products/**
+            - id: lottery-service
+              uri: ${LOTTERY_SERVICE_URI:lb://lottery-service}
+              predicates:
+                - Path=/api/lottery/**,/api/benefits/**,/api/admin/activities/**,/api/admin/prizes/**,/api/admin/prize-images/**,/api/admin/reward-definitions/**
+            - id: fulfillment-service
+              uri: ${FULFILLMENT_SERVICE_URI:lb://fulfillment-service}
+              predicates:
+                - Path=/api/shipping/**,/api/admin/shipping/**,/api/admin/fulfillment/**
 hm:
-  marketing:
-    base-url: ${MARKETING_BASE_URL:http://localhost:8080}
   jwt:
     public-key-location: classpath:hmall-public.pem
   auth:

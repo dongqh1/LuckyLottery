@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: lottery-service
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      discovery:
+        enabled: true
+        register-enabled: ${NACOS_DISCOVERY_REGISTER_ENABLED:true}
+        group: DEFAULT_GROUP
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  datasource:
+    url: ${LOTTERY_DATABASE_URL}
+    username: ${LOTTERY_DATABASE_USERNAME:}
+    password: ${LOTTERY_DATABASE_PASSWORD:}
+  flyway:
+    enabled: ${LOTTERY_FLYWAY_ENABLED:false}
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+  data:
+    redis:
+      host: ${LOTTERY_REDIS_HOST}
+      port: ${LOTTERY_REDIS_PORT:6379}
+      database: ${LOTTERY_REDIS_DATABASE:0}
+      password: ${LOTTERY_REDIS_PASSWORD:}
+
+luckyhub:
+  oss:
+    enabled: ${OSS_ENABLED:false}
+    region: ${OSS_REGION:}
+    endpoint: ${OSS_ENDPOINT:}
+    bucket: ${OSS_BUCKET:}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    public-base-url: ${OSS_PUBLIC_BASE_URL:}
+  lottery:
+    benefit-claim-expiry:
+      enabled: ${LOTTERY_BENEFIT_CLAIM_EXPIRY_ENABLED:false}
+      refresh-interval: ${LOTTERY_BENEFIT_CLAIM_EXPIRY_INTERVAL:1m}
+      initial-delay: ${LOTTERY_BENEFIT_CLAIM_EXPIRY_INITIAL_DELAY:60s}
+      batch-size: ${LOTTERY_BENEFIT_CLAIM_EXPIRY_BATCH_SIZE:50}
+    zone-id: ${LOTTERY_ZONE_ID:Asia/Shanghai}
+    lock-wait: ${LOTTERY_LOCK_WAIT:3s}
+    processing-timeout: ${LOTTERY_PROCESSING_TIMEOUT:2m}
+    reconciliation-enabled: ${LOTTERY_RECONCILIATION_ENABLED:false}
+    reconcile-interval: ${LOTTERY_RECONCILE_INTERVAL:30s}
+    reconcile-initial-delay: ${LOTTERY_RECONCILE_INITIAL_DELAY:60s}
+    reconcile-batch-size: ${LOTTERY_RECONCILE_BATCH_SIZE:100}
+    reservation-retention: ${LOTTERY_RESERVATION_RETENTION:72h}
+    outbox-interval: ${LOTTERY_OUTBOX_INTERVAL:5s}
+    outbox-batch-size: ${LOTTERY_OUTBOX_BATCH_SIZE:100}
+    outbox:
+      enabled: ${LOTTERY_OUTBOX_ENABLED:false}
+  data:
+    redis:
+      host: ${LOTTERY_REDIS_HOST}
+      port: ${LOTTERY_REDIS_PORT:6379}
+      database: ${LOTTERY_REDIS_DATABASE:0}
+      password: ${LOTTERY_REDIS_PASSWORD:}

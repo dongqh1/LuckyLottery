@@ -1,4 +1,6 @@
 -- Product and SKU status distribution.
+SELECT VERSION() AS mysql_server_version;
+
 SELECT 'product_status' AS metric, CAST(status AS CHAR) AS dimension, COUNT(*) AS row_count
 FROM luckyhub.product
 GROUP BY status

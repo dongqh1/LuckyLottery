@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: membership-service
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      discovery:
+        enabled: true
+        register-enabled: ${NACOS_DISCOVERY_REGISTER_ENABLED:true}
+        group: DEFAULT_GROUP
+  datasource:
+    url: ${MEMBERSHIP_DATABASE_URL}
+    username: ${MEMBERSHIP_DATABASE_USERNAME:}
+    password: ${MEMBERSHIP_DATABASE_PASSWORD:}
+  flyway:
+    enabled: ${MEMBERSHIP_FLYWAY_ENABLED:false}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    dynamic: ${MEMBERSHIP_MESSAGING_ENABLED:false}
+    listener:
+      simple:
+        auto-startup: ${MEMBERSHIP_MESSAGING_ENABLED:false}
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 2
+          initial-interval: 500ms
+          multiplier: 2
+          max-interval: 2s
+membership:
+  messaging:
+    enabled: ${MEMBERSHIP_MESSAGING_ENABLED:false}

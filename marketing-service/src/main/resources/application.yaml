@@ -1,6 +1,6 @@
 spring:
   application:
-    name: hmall-marketing
+    name: marketing-service
   config:
     import:
       - optional:file:.env[.properties]

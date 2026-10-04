@@ -24,3 +24,9 @@ data/
 # Python test cache
 __pycache__/
 *.py[cod]
+
+# Local agent and dependency state
+.codex-progress/
+.hermes/
+.m2-repository/
+.superpowers/

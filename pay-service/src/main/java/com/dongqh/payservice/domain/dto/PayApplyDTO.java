@@ -2,6 +2,7 @@ package com.dongqh.payservice.domain.dto;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import com.dongqh.hmapi.dto.OrderDomain;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,6 +16,8 @@ public class PayApplyDTO {
     @ApiModelProperty("业务订单id不能为空")
     @NotNull(message = "业务订单id不能为空")
     private Long bizOrderNo;
+    @ApiModelProperty("业务订单域；未提供时默认为 TRADE")
+    private OrderDomain orderDomain;
     @ApiModelProperty("支付金额必须为正数")
     @Min(value = 1, message = "支付金额必须为正数")
     private Integer amount;

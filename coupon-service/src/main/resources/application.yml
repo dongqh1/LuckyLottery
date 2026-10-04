@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: coupon-service
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      discovery:
+        enabled: true
+        register-enabled: ${NACOS_DISCOVERY_REGISTER_ENABLED:true}
+        group: DEFAULT_GROUP
+    openfeign:
+      client:
+        config:
+          item-service:
+            url: ${ITEM_SERVICE_BASE_URL:http://localhost:8081}
+          user-service:
+            url: ${USER_SERVICE_BASE_URL:http://localhost:8083}
+          membership-service:
+            url: ${MEMBERSHIP_SERVICE_BASE_URL:http://localhost:8080}
+  datasource:
+    url: ${COUPON_DATABASE_URL}
+    username: ${COUPON_DATABASE_USERNAME}
+    password: ${COUPON_DATABASE_PASSWORD}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: ${RABBITMQ_VHOST:/dongqh}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 2
+          initial-interval: 500ms
+          multiplier: 2
+          max-interval: 2s
+  flyway:
+    enabled: ${COUPON_FLYWAY_ENABLED:false}
+
+luckyhub:
+  messaging:
+    enabled: ${COUPON_MESSAGING_ENABLED:false}
+  coupon:
+    lock-expiry-interval: ${COUPON_LOCK_EXPIRY_INTERVAL:60s}
+    lock-expiry-initial-delay: ${COUPON_LOCK_EXPIRY_INITIAL_DELAY:60s}
