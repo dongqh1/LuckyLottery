@@ -1,8 +1,8 @@
-package com.dongqh.luckyhub.points.service;
+package com.dongqh.luckyhub.service.points;
 
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionOfferCommand;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOffer;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionOfferView;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionOfferCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOffer;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionOfferView;
 
 import java.util.List;
 

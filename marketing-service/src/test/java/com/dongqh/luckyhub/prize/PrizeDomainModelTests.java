@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.prize;
 
-import com.dongqh.luckyhub.prize.dto.CreatePrizeCommand;
-import com.dongqh.luckyhub.prize.entity.MarketingPrize;
-import com.dongqh.luckyhub.prize.enums.PrizeLevel;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
+import com.dongqh.luckyhub.domain.dto.prize.CreatePrizeCommand;
+import com.dongqh.luckyhub.domain.po.prize.MarketingPrize;
+import com.dongqh.luckyhub.enums.prize.PrizeLevel;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;

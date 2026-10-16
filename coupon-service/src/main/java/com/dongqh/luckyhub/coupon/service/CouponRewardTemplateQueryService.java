@@ -1,8 +1,8 @@
-package com.dongqh.luckyhub.coupon.service;
+package com.dongqh.luckyhub.service.coupon;
 
 import com.dongqh.hmapi.dto.CouponRewardTemplateDTO;
-import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
+import com.dongqh.luckyhub.domain.po.coupon.CouponTemplate;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 

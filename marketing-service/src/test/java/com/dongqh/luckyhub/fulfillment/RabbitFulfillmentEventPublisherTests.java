@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.fulfillment;
 
-import com.dongqh.luckyhub.fulfillment.messaging.event.FulfillmentTaskReadyEvent;
-import com.dongqh.luckyhub.fulfillment.messaging.rabbit.FulfillmentRabbitTopology;
-import com.dongqh.luckyhub.fulfillment.messaging.rabbit.RabbitFulfillmentEventPublisher;
-import com.dongqh.luckyhub.lottery.config.MessagingProperties;
+import com.dongqh.luckyhub.messaging.fulfillment.event.FulfillmentTaskReadyEvent;
+import com.dongqh.luckyhub.messaging.fulfillment.rabbit.FulfillmentRabbitTopology;
+import com.dongqh.luckyhub.messaging.fulfillment.rabbit.RabbitFulfillmentEventPublisher;
+import com.dongqh.luckyhub.config.lottery.MessagingProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.Message;

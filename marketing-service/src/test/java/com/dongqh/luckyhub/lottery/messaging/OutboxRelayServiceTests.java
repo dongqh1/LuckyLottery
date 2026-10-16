@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.lottery.messaging;
 
-import com.dongqh.luckyhub.lottery.entity.MessageOutbox;
-import com.dongqh.luckyhub.lottery.enums.OutboxStatus;
-import com.dongqh.luckyhub.lottery.mapper.MessageOutboxMapper;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawConfirmedEvent;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
-import com.dongqh.luckyhub.lottery.messaging.port.DrawEventPublisher;
-import com.dongqh.luckyhub.lottery.service.OutboxRelayService;
+import com.dongqh.luckyhub.domain.po.lottery.MessageOutbox;
+import com.dongqh.luckyhub.enums.lottery.OutboxStatus;
+import com.dongqh.luckyhub.mapper.lottery.MessageOutboxMapper;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawConfirmedEvent;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventEnvelope;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventType;
+import com.dongqh.luckyhub.messaging.lottery.port.DrawEventPublisher;
+import com.dongqh.luckyhub.service.lottery.OutboxRelayService;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;

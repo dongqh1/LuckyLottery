@@ -1,10 +1,8 @@
-package com.dongqh.luckyhub.coupon.controller;
+package com.dongqh.luckyhub.controller.coupon;
 
-import com.dongqh.luckyhub.coupon.service.CouponService;
-import com.dongqh.luckyhub.coupon.vo.CouponPageResponse;
-import com.dongqh.luckyhub.coupon.vo.UserCouponView;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
+import com.dongqh.luckyhub.service.coupon.CouponService;
+import com.dongqh.luckyhub.domain.vo.coupon.CouponPageResponse;
+import com.dongqh.luckyhub.domain.vo.coupon.UserCouponView;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
 import jakarta.validation.constraints.Max;
@@ -22,7 +20,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Validated
 @RestController
 @RequestMapping("/api/coupons")
-@RequirePermission(ServicePermissionCodes.COUPON_READ)
 public class CouponQueryController {
     private final CouponService coupons;
 
@@ -48,3 +45,4 @@ public class CouponQueryController {
         return userId;
     }
 }
+

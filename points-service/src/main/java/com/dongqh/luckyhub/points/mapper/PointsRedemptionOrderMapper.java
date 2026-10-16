@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.points.mapper;
+package com.dongqh.luckyhub.mapper.points;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOrder;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOrder;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;

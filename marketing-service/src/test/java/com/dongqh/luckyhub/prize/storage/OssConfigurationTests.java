@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.prize.storage;
+package com.dongqh.luckyhub.domain.storage.prize;
 
-import com.dongqh.luckyhub.prize.config.OssConfiguration;
-import com.dongqh.luckyhub.prize.config.OssProperties;
+import com.dongqh.luckyhub.config.prize.OssConfiguration;
+import com.dongqh.luckyhub.config.prize.OssProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 

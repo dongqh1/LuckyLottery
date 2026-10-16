@@ -1,8 +1,8 @@
 package com.dongqh.lotteryservice.activitystatus;
 
-import com.dongqh.lotteryservice.activitystatus.mapper.ActivityStatusMapper;
-import com.dongqh.lotteryservice.activitystatus.service.ActivityStatusRefreshResult;
-import com.dongqh.lotteryservice.activitystatus.service.ActivityStatusService;
+import com.dongqh.lotteryservice.mapper.activitystatus.ActivityStatusMapper;
+import com.dongqh.lotteryservice.service.activitystatus.ActivityStatusRefreshResult;
+import com.dongqh.lotteryservice.service.activitystatus.ActivityStatusService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 

@@ -1,10 +1,8 @@
 package com.dongqh.pointsservice.controller;
 
-import com.dongqh.luckyhub.points.service.PointsRedemptionOfferService;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionOfferView;
+import com.dongqh.luckyhub.service.points.PointsRedemptionOfferService;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionOfferView;
 import com.hmall.common.domain.R;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,8 +18,8 @@ public class PointsRedemptionOfferController {
     }
 
     @GetMapping("/api/points/offers")
-    @RequirePermission(ServicePermissionCodes.POINTS_READ)
     public R<List<PointsRedemptionOfferView>> list() {
         return R.ok(offers.listAvailable());
     }
 }
+

@@ -1,6 +1,6 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.integration.UserServiceShippingAddressProvider;
+import com.dongqh.fulfillmentservice.integration.shipping.UserServiceShippingAddressProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

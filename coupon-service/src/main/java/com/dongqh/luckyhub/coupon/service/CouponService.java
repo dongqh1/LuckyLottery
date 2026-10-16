@@ -1,11 +1,11 @@
-package com.dongqh.luckyhub.coupon.service;
+package com.dongqh.luckyhub.service.coupon;
 
-import com.dongqh.luckyhub.coupon.dto.CreateCouponTemplateCommand;
-import com.dongqh.luckyhub.coupon.dto.IssueCouponCommand;
-import com.dongqh.luckyhub.coupon.model.CouponLockSnapshot;
-import com.dongqh.luckyhub.coupon.vo.CouponPageResponse;
-import com.dongqh.luckyhub.coupon.vo.CouponTemplateView;
-import com.dongqh.luckyhub.coupon.vo.UserCouponView;
+import com.dongqh.luckyhub.domain.dto.coupon.CreateCouponTemplateCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.IssueCouponCommand;
+import com.dongqh.luckyhub.domain.model.coupon.CouponLockSnapshot;
+import com.dongqh.luckyhub.domain.vo.coupon.CouponPageResponse;
+import com.dongqh.luckyhub.domain.vo.coupon.CouponTemplateView;
+import com.dongqh.luckyhub.domain.vo.coupon.UserCouponView;
 
 public interface CouponService {
     CouponTemplateView createTemplate(CreateCouponTemplateCommand command);

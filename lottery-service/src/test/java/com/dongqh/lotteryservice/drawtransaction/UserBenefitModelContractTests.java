@@ -4,10 +4,10 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.dongqh.lotteryservice.drawtransaction.entity.UserBenefitRow;
-import com.dongqh.lotteryservice.drawtransaction.enums.BenefitStatus;
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeType;
-import com.dongqh.lotteryservice.prizecatalog.domain.RewardType;
+import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
+import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

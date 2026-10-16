@@ -1,5 +1,5 @@
 package com.dongqh.luckyhub.fulfillment;
-import com.dongqh.luckyhub.fulfillment.dto.CreateFulfillmentTaskCommand;import com.dongqh.luckyhub.fulfillment.enums.*;import com.dongqh.luckyhub.fulfillment.model.CouponFulfillmentPayload;import com.dongqh.luckyhub.fulfillment.service.*;import com.dongqh.luckyhub.fulfillment.worker.FulfillmentWorker;import com.dongqh.luckyhub.integration.gateway.*;
+import com.dongqh.luckyhub.domain.dto.fulfillment.CreateFulfillmentTaskCommand;import com.dongqh.luckyhub.enums.fulfillment.*;import com.dongqh.luckyhub.domain.model.fulfillment.CouponFulfillmentPayload;import com.dongqh.luckyhub.service.fulfillment.*;import com.dongqh.luckyhub.worker.fulfillment.FulfillmentWorker;import com.dongqh.luckyhub.domain.gateway.integration.*;
 import org.junit.jupiter.api.*;import org.springframework.beans.factory.annotation.*;import org.springframework.boot.test.context.SpringBootTest;import org.springframework.boot.test.context.TestConfiguration;import org.springframework.context.annotation.*;import org.springframework.jdbc.core.JdbcTemplate;import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.util.concurrent.atomic.AtomicBoolean;import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest class FulfillmentWorkerTests {

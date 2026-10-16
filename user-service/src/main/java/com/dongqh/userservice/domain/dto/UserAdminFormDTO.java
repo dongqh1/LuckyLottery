@@ -17,7 +17,6 @@ public class UserAdminFormDTO {
     @NotBlank(message = "手机号不能为空")
     private String phone;
 
-    private String role;
-
     private Integer status;
 }
+

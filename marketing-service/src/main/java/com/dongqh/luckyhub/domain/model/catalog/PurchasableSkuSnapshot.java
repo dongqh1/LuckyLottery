@@ -1,0 +1,1 @@
+package com.dongqh.luckyhub.domain.model.catalog; import com.dongqh.luckyhub.enums.catalog.ProductType; public record PurchasableSkuSnapshot(Long skuId,Long productId,String productCode,String productName,String skuCode,String skuName,ProductType productType,String imageUrl,Long cashPriceCent) {}

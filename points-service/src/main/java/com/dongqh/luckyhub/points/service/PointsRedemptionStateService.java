@@ -1,11 +1,11 @@
-package com.dongqh.luckyhub.points.service;
+package com.dongqh.luckyhub.service.points;
 
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOrder;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.enums.PointsRedemptionStep;
-import com.dongqh.luckyhub.points.enums.PointsRedemptionStatus;
-import com.dongqh.luckyhub.points.exception.PointsDomainException;
-import com.dongqh.luckyhub.points.mapper.PointsRedemptionOrderMapper;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOrder;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.enums.points.PointsRedemptionStep;
+import com.dongqh.luckyhub.enums.points.PointsRedemptionStatus;
+import com.dongqh.luckyhub.points.domain.exception.PointsDomainException;
+import com.dongqh.luckyhub.mapper.points.PointsRedemptionOrderMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;

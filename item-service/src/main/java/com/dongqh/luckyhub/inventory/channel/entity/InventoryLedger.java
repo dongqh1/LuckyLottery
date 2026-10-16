@@ -1,11 +1,11 @@
-package com.dongqh.luckyhub.inventory.channel.entity;
+package com.dongqh.luckyhub.domain.channel.inventory.entity;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.dongqh.luckyhub.inventory.channel.enums.InventoryOperation;
+import com.dongqh.luckyhub.domain.channel.inventory.enums.InventoryOperation;
 import lombok.Getter;
 import lombok.Setter;
 

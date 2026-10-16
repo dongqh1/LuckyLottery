@@ -1,6 +1,6 @@
 package com.dongqh.fulfillmentservice.persistence;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskRecord;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskRecord;
 
 import java.time.LocalDateTime;
 import java.util.List;

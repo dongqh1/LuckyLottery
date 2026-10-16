@@ -1,5 +1,5 @@
 package com.dongqh.luckyhub.fulfillment;
-import com.dongqh.luckyhub.fulfillment.dto.CreateFulfillmentTaskCommand;import com.dongqh.luckyhub.fulfillment.enums.*;import com.dongqh.luckyhub.fulfillment.model.*;import com.dongqh.luckyhub.fulfillment.service.*;import com.dongqh.luckyhub.fulfillment.worker.FulfillmentWorker;import com.dongqh.luckyhub.integration.simulator.*;
+import com.dongqh.luckyhub.domain.dto.fulfillment.CreateFulfillmentTaskCommand;import com.dongqh.luckyhub.enums.fulfillment.*;import com.dongqh.luckyhub.domain.model.fulfillment.*;import com.dongqh.luckyhub.service.fulfillment.*;import com.dongqh.luckyhub.worker.fulfillment.FulfillmentWorker;import com.dongqh.luckyhub.domain.simulator.integration.*;
 import org.junit.jupiter.api.*;import org.springframework.beans.factory.annotation.Autowired;import org.springframework.boot.test.context.SpringBootTest;import org.springframework.jdbc.core.JdbcTemplate;import java.sql.Timestamp;import java.time.*;import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest class FulfillmentRecoveryTests {
  @Autowired FulfillmentTaskService tasks;@Autowired FulfillmentStateService state;@Autowired FulfillmentWorker worker;@Autowired SimulatorFailureRuleService rules;@Autowired JdbcTemplate jdbc;

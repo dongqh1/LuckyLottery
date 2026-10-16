@@ -3,20 +3,18 @@ package com.dongqh.couponservice.coupon;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dongqh.luckyhub.coupon.entity.UserCoupon;
-import com.dongqh.luckyhub.coupon.mapper.CouponIssueRecordMapper;
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
-import com.dongqh.luckyhub.coupon.mapper.UserCouponMapper;
-import com.dongqh.luckyhub.coupon.service.impl.CouponServiceImpl;
-import com.dongqh.luckyhub.coupon.service.port.CouponCatalogPort;
-import com.dongqh.luckyhub.coupon.service.port.CouponUserEligibilityPort;
+import com.dongqh.luckyhub.domain.po.coupon.UserCoupon;
+import com.dongqh.luckyhub.coupon.integration.CouponIntegrationService;
+import com.dongqh.luckyhub.mapper.coupon.CouponIssueRecordMapper;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
+import com.dongqh.luckyhub.mapper.coupon.UserCouponMapper;
+import com.dongqh.luckyhub.service.coupon.impl.CouponServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -33,8 +31,7 @@ class CouponServiceEmptyPageTests {
                 templates,
                 coupons,
                 mock(CouponIssueRecordMapper.class),
-                mock(CouponUserEligibilityPort.class),
-                mock(CouponCatalogPort.class));
+                mock(CouponIntegrationService.class));
         Page<UserCoupon> emptyPage = new Page<>(1, 10);
         emptyPage.setRecords(List.of());
         emptyPage.setTotal(0);

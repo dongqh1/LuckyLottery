@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.integration;
 
-import com.dongqh.luckyhub.fulfillment.enums.GatewayOutcome;
-import com.dongqh.luckyhub.integration.gateway.CouponGateway;
-import com.dongqh.luckyhub.integration.gateway.CouponGrantRequest;
-import com.dongqh.luckyhub.integration.gateway.GatewayResult;
+import com.dongqh.luckyhub.enums.fulfillment.GatewayOutcome;
+import com.dongqh.luckyhub.domain.gateway.integration.CouponGateway;
+import com.dongqh.luckyhub.domain.gateway.integration.CouponGrantRequest;
+import com.dongqh.luckyhub.domain.gateway.integration.GatewayResult;
 import org.junit.jupiter.api.AfterEach; import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired; import org.springframework.boot.test.context.SpringBootTest; import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List; import java.util.concurrent.*; import java.util.stream.IntStream;

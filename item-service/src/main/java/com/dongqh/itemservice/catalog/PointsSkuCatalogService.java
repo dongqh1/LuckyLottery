@@ -1,10 +1,10 @@
 package com.dongqh.itemservice.catalog;
 
-import com.dongqh.luckyhub.catalog.entity.Product;
-import com.dongqh.luckyhub.catalog.entity.ProductSku;
-import com.dongqh.luckyhub.catalog.mapper.ProductMapper;
-import com.dongqh.luckyhub.catalog.mapper.ProductSkuMapper;
-import com.dongqh.luckyhub.catalog.model.RedeemableSkuSnapshot;
+import com.dongqh.luckyhub.domain.po.catalog.Product;
+import com.dongqh.luckyhub.domain.po.catalog.ProductSku;
+import com.dongqh.luckyhub.mapper.catalog.ProductMapper;
+import com.dongqh.luckyhub.mapper.catalog.ProductSkuMapper;
+import com.dongqh.luckyhub.domain.model.catalog.RedeemableSkuSnapshot;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;

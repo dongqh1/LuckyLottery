@@ -1,14 +1,14 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.crypto.AesGcmAddressCipher;
-import com.dongqh.fulfillmentservice.shipping.domain.ShippingDomainException;
-import com.dongqh.fulfillmentservice.shipping.domain.ShippingErrorCode;
-import com.dongqh.fulfillmentservice.shipping.enums.ShippingSourceType;
-import com.dongqh.fulfillmentservice.shipping.model.ShippingAddressDetails;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingAddressSnapshot;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingAddressSnapshotRepository;
-import com.dongqh.fulfillmentservice.shipping.port.ShippingAddressProvider;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingAddressSnapshotService;
+import com.dongqh.fulfillmentservice.integration.crypto.shipping.AesGcmAddressCipher;
+import com.dongqh.fulfillmentservice.domain.shipping.ShippingDomainException;
+import com.dongqh.fulfillmentservice.domain.shipping.ShippingErrorCode;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
+import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingAddressDetails;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingAddressSnapshot;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingAddressSnapshotRepository;
+import com.dongqh.fulfillmentservice.integration.shipping.UserServiceShippingAddressProvider;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingAddressSnapshotService;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -28,7 +28,7 @@ class ShippingAddressSnapshotServiceTests {
     @Test
     void storesOnlyEncryptedAddressAndReturnsMaskedProjection() {
         ShippingAddressSnapshotRepository repository = mock(ShippingAddressSnapshotRepository.class);
-        ShippingAddressProvider addressProvider = mock(ShippingAddressProvider.class);
+        UserServiceShippingAddressProvider addressProvider = mock(UserServiceShippingAddressProvider.class);
         AesGcmAddressCipher cipher = cipher();
         when(addressProvider.findAddressForUser(7L, 9L)).thenReturn(Optional.of(address()));
         when(repository.findBySource(ShippingSourceType.CASH_ORDER, "order-9"))
@@ -53,7 +53,7 @@ class ShippingAddressSnapshotServiceTests {
     @Test
     void rejectsAnAddressNotOwnedByTheRequestedUser() {
         ShippingAddressSnapshotRepository repository = mock(ShippingAddressSnapshotRepository.class);
-        ShippingAddressProvider addressProvider = mock(ShippingAddressProvider.class);
+        UserServiceShippingAddressProvider addressProvider = mock(UserServiceShippingAddressProvider.class);
         when(addressProvider.findAddressForUser(7L, 9L)).thenReturn(Optional.of(
                 new ShippingAddressDetails(9L, 8L, "浙江省", "杭州市", "西湖区", "13800138000", "路 1 号", "张三")));
 
@@ -67,7 +67,7 @@ class ShippingAddressSnapshotServiceTests {
     void rejectsReusingSourceWithDifferentAddressContents() {
         AesGcmAddressCipher cipher = cipher();
         ShippingAddressSnapshotRepository repository = mock(ShippingAddressSnapshotRepository.class);
-        ShippingAddressProvider addressProvider = mock(ShippingAddressProvider.class);
+        UserServiceShippingAddressProvider addressProvider = mock(UserServiceShippingAddressProvider.class);
         ShippingAddressSnapshot existing = snapshot(cipher, "王五", "13800138000");
         when(addressProvider.findAddressForUser(7L, 9L)).thenReturn(Optional.of(address()));
         when(repository.findBySource(ShippingSourceType.CASH_ORDER, "order-9"))
@@ -83,7 +83,7 @@ class ShippingAddressSnapshotServiceTests {
     void identicalSourceAndAddressRequestReturnsExistingSnapshotWithoutAnotherInsert() {
         AesGcmAddressCipher cipher = cipher();
         ShippingAddressSnapshotRepository repository = mock(ShippingAddressSnapshotRepository.class);
-        ShippingAddressProvider addressProvider = mock(ShippingAddressProvider.class);
+        UserServiceShippingAddressProvider addressProvider = mock(UserServiceShippingAddressProvider.class);
         ShippingAddressSnapshot existing = new ShippingAddressSnapshot(77L, "ADDRESS-77", 7L, 9L,
                 ShippingSourceType.CASH_ORDER, "order-9", cipher.encrypt("张三"), cipher.encrypt("13800138000"),
                 cipher.encrypt("浙江省"), cipher.encrypt("杭州市"), cipher.encrypt("西湖区"),

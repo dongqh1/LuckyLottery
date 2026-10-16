@@ -1,7 +1,7 @@
 package com.dongqh.lotteryservice.activitystatus;
 
-import com.dongqh.lotteryservice.activitystatus.scheduler.ActivityStatusScheduler;
-import com.dongqh.lotteryservice.activitystatus.service.ActivityStatusService;
+import com.dongqh.lotteryservice.scheduler.activitystatus.ActivityStatusScheduler;
+import com.dongqh.lotteryservice.service.activitystatus.ActivityStatusService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.scheduling.annotation.Scheduled;

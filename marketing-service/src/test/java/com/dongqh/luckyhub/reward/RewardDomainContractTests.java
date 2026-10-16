@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.reward;
 
-import com.dongqh.luckyhub.reward.entity.RewardDefinition;
-import com.dongqh.luckyhub.reward.enums.RewardType;
-import com.dongqh.luckyhub.reward.mapper.RewardDefinitionMapper;
+import com.dongqh.luckyhub.domain.po.reward.RewardDefinition;
+import com.dongqh.luckyhub.enums.reward.RewardType;
+import com.dongqh.luckyhub.mapper.reward.RewardDefinitionMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

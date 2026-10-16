@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.prize;
 
 import com.dongqh.luckyhub.common.result.PageResponse;
-import com.dongqh.luckyhub.prize.dto.PrizeQuery;
-import com.dongqh.luckyhub.prize.enums.PrizeErrorCode;
+import com.dongqh.luckyhub.domain.dto.prize.PrizeQuery;
+import com.dongqh.luckyhub.enums.prize.PrizeErrorCode;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;

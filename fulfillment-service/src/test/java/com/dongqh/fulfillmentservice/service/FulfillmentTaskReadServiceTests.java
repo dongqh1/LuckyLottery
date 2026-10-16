@@ -2,9 +2,9 @@ package com.dongqh.fulfillmentservice.service;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.CouponFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskQuery;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskDetails;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskQueryRepository;
 import org.junit.jupiter.api.Test;

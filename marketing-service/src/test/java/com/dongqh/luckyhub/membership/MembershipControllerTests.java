@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.membership;
 
-import com.dongqh.luckyhub.membership.controller.MembershipController;
-import com.dongqh.luckyhub.membership.enums.MembershipCardType;
-import com.dongqh.luckyhub.membership.service.MembershipService;
-import com.dongqh.luckyhub.membership.vo.MembershipProductView;
+import com.dongqh.luckyhub.controller.membership.MembershipController;
+import com.dongqh.luckyhub.enums.membership.MembershipCardType;
+import com.dongqh.luckyhub.service.membership.MembershipService;
+import com.dongqh.luckyhub.domain.vo.membership.MembershipProductView;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;

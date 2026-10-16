@@ -1,6 +1,6 @@
 package com.dongqh.luckyhub.inventory.channel.exception;
 
-import com.dongqh.luckyhub.inventory.channel.enums.ChannelInventoryErrorCode;
+import com.dongqh.luckyhub.domain.channel.inventory.enums.ChannelInventoryErrorCode;
 
 public final class InventoryDomainException extends RuntimeException {
 

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.convert.DurationStyle;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -68,6 +69,12 @@ public class OutboxRelayService {
             }
         }
         return sent;
+    }
+
+    @Scheduled(fixedDelayString = "${luckyhub.lottery.outbox-interval:5s}",
+            initialDelayString = "${luckyhub.lottery.outbox-initial-delay:60s}")
+    public void relayOutbox() {
+        relayBatch();
     }
 
     private void recordFailure(MessageOutbox row, String claimToken, LocalDateTime now, Exception exception) {

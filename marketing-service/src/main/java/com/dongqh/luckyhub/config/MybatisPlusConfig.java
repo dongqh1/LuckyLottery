@@ -10,23 +10,23 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @MapperScan(basePackages = {
-        "com.dongqh.luckyhub.rbac.mapper",
-        "com.dongqh.luckyhub.prize.mapper",
-        "com.dongqh.luckyhub.activity.mapper",
-        "com.dongqh.luckyhub.lottery.mapper",
-        "com.dongqh.luckyhub.inventory.mapper",
-        "com.dongqh.luckyhub.benefit.mapper",
-        "com.dongqh.luckyhub.catalog.mapper",
-        "com.dongqh.luckyhub.reward.mapper",
-        "com.dongqh.luckyhub.inventory.channel.mapper",
-        "com.dongqh.luckyhub.points.mapper",
-        "com.dongqh.luckyhub.coupon.mapper",
-        "com.dongqh.luckyhub.membership.mapper",
-        "com.dongqh.luckyhub.order.mapper",
-        "com.dongqh.luckyhub.payment.mapper",
-        "com.dongqh.luckyhub.fulfillment.mapper",
-        "com.dongqh.luckyhub.drawchance.mapper",
-        "com.dongqh.luckyhub.shipping.mapper"
+        "com.dongqh.luckyhub.mapper.rbac",
+        "com.dongqh.luckyhub.mapper.prize",
+        "com.dongqh.luckyhub.mapper.activity",
+        "com.dongqh.luckyhub.mapper.lottery",
+        "com.dongqh.luckyhub.mapper.inventory",
+        "com.dongqh.luckyhub.mapper.benefit",
+        "com.dongqh.luckyhub.mapper.catalog",
+        "com.dongqh.luckyhub.mapper.reward",
+        "com.dongqh.luckyhub.domain.channel.inventory.mapper",
+        "com.dongqh.luckyhub.mapper.points",
+        "com.dongqh.luckyhub.mapper.coupon",
+        "com.dongqh.luckyhub.mapper.membership",
+        "com.dongqh.luckyhub.mapper.order",
+        "com.dongqh.luckyhub.mapper.payment",
+        "com.dongqh.luckyhub.mapper.fulfillment",
+        "com.dongqh.luckyhub.mapper.drawchance",
+        "com.dongqh.luckyhub.mapper.shipping"
 })
 public class MybatisPlusConfig {
 

@@ -1,10 +1,10 @@
 package com.dongqh.luckyhub.lottery.messaging;
 
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
-import com.dongqh.luckyhub.lottery.messaging.event.PrizeFulfillmentRequestedEvent;
-import com.dongqh.luckyhub.lottery.service.OutboxService;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventEnvelope;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventType;
+import com.dongqh.luckyhub.messaging.lottery.event.PrizeFulfillmentRequestedEvent;
+import com.dongqh.luckyhub.service.lottery.OutboxService;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

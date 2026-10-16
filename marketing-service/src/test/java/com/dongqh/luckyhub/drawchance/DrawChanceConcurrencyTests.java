@@ -1,7 +1,7 @@
 package com.dongqh.luckyhub.drawchance;
 
-import com.dongqh.luckyhub.drawchance.dto.DrawChanceReservationCommand;
-import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
+import com.dongqh.luckyhub.domain.dto.drawchance.DrawChanceReservationCommand;
+import com.dongqh.luckyhub.service.drawchance.DrawChanceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

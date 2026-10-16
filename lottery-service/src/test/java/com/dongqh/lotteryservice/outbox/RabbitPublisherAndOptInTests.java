@@ -9,7 +9,6 @@ import com.dongqh.lotteryservice.outbox.mapper.MessageOutboxMapper;
 import com.dongqh.lotteryservice.outbox.publisher.DrawEventPublisher;
 import com.dongqh.lotteryservice.outbox.publisher.LotteryRabbitTopology;
 import com.dongqh.lotteryservice.outbox.publisher.RabbitDrawEventPublisher;
-import com.dongqh.lotteryservice.outbox.scheduler.OutboxRelayScheduler;
 import com.dongqh.lotteryservice.outbox.service.OutboxRelayService;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpException;
@@ -119,12 +118,9 @@ class RabbitPublisherAndOptInTests {
         publisher.withPropertyValues("luckyhub.lottery.outbox.enabled=true")
                 .run(context -> assertThat(context).hasSingleBean(RabbitDrawEventPublisher.class));
 
-        var scheduler = new ApplicationContextRunner()
-                .withBean(OutboxRelayService.class, () -> mock(OutboxRelayService.class))
-                .withUserConfiguration(OutboxRelayScheduler.class);
-        scheduler.run(context -> assertThat(context).doesNotHaveBean(OutboxRelayScheduler.class));
-        scheduler.withPropertyValues("luckyhub.lottery.outbox.enabled=true")
-                .run(context -> assertThat(context).hasSingleBean(OutboxRelayScheduler.class));
+        relay.run(context -> assertThat(context).doesNotHaveBean(OutboxRelayService.class));
+        relay.withPropertyValues("luckyhub.lottery.outbox.enabled=true")
+                .run(context -> assertThat(context).hasSingleBean(OutboxRelayService.class));
     }
 
     @Test
@@ -183,11 +179,8 @@ class RabbitPublisherAndOptInTests {
     }
 
     @Test
-    void schedulerDelegatesAndKeepsLegacyIntervals() throws Exception {
-        OutboxRelayService relay = mock(OutboxRelayService.class);
-        new OutboxRelayScheduler(relay).relayOutbox();
-        verify(relay).relayBatch();
-        Scheduled schedule = OutboxRelayScheduler.class.getMethod("relayOutbox").getAnnotation(Scheduled.class);
+    void relayKeepsLegacyIntervals() throws Exception {
+        Scheduled schedule = OutboxRelayService.class.getMethod("relayOutbox").getAnnotation(Scheduled.class);
         assertThat(schedule.fixedDelayString()).isEqualTo("${luckyhub.lottery.outbox-interval:5s}");
         assertThat(schedule.initialDelayString()).isEqualTo("${luckyhub.lottery.outbox-initial-delay:60s}");
     }

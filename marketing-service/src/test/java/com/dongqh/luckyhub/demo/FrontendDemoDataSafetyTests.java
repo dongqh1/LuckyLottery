@@ -1,7 +1,7 @@
 package com.dongqh.luckyhub.demo;
 
-import com.dongqh.luckyhub.auth.security.PasswordService;
-import com.dongqh.luckyhub.shipping.crypto.AddressCipher;
+import com.dongqh.luckyhub.security.auth.PasswordService;
+import com.dongqh.luckyhub.domain.crypto.shipping.AddressCipher;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

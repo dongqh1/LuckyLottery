@@ -1,13 +1,11 @@
 package com.dongqh.pointsservice.controller;
 
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
-import com.dongqh.luckyhub.points.dto.AdminPointsAdjustmentCommand;
-import com.dongqh.luckyhub.points.dto.ReversePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionService;
-import com.dongqh.luckyhub.points.vo.PointsLedgerView;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionView;
+import com.dongqh.luckyhub.domain.dto.points.AdminPointsAdjustmentCommand;
+import com.dongqh.luckyhub.domain.dto.points.ReversePointsRedemptionCommand;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionService;
+import com.dongqh.luckyhub.domain.vo.points.PointsLedgerView;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionView;
 import com.hmall.common.domain.R;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,16 +29,15 @@ public class PointsAdminController {
     }
 
     @PostMapping("/adjustments")
-    @RequirePermission(ServicePermissionCodes.POINTS_ADJUST)
     public R<PointsLedgerView> adjust(@Valid @RequestBody AdminPointsAdjustmentCommand command) {
         return R.ok(accounts.adjust(command));
     }
 
     @PostMapping("/redemptions/{redemptionNo}/reverse")
-    @RequirePermission(ServicePermissionCodes.POINTS_ADJUST)
     public R<PointsRedemptionView> reverse(
             @PathVariable("redemptionNo") @Size(min = 1, max = 64) String redemptionNo,
             @Valid @RequestBody ReversePointsRedemptionCommand command) {
         return R.ok(redemptions.reverse(redemptionNo, command));
     }
 }
+

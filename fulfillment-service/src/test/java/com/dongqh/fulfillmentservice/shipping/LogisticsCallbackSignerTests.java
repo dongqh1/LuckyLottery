@@ -1,9 +1,9 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.config.LogisticsCallbackProperties;
-import com.dongqh.fulfillmentservice.shipping.crypto.LogisticsCallbackSigner;
-import com.dongqh.fulfillmentservice.shipping.enums.TrackingEventType;
-import com.dongqh.fulfillmentservice.shipping.model.LogisticsCallbackCommand;
+import com.dongqh.fulfillmentservice.config.shipping.LogisticsCallbackProperties;
+import com.dongqh.fulfillmentservice.integration.crypto.shipping.LogisticsCallbackSigner;
+import com.dongqh.fulfillmentservice.enums.shipping.TrackingEventType;
+import com.dongqh.fulfillmentservice.domain.model.shipping.LogisticsCallbackCommand;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

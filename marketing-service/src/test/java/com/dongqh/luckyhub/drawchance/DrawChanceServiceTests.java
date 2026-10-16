@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.drawchance;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.drawchance.dto.DrawChanceReservationCommand;
-import com.dongqh.luckyhub.drawchance.enums.DrawChanceReservationStatus;
-import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
+import com.dongqh.luckyhub.domain.dto.drawchance.DrawChanceReservationCommand;
+import com.dongqh.luckyhub.enums.drawchance.DrawChanceReservationStatus;
+import com.dongqh.luckyhub.service.drawchance.DrawChanceService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,13 +1,13 @@
 package com.dongqh.lotteryservice.reward;
 
 import com.dongqh.hmapi.dto.FulfillmentStatusChangedEventV1;
-import com.dongqh.lotteryservice.drawtransaction.entity.UserBenefitRow;
-import com.dongqh.lotteryservice.drawtransaction.enums.BenefitStatus;
-import com.dongqh.lotteryservice.drawtransaction.mapper.UserBenefitMapper;
+import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
+import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
+import com.dongqh.lotteryservice.mapper.drawtransaction.UserBenefitMapper;
 import com.dongqh.lotteryservice.outbox.mapper.LotteryRewardQuarantineMapper;
 import com.dongqh.lotteryservice.outbox.mapper.MessageConsumeRecordMapper;
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeType;
-import com.dongqh.lotteryservice.prizecatalog.domain.RewardType;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

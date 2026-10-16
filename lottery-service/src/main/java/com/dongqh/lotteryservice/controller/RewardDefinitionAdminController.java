@@ -1,10 +1,8 @@
 package com.dongqh.lotteryservice.controller;
 
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
-import com.dongqh.lotteryservice.prizecatalog.dto.CreateRewardDefinitionCommand;
-import com.dongqh.lotteryservice.prizecatalog.service.RewardDefinitionAdminService;
-import com.dongqh.lotteryservice.prizecatalog.vo.RewardDefinitionView;
+import com.dongqh.lotteryservice.domain.dto.prizecatalog.CreateRewardDefinitionCommand;
+import com.dongqh.lotteryservice.service.prizecatalog.RewardDefinitionAdminService;
+import com.dongqh.lotteryservice.domain.vo.prizecatalog.RewardDefinitionView;
 import com.hmall.common.domain.R;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -28,14 +26,13 @@ public class RewardDefinitionAdminController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequirePermission(ServicePermissionCodes.REWARD_MANAGE)
     public R<RewardDefinitionView> create(@Valid @RequestBody CreateRewardDefinitionCommand command) {
         return R.ok(rewards.create(command));
     }
 
     @GetMapping("/{id}")
-    @RequirePermission(ServicePermissionCodes.REWARD_MANAGE)
     public R<RewardDefinitionView> get(@PathVariable("id") @Positive long id) {
         return R.ok(rewards.get(id));
     }
 }
+

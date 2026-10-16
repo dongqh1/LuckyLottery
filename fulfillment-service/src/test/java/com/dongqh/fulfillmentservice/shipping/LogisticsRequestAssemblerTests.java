@@ -2,19 +2,19 @@ package com.dongqh.fulfillmentservice.shipping;
 
 import com.dongqh.fulfillmentservice.enums.AttemptOperation;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.FulfillmentClaim;
-import com.dongqh.fulfillmentservice.model.LogisticsFulfillmentPayload;
-import com.dongqh.fulfillmentservice.shipping.crypto.AddressCipher;
-import com.dongqh.fulfillmentservice.shipping.domain.ShippingDomainException;
-import com.dongqh.fulfillmentservice.shipping.domain.ShippingErrorCode;
-import com.dongqh.fulfillmentservice.shipping.enums.ShippingSourceType;
-import com.dongqh.fulfillmentservice.shipping.enums.ShippingStatus;
-import com.dongqh.fulfillmentservice.shipping.integration.LogisticsRequestAssemblerImpl;
-import com.dongqh.fulfillmentservice.shipping.model.LogisticsFulfillmentRequest;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingAddressSnapshot;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingOrder;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingOrderRepository;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingAddressSnapshotService;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentClaim;
+import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
+import com.dongqh.fulfillmentservice.integration.crypto.shipping.AddressCipher;
+import com.dongqh.fulfillmentservice.domain.shipping.ShippingDomainException;
+import com.dongqh.fulfillmentservice.domain.shipping.ShippingErrorCode;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingStatus;
+import com.dongqh.fulfillmentservice.integration.shipping.LogisticsRequestAssembler;
+import com.dongqh.fulfillmentservice.domain.model.shipping.LogisticsFulfillmentRequest;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingAddressSnapshot;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrder;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrderRepository;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingAddressSnapshotService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -44,7 +44,7 @@ class LogisticsRequestAssemblerTests {
         when(cipher.decrypt("city-cipher")).thenReturn("杭州市");
         when(cipher.decrypt("district-cipher")).thenReturn("西湖区");
         when(cipher.decrypt("detail-cipher")).thenReturn("文三路1号");
-        LogisticsRequestAssemblerImpl assembler = new LogisticsRequestAssemblerImpl(orders, snapshots, cipher);
+        LogisticsRequestAssembler assembler = new LogisticsRequestAssembler(orders, snapshots, cipher);
 
         LogisticsFulfillmentRequest request = assembler.assemble(claim("LOGISTICS-8"), payload());
 
@@ -65,7 +65,7 @@ class LogisticsRequestAssemblerTests {
         ShippingAddressSnapshotService snapshots = mock(ShippingAddressSnapshotService.class);
         AddressCipher cipher = mock(AddressCipher.class);
         when(orders.findById(8)).thenReturn(Optional.of(order("OTHER-TASK", "BENEFIT-8", "SKU-8", 1)));
-        LogisticsRequestAssemblerImpl assembler = new LogisticsRequestAssemblerImpl(orders, snapshots, cipher);
+        LogisticsRequestAssembler assembler = new LogisticsRequestAssembler(orders, snapshots, cipher);
 
         assertThatThrownBy(() -> assembler.assemble(claim("LOGISTICS-8"), payload()))
                 .isInstanceOf(ShippingDomainException.class)
@@ -82,7 +82,7 @@ class LogisticsRequestAssemblerTests {
         AddressCipher cipher = mock(AddressCipher.class);
         when(orders.findById(8)).thenReturn(Optional.of(order("LOGISTICS-8", "BENEFIT-8", "SKU-8", 1)));
         when(snapshots.require(3)).thenReturn(snapshot("BENEFIT-8", "王*", "139****8000"));
-        LogisticsRequestAssemblerImpl assembler = new LogisticsRequestAssemblerImpl(orders, snapshots, cipher);
+        LogisticsRequestAssembler assembler = new LogisticsRequestAssembler(orders, snapshots, cipher);
 
         assertThatThrownBy(() -> assembler.assemble(claim("LOGISTICS-8"), payload()))
                 .isInstanceOf(ShippingDomainException.class)

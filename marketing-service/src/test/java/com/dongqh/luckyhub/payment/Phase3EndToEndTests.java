@@ -1,14 +1,14 @@
 package com.dongqh.luckyhub.payment;
 
-import com.dongqh.luckyhub.membership.dto.CreateMembershipProductCommand;
-import com.dongqh.luckyhub.membership.dto.PurchaseMembershipCommand;
-import com.dongqh.luckyhub.membership.enums.MembershipCardType;
-import com.dongqh.luckyhub.membership.service.MembershipService;
-import com.dongqh.luckyhub.order.dto.CreateCashOrderCommand;
-import com.dongqh.luckyhub.payment.dto.CreatePaymentCommand;
-import com.dongqh.luckyhub.payment.dto.PaymentCallbackCommand;
-import com.dongqh.luckyhub.payment.enums.PaymentResult;
-import com.dongqh.luckyhub.payment.service.PaymentService;
+import com.dongqh.luckyhub.domain.dto.membership.CreateMembershipProductCommand;
+import com.dongqh.luckyhub.domain.dto.membership.PurchaseMembershipCommand;
+import com.dongqh.luckyhub.enums.membership.MembershipCardType;
+import com.dongqh.luckyhub.service.membership.MembershipService;
+import com.dongqh.luckyhub.domain.dto.order.CreateCashOrderCommand;
+import com.dongqh.luckyhub.domain.dto.payment.CreatePaymentCommand;
+import com.dongqh.luckyhub.domain.dto.payment.PaymentCallbackCommand;
+import com.dongqh.luckyhub.enums.payment.PaymentResult;
+import com.dongqh.luckyhub.service.payment.PaymentService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

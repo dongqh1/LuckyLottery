@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.inventory.channel.entity;
+package com.dongqh.luckyhub.domain.channel.inventory.entity;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;

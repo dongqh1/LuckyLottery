@@ -1,16 +1,16 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.auth.model.JwtPayload;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.service.UserPermissionService;
-import com.dongqh.luckyhub.shipping.dto.LogisticsCallbackCommand;
-import com.dongqh.luckyhub.shipping.enums.ShippingStatus;
-import com.dongqh.luckyhub.shipping.enums.TrackingEventType;
-import com.dongqh.luckyhub.shipping.service.LogisticsCallbackService;
-import com.dongqh.luckyhub.shipping.service.ShippingQueryService;
-import com.dongqh.luckyhub.shipping.vo.ShippingTrackingView;
+import com.dongqh.luckyhub.domain.model.auth.JwtPayload;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.service.rbac.UserPermissionService;
+import com.dongqh.luckyhub.domain.dto.shipping.LogisticsCallbackCommand;
+import com.dongqh.luckyhub.enums.shipping.ShippingStatus;
+import com.dongqh.luckyhub.enums.shipping.TrackingEventType;
+import com.dongqh.luckyhub.service.shipping.LogisticsCallbackService;
+import com.dongqh.luckyhub.service.shipping.ShippingQueryService;
+import com.dongqh.luckyhub.domain.vo.shipping.ShippingTrackingView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

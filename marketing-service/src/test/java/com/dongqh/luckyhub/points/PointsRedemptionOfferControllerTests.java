@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.points;
 
-import com.dongqh.luckyhub.points.controller.PointsRedemptionOfferController;
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionOfferCommand;
-import com.dongqh.luckyhub.points.service.PointsRedemptionOfferService;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionOfferView;
+import com.dongqh.luckyhub.controller.points.PointsRedemptionOfferController;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionOfferCommand;
+import com.dongqh.luckyhub.service.points.PointsRedemptionOfferService;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionOfferView;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

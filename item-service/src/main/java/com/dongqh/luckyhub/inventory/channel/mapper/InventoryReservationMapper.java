@@ -1,8 +1,8 @@
-package com.dongqh.luckyhub.inventory.channel.mapper;
+package com.dongqh.luckyhub.domain.channel.inventory.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dongqh.luckyhub.inventory.channel.entity.InventoryReservation;
-import com.dongqh.luckyhub.inventory.channel.enums.InventoryReservationStatus;
+import com.dongqh.luckyhub.domain.channel.inventory.entity.InventoryReservation;
+import com.dongqh.luckyhub.domain.channel.inventory.enums.InventoryReservationStatus;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 

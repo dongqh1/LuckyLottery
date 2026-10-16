@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.prize.image;
+package com.dongqh.luckyhub.domain.image.prize;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.prize.enums.PrizeErrorCode;
+import com.dongqh.luckyhub.enums.prize.PrizeErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 

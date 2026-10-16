@@ -1,8 +1,8 @@
 package com.dongqh.fulfillmentservice.integration;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentGatewayResult;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
 import com.dongqh.fulfillmentservice.service.port.LogisticsFulfillmentGateway;
-import com.dongqh.fulfillmentservice.shipping.model.LogisticsFulfillmentRequest;
+import com.dongqh.fulfillmentservice.domain.model.shipping.LogisticsFulfillmentRequest;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;

@@ -1,8 +1,8 @@
 package com.dongqh.fulfillmentservice.integration;
 
-import com.dongqh.fulfillmentservice.model.CouponFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.FulfillmentGatewayResult;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskReadService;
 import com.dongqh.fulfillmentservice.service.port.CouponFulfillmentGateway;
 import com.dongqh.hmapi.client.CouponClient;

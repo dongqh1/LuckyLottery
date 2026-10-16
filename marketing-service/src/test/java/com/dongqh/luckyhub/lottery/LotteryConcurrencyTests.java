@@ -1,14 +1,14 @@
 package com.dongqh.luckyhub.lottery;
 
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
-import com.dongqh.luckyhub.lottery.algorithm.DrawRandomSource;
-import com.dongqh.luckyhub.lottery.dto.DrawCommand;
-import com.dongqh.luckyhub.lottery.enums.LotteryErrorCode;
-import com.dongqh.luckyhub.lottery.quota.DrawQuotaKeys;
-import com.dongqh.luckyhub.lottery.service.LotteryService;
+import com.dongqh.luckyhub.service.drawchance.DrawChanceService;
+import com.dongqh.luckyhub.domain.algorithm.lottery.DrawRandomSource;
+import com.dongqh.luckyhub.domain.dto.lottery.DrawCommand;
+import com.dongqh.luckyhub.enums.lottery.LotteryErrorCode;
+import com.dongqh.luckyhub.domain.quota.lottery.DrawQuotaKeys;
+import com.dongqh.luckyhub.service.lottery.LotteryService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

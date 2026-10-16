@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.activity.service;
+package com.dongqh.luckyhub.service.activity;
 
-import com.dongqh.luckyhub.activity.mapper.MarketingActivityMapper;
-import com.dongqh.luckyhub.activity.service.impl.ActivityStatusServiceImpl;
+import com.dongqh.luckyhub.mapper.activity.MarketingActivityMapper;
+import com.dongqh.luckyhub.service.activity.impl.ActivityStatusServiceImpl;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

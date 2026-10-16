@@ -1,14 +1,14 @@
 package com.dongqh.lotteryservice.prizecatalog;
 
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeErrorCode;
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeLevel;
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeType;
-import com.dongqh.lotteryservice.prizecatalog.domain.RewardPrizeTypeMapping;
-import com.dongqh.lotteryservice.prizecatalog.domain.RewardType;
-import com.dongqh.lotteryservice.prizecatalog.dto.CreatePrizeCommand;
-import com.dongqh.lotteryservice.prizecatalog.dto.PrizeQuery;
-import com.dongqh.lotteryservice.prizecatalog.dto.UpdatePrizeCommand;
-import com.dongqh.lotteryservice.prizecatalog.vo.PageResponse;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeErrorCode;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeLevel;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
+import com.dongqh.lotteryservice.domain.model.prizecatalog.RewardPrizeTypeMapping;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
+import com.dongqh.lotteryservice.domain.dto.prizecatalog.CreatePrizeCommand;
+import com.dongqh.lotteryservice.domain.dto.prizecatalog.PrizeQuery;
+import com.dongqh.lotteryservice.domain.dto.prizecatalog.UpdatePrizeCommand;
+import com.dongqh.lotteryservice.domain.vo.prizecatalog.PageResponse;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;

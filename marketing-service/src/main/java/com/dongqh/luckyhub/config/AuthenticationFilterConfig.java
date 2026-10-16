@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.config;
 
-import com.dongqh.luckyhub.auth.filter.AuthenticationFilter;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
-import com.dongqh.luckyhub.auth.service.HmallUserProjectionService;
+import com.dongqh.luckyhub.domain.filter.auth.AuthenticationFilter;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
+import com.dongqh.luckyhub.service.auth.HmallUserProjectionService;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;

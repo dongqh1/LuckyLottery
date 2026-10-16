@@ -1,14 +1,12 @@
 package com.dongqh.pointsservice.controller;
 
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.dto.PointsRedemptionQuery;
-import com.dongqh.luckyhub.points.service.PointsRedemptionService;
-import com.dongqh.luckyhub.points.vo.PointsPageResponse;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionView;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsRedemptionQuery;
+import com.dongqh.luckyhub.service.points.PointsRedemptionService;
+import com.dongqh.luckyhub.domain.vo.points.PointsPageResponse;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionView;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -38,7 +36,6 @@ public class PointsRedemptionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequirePermission(ServicePermissionCodes.POINTS_REDEEM)
     public R<PointsRedemptionView> create(
             @Valid @RequestBody CreatePointsRedemptionCommand command,
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
@@ -47,7 +44,6 @@ public class PointsRedemptionController {
     }
 
     @GetMapping
-    @RequirePermission(ServicePermissionCodes.POINTS_READ)
     public R<PointsPageResponse<PointsRedemptionView>> page(
             @Valid @ModelAttribute PointsRedemptionQuery query
     ) {
@@ -55,7 +51,6 @@ public class PointsRedemptionController {
     }
 
     @GetMapping("/{redemptionNo}")
-    @RequirePermission(ServicePermissionCodes.POINTS_READ)
     public R<PointsRedemptionView> get(@PathVariable("redemptionNo") String redemptionNo) {
         return R.ok(redemptions.get(requireUserId(), redemptionNo));
     }
@@ -68,3 +63,4 @@ public class PointsRedemptionController {
         return userId;
     }
 }
+

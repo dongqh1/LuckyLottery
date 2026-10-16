@@ -1,0 +1,1 @@
+package com.dongqh.luckyhub.domain.vo.membership; import java.time.LocalDateTime; public record UserMembershipView(Long id,Long userId,String membershipLevel,LocalDateTime startsAt,LocalDateTime expiresAt,Integer discountBasisPoints,Integer dailyDrawBonus,Integer pointsMultiplierBasisPoints) {}

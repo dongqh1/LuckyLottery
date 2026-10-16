@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.lottery.messaging;
 
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
-import com.dongqh.luckyhub.lottery.messaging.event.PrizeFulfillmentRequestedEvent;
-import com.dongqh.luckyhub.lottery.messaging.port.DrawEventPublisher;
-import com.dongqh.luckyhub.lottery.messaging.rabbit.LotteryRabbitTopology;
-import com.dongqh.luckyhub.lottery.service.MessageConsumeService;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
-import com.dongqh.luckyhub.reward.enums.RewardType;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventEnvelope;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventType;
+import com.dongqh.luckyhub.messaging.lottery.event.PrizeFulfillmentRequestedEvent;
+import com.dongqh.luckyhub.messaging.lottery.port.DrawEventPublisher;
+import com.dongqh.luckyhub.messaging.lottery.rabbit.LotteryRabbitTopology;
+import com.dongqh.luckyhub.service.lottery.MessageConsumeService;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
+import com.dongqh.luckyhub.enums.reward.RewardType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

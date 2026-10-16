@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.activity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.dongqh.luckyhub.activity.entity.MarketingActivity;
-import com.dongqh.luckyhub.activity.entity.MarketingActivityPrize;
-import com.dongqh.luckyhub.activity.enums.ActivityStatus;
+import com.dongqh.luckyhub.domain.po.activity.MarketingActivity;
+import com.dongqh.luckyhub.domain.po.activity.MarketingActivityPrize;
+import com.dongqh.luckyhub.enums.activity.ActivityStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

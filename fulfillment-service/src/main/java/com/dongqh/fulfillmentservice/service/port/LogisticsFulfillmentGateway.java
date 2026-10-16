@@ -1,7 +1,7 @@
 package com.dongqh.fulfillmentservice.service.port;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentGatewayResult;
-import com.dongqh.fulfillmentservice.shipping.model.LogisticsFulfillmentRequest;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
+import com.dongqh.fulfillmentservice.domain.model.shipping.LogisticsFulfillmentRequest;
 
 public interface LogisticsFulfillmentGateway {
 

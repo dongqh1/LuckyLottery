@@ -1,9 +1,9 @@
-package com.dongqh.luckyhub.coupon.service;
+package com.dongqh.luckyhub.service.coupon;
 
-import com.dongqh.luckyhub.coupon.dto.CouponCheckoutCommand;
-import com.dongqh.luckyhub.coupon.dto.ReserveCouponCommand;
-import com.dongqh.luckyhub.coupon.model.CouponLockSnapshot;
-import com.dongqh.luckyhub.coupon.vo.ApplicableCouponView;
+import com.dongqh.luckyhub.domain.dto.coupon.CouponCheckoutCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.ReserveCouponCommand;
+import com.dongqh.luckyhub.domain.model.coupon.CouponLockSnapshot;
+import com.dongqh.luckyhub.domain.vo.coupon.ApplicableCouponView;
 
 import java.util.List;
 

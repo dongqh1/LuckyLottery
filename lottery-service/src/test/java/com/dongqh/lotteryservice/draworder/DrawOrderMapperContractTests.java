@@ -1,7 +1,7 @@
 package com.dongqh.lotteryservice.draworder;
 
-import com.dongqh.lotteryservice.draworder.config.DrawOrderMapperConfiguration;
-import com.dongqh.lotteryservice.draworder.mapper.DrawOrderMapper;
+import com.dongqh.lotteryservice.config.draworder.DrawOrderMapperConfiguration;
+import com.dongqh.lotteryservice.mapper.draworder.DrawOrderMapper;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;

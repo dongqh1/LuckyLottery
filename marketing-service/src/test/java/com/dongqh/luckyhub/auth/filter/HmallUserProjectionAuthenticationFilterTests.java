@@ -1,10 +1,10 @@
-package com.dongqh.luckyhub.auth.filter;
+package com.dongqh.luckyhub.domain.filter.auth;
 
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.JwtPayload;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.service.HmallUserProjectionService;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.JwtPayload;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.service.auth.HmallUserProjectionService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,14 +36,14 @@ class HmallUserProjectionAuthenticationFilterTests {
         FilterChain chain = mock(FilterChain.class);
         when(request.getHeader("Authorization")).thenReturn("token");
         when(jwtService.parse("token"))
-                .thenReturn(new JwtPayload(2L, "2", null, "USER"));
+                .thenReturn(new JwtPayload(2L, "2", null));
 
         filter.doFilterInternal(request, response, chain);
 
         ArgumentCaptor<LoginPrincipal> principal = ArgumentCaptor.forClass(LoginPrincipal.class);
         verify(projectionService).ensureActiveHmallUser(principal.capture());
         assertThat(principal.getValue().userId()).isEqualTo(2L);
-        assertThat(principal.getValue().role()).isEqualTo("USER");
         verify(chain).doFilter(request, response);
     }
 }
+

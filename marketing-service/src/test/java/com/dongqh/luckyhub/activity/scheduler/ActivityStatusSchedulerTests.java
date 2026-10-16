@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.activity.scheduler;
+package com.dongqh.luckyhub.scheduler.activity;
 
-import com.dongqh.luckyhub.activity.mapper.MarketingActivityMapper;
-import com.dongqh.luckyhub.activity.service.ActivityStatusService;
+import com.dongqh.luckyhub.mapper.activity.MarketingActivityMapper;
+import com.dongqh.luckyhub.service.activity.ActivityStatusService;
 import org.apache.ibatis.annotations.Update;
 import org.junit.jupiter.api.Test;
 

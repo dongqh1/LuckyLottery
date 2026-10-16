@@ -1,6 +1,6 @@
 package com.dongqh.lotteryservice.activityprize;
 
-import com.dongqh.lotteryservice.activityprize.domain.ActivityPrizeErrorCode;
+import com.dongqh.lotteryservice.exception.activityprize.ActivityPrizeErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 

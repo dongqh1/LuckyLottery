@@ -1,7 +1,7 @@
 package com.dongqh.couponservice.messaging;
 
 import com.dongqh.hmapi.dto.PaySuccessMessage;
-import com.dongqh.luckyhub.coupon.service.CouponCheckoutService;
+import com.dongqh.luckyhub.service.coupon.CouponCheckoutService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;

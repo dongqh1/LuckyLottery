@@ -1,10 +1,10 @@
-package com.dongqh.luckyhub.prize.controller;
+package com.dongqh.luckyhub.controller.prize;
 
 import com.dongqh.luckyhub.common.web.GlobalExceptionHandler;
-import com.dongqh.luckyhub.prize.image.PrizeImageService;
-import com.dongqh.luckyhub.prize.vo.ImageUploadView;
-import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
+import com.dongqh.luckyhub.domain.image.prize.PrizeImageService;
+import com.dongqh.luckyhub.domain.vo.prize.ImageUploadView;
+import com.dongqh.luckyhub.domain.annotation.rbac.RequirePermission;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;

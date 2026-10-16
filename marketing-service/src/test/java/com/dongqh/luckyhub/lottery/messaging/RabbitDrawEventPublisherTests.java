@@ -1,11 +1,11 @@
 package com.dongqh.luckyhub.lottery.messaging;
 
-import com.dongqh.luckyhub.lottery.config.MessagingProperties;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawConfirmedEvent;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
-import com.dongqh.luckyhub.lottery.messaging.rabbit.LotteryRabbitTopology;
-import com.dongqh.luckyhub.lottery.messaging.rabbit.RabbitDrawEventPublisher;
+import com.dongqh.luckyhub.config.lottery.MessagingProperties;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawConfirmedEvent;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventEnvelope;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventType;
+import com.dongqh.luckyhub.messaging.lottery.rabbit.LotteryRabbitTopology;
+import com.dongqh.luckyhub.messaging.lottery.rabbit.RabbitDrawEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.Message;

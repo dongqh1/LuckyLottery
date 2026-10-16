@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.fulfillment;
 
-import com.dongqh.luckyhub.fulfillment.messaging.event.FulfillmentTaskReadyEvent;
-import com.dongqh.luckyhub.fulfillment.messaging.rabbit.RabbitFulfillmentEventListener;
-import com.dongqh.luckyhub.fulfillment.worker.FulfillmentWorker;
+import com.dongqh.luckyhub.messaging.fulfillment.event.FulfillmentTaskReadyEvent;
+import com.dongqh.luckyhub.messaging.fulfillment.rabbit.RabbitFulfillmentEventListener;
+import com.dongqh.luckyhub.worker.fulfillment.FulfillmentWorker;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
 

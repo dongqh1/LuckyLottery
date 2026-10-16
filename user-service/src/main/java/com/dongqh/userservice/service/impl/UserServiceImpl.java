@@ -62,7 +62,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new BadRequestException("用户名或密码错误");
         }
         // 5.生成TOKEN
-        String token = jwtTool.createToken(user.getId(), user.getRole(), jwtProperties.getTokenTTL());
+        String token = jwtTool.createToken(user.getId(), jwtProperties.getTokenTTL());
         // 6.封装VO返回
         UserLoginVO vo = new UserLoginVO();
         vo.setUserId(user.getId());
@@ -100,7 +100,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public PageDTO<UserAdminVO> queryUsers(UserPageQuery query) {
-        requireAdmin();
+
         Page<User> page = baseMapper.selectPage(query.toMpPage("create_time", false),
                 Wrappers.<User>lambdaQuery()
                         .and(StrUtil.isNotBlank(query.getKey()), wrapper -> wrapper
@@ -109,8 +109,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                                 .like(User::getPhone, query.getKey()))
                         .eq(query.getStatus() != null, User::getStatus,
                                 query.getStatus() == null ? null : normalizeStatus(query.getStatus()))
-                        .eq(StrUtil.isNotBlank(query.getRole()), User::getRole,
-                                normalizeRole(query.getRole())));
+                );
         return PageDTO.of(page, user -> {
             UserAdminVO view = BeanUtils.copyBean(user, UserAdminVO.class);
             view.setStatus(user.getStatus() == UserStatus.NORMAL ? 1 : 2);
@@ -120,7 +119,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public void createUser(UserAdminFormDTO form) {
-        requireAdmin();
+
         if (StrUtil.isBlank(form.getUsername()) || StrUtil.isBlank(form.getPhone())
                 || StrUtil.isBlank(form.getPassword())) {
             throw new BadRequestException("用户名、手机号和密码不能为空");
@@ -129,7 +128,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 .setUsername(form.getUsername().trim())
                 .setPhone(form.getPhone().trim())
                 .setPassword(passwordEncoder.encode(form.getPassword()))
-                .setRole(normalizeRole(form.getRole()))
+
                 .setStatus(form.getStatus() == null
                         ? UserStatus.NORMAL : normalizeStatus(form.getStatus()));
         if (baseMapper.insert(user) != 1) {
@@ -139,7 +138,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public void updateUser(UserAdminFormDTO form) {
-        requireAdmin();
+
         if (form.getId() == null) {
             throw new BadRequestException("用户ID不能为空");
         }
@@ -149,9 +148,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 .setPhone(trimToNull(form.getPhone()));
         if (StrUtil.isNotBlank(form.getPassword())) {
             user.setPassword(passwordEncoder.encode(form.getPassword()));
-        }
-        if (StrUtil.isNotBlank(form.getRole())) {
-            user.setRole(normalizeRole(form.getRole()));
         }
         if (form.getStatus() != null) {
             user.setStatus(normalizeStatus(form.getStatus()));
@@ -163,7 +159,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public void deleteUser(Long id) {
-        requireAdmin();
+
         if (id == null) {
             throw new BadRequestException("用户ID不能为空");
         }
@@ -177,7 +173,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public void updateStatus(Long id, Integer status) {
-        requireAdmin();
+
         if (id == null || status == null) {
             throw new BadRequestException("用户ID和状态不能为空");
         }
@@ -186,29 +182,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new BizIllegalException("更新用户状态失败");
         }
     }
-
-    private void requireAdmin() {
-        Long userId = UserContext.getUser();
-        User current = userId == null ? null : baseMapper.selectById(userId);
-        if (current == null || current.getStatus() != UserStatus.NORMAL
-                || !"ADMIN".equalsIgnoreCase(current.getRole())) {
-            throw new ForbiddenException("仅管理员可执行该操作");
-        }
-    }
-
     private UserStatus normalizeStatus(Integer status) {
         return status == 2 ? UserStatus.FROZEN : UserStatus.of(status);
     }
-
-    private String normalizeRole(String role) {
-        String normalized = StrUtil.isBlank(role) ? "USER" : role.trim().toUpperCase();
-        if (!"USER".equals(normalized) && !"ADMIN".equals(normalized)) {
-            throw new BadRequestException("用户角色仅支持 USER 或 ADMIN");
-        }
-        return normalized;
-    }
-
     private String trimToNull(String value) {
         return StrUtil.isBlank(value) ? null : value.trim();
     }
 }
+
+
+

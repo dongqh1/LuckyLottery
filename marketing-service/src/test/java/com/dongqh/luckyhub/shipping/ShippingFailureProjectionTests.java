@@ -1,7 +1,7 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.shipping.service.ShippingProjectionWorker;
-import com.dongqh.luckyhub.shipping.service.impl.ShippingAdminServiceImpl;
+import com.dongqh.luckyhub.service.shipping.ShippingProjectionWorker;
+import com.dongqh.luckyhub.service.shipping.impl.ShippingAdminServiceImpl;
 import org.junit.jupiter.api.Test;
 
 import java.util.stream.LongStream;
@@ -10,19 +10,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 import org.mockito.ArgumentCaptor;
-import com.dongqh.luckyhub.fulfillment.enums.*;
-import com.dongqh.luckyhub.fulfillment.service.FulfillmentTaskService;
-import com.dongqh.luckyhub.fulfillment.vo.FulfillmentTaskView;
-import com.dongqh.luckyhub.shipping.entity.ShippingOrder;
-import com.dongqh.luckyhub.shipping.enums.*;
-import com.dongqh.luckyhub.shipping.mapper.ShippingOrderMapper;
-import com.dongqh.luckyhub.shipping.service.ShippingAddressSnapshotService;
-import com.dongqh.luckyhub.shipping.service.ShippingOrderService;
-import com.dongqh.luckyhub.shipping.service.impl.ShippingOrderServiceImpl;
+import com.dongqh.luckyhub.enums.fulfillment.*;
+import com.dongqh.luckyhub.service.fulfillment.FulfillmentTaskService;
+import com.dongqh.luckyhub.domain.vo.fulfillment.FulfillmentTaskView;
+import com.dongqh.luckyhub.domain.po.shipping.ShippingOrder;
+import com.dongqh.luckyhub.enums.shipping.*;
+import com.dongqh.luckyhub.mapper.shipping.ShippingOrderMapper;
+import com.dongqh.luckyhub.service.shipping.ShippingAddressSnapshotService;
+import com.dongqh.luckyhub.service.shipping.ShippingOrderService;
+import com.dongqh.luckyhub.service.shipping.impl.ShippingOrderServiceImpl;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import com.dongqh.luckyhub.shipping.model.CreateShippingOrderCommand;
+import com.dongqh.luckyhub.domain.model.shipping.CreateShippingOrderCommand;
 
 @SpringBootTest
 class ShippingFailureProjectionTests extends Task5ShippingTestFixture {
@@ -113,7 +113,7 @@ class ShippingFailureProjectionTests extends Task5ShippingTestFixture {
 
     @Test
     void projectorUsesAscendingBoundedCandidatesAndIsolatesEachFailure() {
-        var orders = mock(com.dongqh.luckyhub.shipping.mapper.ShippingOrderMapper.class);
+        var orders = mock(com.dongqh.luckyhub.mapper.shipping.ShippingOrderMapper.class);
         var worker = mock(ShippingProjectionWorker.class);
         var ids = LongStream.rangeClosed(1, 100).boxed().toList();
         when(orders.selectProjectionCandidateIds(100)).thenReturn(ids);

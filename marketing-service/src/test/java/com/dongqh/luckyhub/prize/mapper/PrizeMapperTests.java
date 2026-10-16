@@ -1,10 +1,10 @@
-package com.dongqh.luckyhub.prize.mapper;
+package com.dongqh.luckyhub.mapper.prize;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dongqh.luckyhub.prize.entity.MarketingPrize;
-import com.dongqh.luckyhub.prize.enums.PrizeLevel;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
+import com.dongqh.luckyhub.domain.po.prize.MarketingPrize;
+import com.dongqh.luckyhub.enums.prize.PrizeLevel;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -1,14 +1,14 @@
 package com.dongqh.luckyhub.benefit;
 
-import com.dongqh.luckyhub.benefit.service.LotteryRewardProjectionService;
-import com.dongqh.luckyhub.coupon.dto.CreateCouponTemplateCommand;
-import com.dongqh.luckyhub.coupon.enums.CouponType;
-import com.dongqh.luckyhub.coupon.service.CouponService;
-import com.dongqh.luckyhub.membership.dto.CreateMembershipProductCommand;
-import com.dongqh.luckyhub.membership.enums.MembershipCardType;
-import com.dongqh.luckyhub.membership.service.MembershipService;
-import com.dongqh.luckyhub.rbac.entity.SysUser;
-import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
+import com.dongqh.luckyhub.service.benefit.LotteryRewardProjectionService;
+import com.dongqh.luckyhub.domain.dto.coupon.CreateCouponTemplateCommand;
+import com.dongqh.luckyhub.enums.coupon.CouponType;
+import com.dongqh.luckyhub.service.coupon.CouponService;
+import com.dongqh.luckyhub.domain.dto.membership.CreateMembershipProductCommand;
+import com.dongqh.luckyhub.enums.membership.MembershipCardType;
+import com.dongqh.luckyhub.service.membership.MembershipService;
+import com.dongqh.luckyhub.domain.po.rbac.SysUser;
+import com.dongqh.luckyhub.mapper.rbac.SysUserMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

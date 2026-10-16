@@ -1,1 +1,0 @@
-package com.dongqh.luckyhub.order.model; public record OrderPriceQuote(Long originalAmountCent,String membershipLevel,Integer membershipDiscountBasisPoints,Long membershipDiscountCent,Long amountAfterMembershipCent,Long userCouponId,Long couponTemplateId,String couponName,Long couponDiscountCent,Long payableAmountCent) {}

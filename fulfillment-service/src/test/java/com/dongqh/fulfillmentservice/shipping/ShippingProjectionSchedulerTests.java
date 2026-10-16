@@ -1,6 +1,6 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.service.ShippingProjectionScheduler;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingProjectionScheduler;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.annotation.Scheduled;
 

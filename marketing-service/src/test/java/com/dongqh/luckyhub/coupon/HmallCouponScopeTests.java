@@ -1,18 +1,18 @@
 package com.dongqh.luckyhub.coupon;
 
-import com.dongqh.luckyhub.coupon.dto.CreateCouponTemplateCommand;
-import com.dongqh.luckyhub.coupon.enums.CouponScopeType;
-import com.dongqh.luckyhub.coupon.enums.CouponType;
-import com.dongqh.luckyhub.coupon.mapper.CouponIssueRecordMapper;
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
-import com.dongqh.luckyhub.coupon.mapper.UserCouponMapper;
-import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
-import com.dongqh.luckyhub.coupon.entity.UserCoupon;
-import com.dongqh.luckyhub.coupon.enums.UserCouponStatus;
-import com.dongqh.luckyhub.coupon.service.impl.CouponServiceImpl;
-import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
-import com.dongqh.luckyhub.integration.hmall.HmallItemView;
-import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
+import com.dongqh.luckyhub.domain.dto.coupon.CreateCouponTemplateCommand;
+import com.dongqh.luckyhub.enums.coupon.CouponScopeType;
+import com.dongqh.luckyhub.enums.coupon.CouponType;
+import com.dongqh.luckyhub.mapper.coupon.CouponIssueRecordMapper;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
+import com.dongqh.luckyhub.mapper.coupon.UserCouponMapper;
+import com.dongqh.luckyhub.domain.po.coupon.CouponTemplate;
+import com.dongqh.luckyhub.domain.po.coupon.UserCoupon;
+import com.dongqh.luckyhub.enums.coupon.UserCouponStatus;
+import com.dongqh.luckyhub.service.coupon.impl.CouponServiceImpl;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallCatalogClient;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallItemView;
+import com.dongqh.luckyhub.mapper.rbac.SysUserMapper;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

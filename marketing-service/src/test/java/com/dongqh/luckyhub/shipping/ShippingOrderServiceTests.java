@@ -1,14 +1,14 @@
 package com.dongqh.luckyhub.shipping;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.fulfillment.enums.FulfillmentStatus;
-import com.dongqh.luckyhub.fulfillment.model.LogisticsFulfillmentPayload;
-import com.dongqh.luckyhub.fulfillment.service.FulfillmentTaskService;
-import com.dongqh.luckyhub.shipping.enums.ShippingErrorCode;
-import com.dongqh.luckyhub.shipping.enums.ShippingSourceType;
-import com.dongqh.luckyhub.shipping.enums.ShippingStatus;
-import com.dongqh.luckyhub.shipping.model.CreateShippingOrderCommand;
-import com.dongqh.luckyhub.shipping.service.ShippingOrderService;
+import com.dongqh.luckyhub.enums.fulfillment.FulfillmentStatus;
+import com.dongqh.luckyhub.domain.model.fulfillment.LogisticsFulfillmentPayload;
+import com.dongqh.luckyhub.service.fulfillment.FulfillmentTaskService;
+import com.dongqh.luckyhub.enums.shipping.ShippingErrorCode;
+import com.dongqh.luckyhub.enums.shipping.ShippingSourceType;
+import com.dongqh.luckyhub.enums.shipping.ShippingStatus;
+import com.dongqh.luckyhub.domain.model.shipping.CreateShippingOrderCommand;
+import com.dongqh.luckyhub.service.shipping.ShippingOrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

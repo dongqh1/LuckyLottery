@@ -1,15 +1,15 @@
 package com.dongqh.lotteryservice.reward;
 
-import com.dongqh.lotteryservice.draworder.entity.DrawOrderRow;
-import com.dongqh.lotteryservice.draworder.enums.DrawOrderStatus;
-import com.dongqh.lotteryservice.drawtransaction.entity.DrawRecordRow;
-import com.dongqh.lotteryservice.drawtransaction.entity.UserBenefitRow;
-import com.dongqh.lotteryservice.drawtransaction.enums.BenefitStatus;
+import com.dongqh.lotteryservice.domain.po.draworder.DrawOrderRow;
+import com.dongqh.lotteryservice.enums.draworder.DrawOrderStatus;
+import com.dongqh.lotteryservice.domain.po.drawtransaction.DrawRecordRow;
+import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
+import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
 import com.dongqh.lotteryservice.outbox.event.DrawEventEnvelope;
 import com.dongqh.lotteryservice.outbox.event.DrawEventType;
 import com.dongqh.lotteryservice.outbox.event.PrizeFulfillmentRequestedEvent;
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeType;
-import com.dongqh.lotteryservice.prizecatalog.domain.RewardType;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -29,7 +29,7 @@ class LotteryRewardIdentityVerifierTests {
 
         assertThat(result).isEqualTo(new ValidatedLotteryReward(41L, 31L, 11L, "request-11",
                 7L, 9L, 51L, PrizeType.COUPON, BenefitStatus.PENDING,
-                new com.dongqh.lotteryservice.drawtransaction.model.RewardSnapshot(61L, "FROZEN-61",
+                new com.dongqh.lotteryservice.domain.model.drawtransaction.RewardSnapshot(61L, "FROZEN-61",
                         RewardType.COUPON, 71L, 2L, "{\"target\":71}", FINGERPRINT)));
         assertThat(ValidatedLotteryReward.class.isRecord()).isTrue();
     }

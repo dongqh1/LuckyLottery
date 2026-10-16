@@ -1,11 +1,11 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.enums.ShippingSourceType;
-import com.dongqh.fulfillmentservice.shipping.enums.ShippingStatus;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingOrder;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingOrderRepository;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingOrderFulfillmentProjector;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingOrderProjectionWorker;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingStatus;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrder;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrderRepository;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingOrderFulfillmentProjector;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingOrderProjectionWorker;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

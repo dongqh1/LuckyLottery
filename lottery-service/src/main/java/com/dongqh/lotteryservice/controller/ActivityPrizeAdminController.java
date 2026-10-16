@@ -1,11 +1,9 @@
 package com.dongqh.lotteryservice.controller;
 
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
-import com.dongqh.lotteryservice.activityprize.dto.AddActivityPrizeCommand;
-import com.dongqh.lotteryservice.activityprize.dto.UpdateActivityPrizeCommand;
-import com.dongqh.lotteryservice.activityprize.service.ActivityPrizeService;
-import com.dongqh.lotteryservice.activityprize.vo.ActivityPrizeView;
+import com.dongqh.lotteryservice.domain.dto.activityprize.AddActivityPrizeCommand;
+import com.dongqh.lotteryservice.domain.dto.activityprize.UpdateActivityPrizeCommand;
+import com.dongqh.lotteryservice.service.activityprize.ActivityPrizeService;
+import com.dongqh.lotteryservice.domain.vo.activityprize.ActivityPrizeView;
 import com.hmall.common.domain.R;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -32,20 +30,17 @@ public class ActivityPrizeAdminController {
     }
 
     @PostMapping
-    @RequirePermission(ServicePermissionCodes.ACTIVITY_PRIZE_MANAGE)
     public R<ActivityPrizeView> add(@PathVariable("activityId") @Positive long activityId,
                                     @Valid @RequestBody AddActivityPrizeCommand command) {
         return R.ok(activityPrizes.add(activityId, command));
     }
 
     @GetMapping
-    @RequirePermission(ServicePermissionCodes.ACTIVITY_READ)
     public R<List<ActivityPrizeView>> list(@PathVariable("activityId") @Positive long activityId) {
         return R.ok(activityPrizes.list(activityId));
     }
 
     @PutMapping("/{prizeId}")
-    @RequirePermission(ServicePermissionCodes.ACTIVITY_PRIZE_MANAGE)
     public R<ActivityPrizeView> update(@PathVariable("activityId") @Positive long activityId,
                                        @PathVariable("prizeId") @Positive long prizeId,
                                        @Valid @RequestBody UpdateActivityPrizeCommand command) {
@@ -53,10 +48,10 @@ public class ActivityPrizeAdminController {
     }
 
     @DeleteMapping("/{prizeId}")
-    @RequirePermission(ServicePermissionCodes.ACTIVITY_PRIZE_MANAGE)
     public R<Void> remove(@PathVariable("activityId") @Positive long activityId,
                           @PathVariable("prizeId") @Positive long prizeId) {
         activityPrizes.remove(activityId, prizeId);
         return R.ok();
     }
 }
+

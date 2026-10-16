@@ -1,8 +1,8 @@
 package com.dongqh.fulfillmentservice.integration;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentGatewayResult;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
-import com.dongqh.fulfillmentservice.model.PointsFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.PointsFulfillmentPayload;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskReadService;
 import com.dongqh.fulfillmentservice.service.port.PointsFulfillmentGateway;
 import com.dongqh.hmapi.client.PointsClient;

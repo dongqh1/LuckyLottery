@@ -1,21 +1,21 @@
-package com.dongqh.luckyhub.points.service.impl;
+package com.dongqh.luckyhub.service.points.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dongqh.luckyhub.points.dto.AdminPointsAdjustmentCommand;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.dto.PointsReversalCommand;
-import com.dongqh.luckyhub.points.entity.PointsAccount;
-import com.dongqh.luckyhub.points.entity.PointsLedger;
-import com.dongqh.luckyhub.points.enums.PointsBusinessType;
-import com.dongqh.luckyhub.points.enums.PointsDirection;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.exception.PointsDomainException;
-import com.dongqh.luckyhub.points.mapper.PointsAccountMapper;
-import com.dongqh.luckyhub.points.mapper.PointsLedgerMapper;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.points.service.port.PointsUserEligibilityPort;
-import com.dongqh.luckyhub.points.vo.PointsAccountView;
-import com.dongqh.luckyhub.points.vo.PointsLedgerView;
+import com.dongqh.luckyhub.domain.dto.points.AdminPointsAdjustmentCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsReversalCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsAccount;
+import com.dongqh.luckyhub.domain.po.points.PointsLedger;
+import com.dongqh.luckyhub.enums.points.PointsBusinessType;
+import com.dongqh.luckyhub.enums.points.PointsDirection;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.points.domain.exception.PointsDomainException;
+import com.dongqh.luckyhub.points.integration.PointsIntegrationService;
+import com.dongqh.luckyhub.mapper.points.PointsAccountMapper;
+import com.dongqh.luckyhub.mapper.points.PointsLedgerMapper;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.domain.vo.points.PointsAccountView;
+import com.dongqh.luckyhub.domain.vo.points.PointsLedgerView;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,16 +36,16 @@ public class PointsAccountServiceImpl implements PointsAccountService {
             PointsBusinessType.MEMBERSHIP_BONUS
     );
 
-    private final PointsUserEligibilityPort userEligibility;
+    private final PointsIntegrationService integration;
     private final PointsAccountMapper accountMapper;
     private final PointsLedgerMapper ledgerMapper;
 
     public PointsAccountServiceImpl(
-            PointsUserEligibilityPort userEligibility,
+            PointsIntegrationService integration,
             PointsAccountMapper accountMapper,
             PointsLedgerMapper ledgerMapper
     ) {
-        this.userEligibility = userEligibility;
+        this.integration = integration;
         this.accountMapper = accountMapper;
         this.ledgerMapper = ledgerMapper;
     }
@@ -220,7 +220,7 @@ public class PointsAccountServiceImpl implements PointsAccountService {
     }
 
     private void requireEnabledUser(long userId) {
-        if (!userEligibility.isEnabled(userId)) {
+        if (!integration.isEnabledUser(userId)) {
             throw error(PointsErrorCode.POINTS_USER_UNAVAILABLE);
         }
     }

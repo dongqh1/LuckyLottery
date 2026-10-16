@@ -1,10 +1,10 @@
 package com.dongqh.luckyhub.catalog;
 
-import com.dongqh.luckyhub.catalog.entity.Product;
-import com.dongqh.luckyhub.catalog.entity.ProductSku;
-import com.dongqh.luckyhub.catalog.enums.ProductType;
-import com.dongqh.luckyhub.catalog.mapper.ProductMapper;
-import com.dongqh.luckyhub.catalog.mapper.ProductSkuMapper;
+import com.dongqh.luckyhub.domain.po.catalog.Product;
+import com.dongqh.luckyhub.domain.po.catalog.ProductSku;
+import com.dongqh.luckyhub.enums.catalog.ProductType;
+import com.dongqh.luckyhub.mapper.catalog.ProductMapper;
+import com.dongqh.luckyhub.mapper.catalog.ProductSkuMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

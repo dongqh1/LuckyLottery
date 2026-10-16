@@ -1,21 +1,21 @@
-package com.dongqh.luckyhub.lottery.service;
+package com.dongqh.luckyhub.service.lottery;
 
-import com.dongqh.luckyhub.activity.mapper.MarketingActivityMapper;
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
-import com.dongqh.luckyhub.benefit.dto.BenefitQuery;
-import com.dongqh.luckyhub.benefit.mapper.UserBenefitMapper;
-import com.dongqh.luckyhub.benefit.service.BenefitQueryServiceImpl;
+import com.dongqh.luckyhub.mapper.activity.MarketingActivityMapper;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
+import com.dongqh.luckyhub.domain.dto.benefit.BenefitQuery;
+import com.dongqh.luckyhub.mapper.benefit.UserBenefitMapper;
+import com.dongqh.luckyhub.service.benefit.BenefitQueryServiceImpl;
 import com.dongqh.luckyhub.common.exception.ForbiddenException;
-import com.dongqh.luckyhub.fulfillment.mapper.FulfillmentTaskMapper;
-import com.dongqh.luckyhub.lottery.dto.DrawOrderQuery;
-import com.dongqh.luckyhub.lottery.dto.DrawRecordQuery;
-import com.dongqh.luckyhub.lottery.mapper.LotteryDrawOrderMapper;
-import com.dongqh.luckyhub.lottery.mapper.LotteryDrawRecordMapper;
-import com.dongqh.luckyhub.lottery.service.impl.LotteryQueryServiceImpl;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.service.DataScopeService;
-import com.dongqh.luckyhub.rbac.service.UserDataScope;
+import com.dongqh.luckyhub.mapper.fulfillment.FulfillmentTaskMapper;
+import com.dongqh.luckyhub.domain.dto.lottery.DrawOrderQuery;
+import com.dongqh.luckyhub.domain.dto.lottery.DrawRecordQuery;
+import com.dongqh.luckyhub.mapper.lottery.LotteryDrawOrderMapper;
+import com.dongqh.luckyhub.mapper.lottery.LotteryDrawRecordMapper;
+import com.dongqh.luckyhub.service.lottery.impl.LotteryQueryServiceImpl;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.service.rbac.DataScopeService;
+import com.dongqh.luckyhub.service.rbac.UserDataScope;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ class ScopedQueryServiceIntegrationTests {
     @Autowired JdbcTemplate jdbc;
     private DataScopeService dataScope;
     private LotteryQueryService lotteryQueries;
-    private com.dongqh.luckyhub.benefit.service.BenefitQueryService benefitQueries;
+    private com.dongqh.luckyhub.service.benefit.BenefitQueryService benefitQueries;
     private String marker;
 
     @BeforeEach
@@ -52,7 +52,7 @@ class ScopedQueryServiceIntegrationTests {
         dataScope = mock(DataScopeService.class);
         lotteryQueries = new LotteryQueryServiceImpl(activityMapper, orderMapper, recordMapper, benefitMapper, dataScope);
         benefitQueries = new BenefitQueryServiceImpl(benefitMapper, recordMapper, fulfillmentTaskMapper,
-                org.mockito.Mockito.mock(com.dongqh.luckyhub.shipping.mapper.ShippingOrderMapper.class), dataScope);
+                org.mockito.Mockito.mock(com.dongqh.luckyhub.mapper.shipping.ShippingOrderMapper.class), dataScope);
         LoginContext.set(new LoginPrincipal(SELF, "task14", "session"));
         deleteFixedTestUsers();
         seed(SELF, marker + "-self", 1);

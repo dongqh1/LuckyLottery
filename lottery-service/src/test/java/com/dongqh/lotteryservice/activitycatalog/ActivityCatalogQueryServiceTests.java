@@ -1,14 +1,14 @@
 package com.dongqh.lotteryservice.activitycatalog;
 
-import com.dongqh.lotteryservice.activitycatalog.entity.ActivityCatalogRow;
-import com.dongqh.lotteryservice.activitycatalog.entity.ActivityPrizeCatalogRow;
-import com.dongqh.lotteryservice.activitycatalog.service.ActivityCatalogQueryService;
-import com.dongqh.lotteryservice.activitycatalog.vo.ActivityCatalogView;
-import com.dongqh.lotteryservice.activitycatalog.vo.ActivityPrizeCatalogView;
-import com.dongqh.lotteryservice.activityprize.domain.ActivityStatus;
-import com.dongqh.lotteryservice.activityprize.domain.PrizeType;
-import com.dongqh.lotteryservice.activityprize.mapper.ActivityCatalogQueryMapper;
-import com.dongqh.lotteryservice.domain.LotteryDomainException;
+import com.dongqh.lotteryservice.domain.po.activitycatalog.ActivityCatalogRow;
+import com.dongqh.lotteryservice.domain.po.activitycatalog.ActivityPrizeCatalogRow;
+import com.dongqh.lotteryservice.service.activitycatalog.ActivityCatalogQueryService;
+import com.dongqh.lotteryservice.domain.vo.activitycatalog.ActivityCatalogView;
+import com.dongqh.lotteryservice.domain.vo.activitycatalog.ActivityPrizeCatalogView;
+import com.dongqh.lotteryservice.enums.activityprize.ActivityStatus;
+import com.dongqh.lotteryservice.enums.activityprize.PrizeType;
+import com.dongqh.lotteryservice.mapper.activityprize.ActivityCatalogQueryMapper;
+import com.dongqh.lotteryservice.exception.LotteryDomainException;
 import com.dongqh.lotteryservice.enums.LotteryErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

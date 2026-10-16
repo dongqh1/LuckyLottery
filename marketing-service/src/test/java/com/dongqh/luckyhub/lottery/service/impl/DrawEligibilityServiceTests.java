@@ -1,19 +1,19 @@
-package com.dongqh.luckyhub.lottery.service.impl;
+package com.dongqh.luckyhub.service.lottery.impl;
 
-import com.dongqh.luckyhub.activity.entity.MarketingActivity;
-import com.dongqh.luckyhub.activity.entity.MarketingActivityPrize;
-import com.dongqh.luckyhub.activity.enums.ActivityStatus;
-import com.dongqh.luckyhub.activity.mapper.MarketingActivityMapper;
-import com.dongqh.luckyhub.activity.mapper.MarketingActivityPrizeMapper;
+import com.dongqh.luckyhub.domain.po.activity.MarketingActivity;
+import com.dongqh.luckyhub.domain.po.activity.MarketingActivityPrize;
+import com.dongqh.luckyhub.enums.activity.ActivityStatus;
+import com.dongqh.luckyhub.mapper.activity.MarketingActivityMapper;
+import com.dongqh.luckyhub.mapper.activity.MarketingActivityPrizeMapper;
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.lottery.enums.LotteryErrorCode;
-import com.dongqh.luckyhub.lottery.service.DrawEligibilityService;
-import com.dongqh.luckyhub.prize.entity.MarketingPrize;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
-import com.dongqh.luckyhub.prize.mapper.MarketingPrizeMapper;
-import com.dongqh.luckyhub.reward.enums.RewardType;
-import com.dongqh.luckyhub.reward.model.RewardSnapshot;
-import com.dongqh.luckyhub.reward.service.RewardSnapshotService;
+import com.dongqh.luckyhub.enums.lottery.LotteryErrorCode;
+import com.dongqh.luckyhub.service.lottery.DrawEligibilityService;
+import com.dongqh.luckyhub.domain.po.prize.MarketingPrize;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
+import com.dongqh.luckyhub.mapper.prize.MarketingPrizeMapper;
+import com.dongqh.luckyhub.enums.reward.RewardType;
+import com.dongqh.luckyhub.domain.model.reward.RewardSnapshot;
+import com.dongqh.luckyhub.service.reward.RewardSnapshotService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;

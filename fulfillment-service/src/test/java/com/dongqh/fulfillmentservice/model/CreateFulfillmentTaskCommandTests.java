@@ -1,4 +1,4 @@
-package com.dongqh.fulfillmentservice.model;
+package com.dongqh.fulfillmentservice.domain.model;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
 import org.junit.jupiter.api.Test;

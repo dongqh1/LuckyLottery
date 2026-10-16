@@ -1,6 +1,6 @@
-package com.dongqh.luckyhub.inventory.channel.vo;
+package com.dongqh.luckyhub.domain.channel.inventory.vo;
 
-import com.dongqh.luckyhub.inventory.channel.enums.InventoryReservationStatus;
+import com.dongqh.luckyhub.domain.channel.inventory.enums.InventoryReservationStatus;
 
 public record ChannelInventoryView(
         Long skuId,

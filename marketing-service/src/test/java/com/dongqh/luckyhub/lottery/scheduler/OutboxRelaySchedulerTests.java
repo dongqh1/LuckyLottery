@@ -1,6 +1,6 @@
-package com.dongqh.luckyhub.lottery.scheduler;
+package com.dongqh.luckyhub.scheduler.lottery;
 
-import com.dongqh.luckyhub.lottery.service.OutboxRelayService;
+import com.dongqh.luckyhub.service.lottery.OutboxRelayService;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;

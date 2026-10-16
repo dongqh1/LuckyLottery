@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.points.mapper;
+package com.dongqh.luckyhub.mapper.points;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dongqh.luckyhub.points.entity.PointsAccount;
+import com.dongqh.luckyhub.domain.po.points.PointsAccount;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;

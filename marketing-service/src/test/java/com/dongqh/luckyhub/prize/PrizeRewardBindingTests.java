@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.prize;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.prize.dto.CreatePrizeCommand;
-import com.dongqh.luckyhub.prize.dto.UpdatePrizeCommand;
-import com.dongqh.luckyhub.prize.enums.PrizeLevel;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
-import com.dongqh.luckyhub.prize.service.PrizeService;
-import com.dongqh.luckyhub.prize.vo.PrizeView;
-import com.dongqh.luckyhub.reward.enums.RewardType;
+import com.dongqh.luckyhub.domain.dto.prize.CreatePrizeCommand;
+import com.dongqh.luckyhub.domain.dto.prize.UpdatePrizeCommand;
+import com.dongqh.luckyhub.enums.prize.PrizeLevel;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
+import com.dongqh.luckyhub.service.prize.PrizeService;
+import com.dongqh.luckyhub.domain.vo.prize.PrizeView;
+import com.dongqh.luckyhub.enums.reward.RewardType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

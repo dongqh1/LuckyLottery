@@ -1,7 +1,7 @@
 package com.dongqh.couponservice.messaging;
 
 import com.dongqh.hmapi.dto.PaySuccessMessage;
-import com.dongqh.luckyhub.coupon.service.CouponCheckoutService;
+import com.dongqh.luckyhub.service.coupon.CouponCheckoutService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

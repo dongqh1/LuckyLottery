@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.points;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.points.dto.AdminPointsAdjustmentCommand;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.enums.PointsBusinessType;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.rbac.entity.SysUser;
-import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
+import com.dongqh.luckyhub.domain.dto.points.AdminPointsAdjustmentCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.enums.points.PointsBusinessType;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.domain.po.rbac.SysUser;
+import com.dongqh.luckyhub.mapper.rbac.SysUserMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

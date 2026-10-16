@@ -2,9 +2,9 @@ package com.dongqh.fulfillmentservice.service;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.CouponFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.CreateFulfillmentTaskCommand;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskRecord;
+import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.CreateFulfillmentTaskCommand;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskRecord;
 import com.dongqh.fulfillmentservice.persistence.DuplicateFulfillmentTaskException;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskRepository;
 import com.dongqh.fulfillmentservice.service.port.FulfillmentTaskReadyOutbox;

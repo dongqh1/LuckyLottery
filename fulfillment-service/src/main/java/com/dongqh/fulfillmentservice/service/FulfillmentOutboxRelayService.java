@@ -6,6 +6,7 @@ import com.dongqh.fulfillmentservice.persistence.FulfillmentOutboxRepository;
 import com.dongqh.fulfillmentservice.service.port.FulfillmentStatusChangedPublisher;
 import com.dongqh.fulfillmentservice.service.port.FulfillmentTaskReadyPublisher;
 import com.dongqh.hmapi.dto.FulfillmentStatusChangedEventV1;
+import org.springframework.scheduling.annotation.Scheduled;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
@@ -75,6 +76,12 @@ public class FulfillmentOutboxRelayService {
             }
         }
         return sent;
+    }
+
+    @Scheduled(fixedDelayString = "${luckyhub.fulfillment.outbox-interval:1s}",
+            initialDelayString = "${luckyhub.fulfillment.outbox-initial-delay:0s}")
+    public void relay() {
+        relayBatch();
     }
 
     private void dispatch(FulfillmentOutboxCandidate row) throws Exception {

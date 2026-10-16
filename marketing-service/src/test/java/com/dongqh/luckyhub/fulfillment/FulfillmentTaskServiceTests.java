@@ -1,11 +1,11 @@
 package com.dongqh.luckyhub.fulfillment;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.fulfillment.dto.*;
-import com.dongqh.luckyhub.fulfillment.enums.*;
-import com.dongqh.luckyhub.fulfillment.model.*;
-import com.dongqh.luckyhub.fulfillment.service.FulfillmentTaskService;
-import com.dongqh.luckyhub.fulfillment.vo.FulfillmentTaskView;
+import com.dongqh.luckyhub.domain.dto.fulfillment.*;
+import com.dongqh.luckyhub.enums.fulfillment.*;
+import com.dongqh.luckyhub.domain.model.fulfillment.*;
+import com.dongqh.luckyhub.service.fulfillment.FulfillmentTaskService;
+import com.dongqh.luckyhub.domain.vo.fulfillment.FulfillmentTaskView;
 import org.junit.jupiter.api.AfterEach; import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired; import org.springframework.boot.test.context.SpringBootTest; import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;

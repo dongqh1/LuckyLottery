@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.catalog.mapper;
+package com.dongqh.luckyhub.mapper.catalog;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dongqh.luckyhub.catalog.entity.ProductSku;
+import com.dongqh.luckyhub.domain.po.catalog.ProductSku;
 
 public interface ProductSkuMapper extends BaseMapper<ProductSku> {
 }

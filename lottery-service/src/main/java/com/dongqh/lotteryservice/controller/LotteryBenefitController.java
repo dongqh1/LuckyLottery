@@ -1,17 +1,15 @@
 package com.dongqh.lotteryservice.controller;
 
 import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
-import com.dongqh.lotteryservice.benefit.dto.ClaimPhysicalBenefitCommand;
-import com.dongqh.lotteryservice.benefit.service.LotteryBenefitQueryService;
-import com.dongqh.lotteryservice.benefit.service.LotteryPhysicalBenefitClaimService;
-import com.dongqh.lotteryservice.benefit.vo.BenefitView;
-import com.dongqh.lotteryservice.drawtransaction.enums.BenefitStatus;
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeType;
-import com.dongqh.lotteryservice.prizecatalog.vo.PageResponse;
+import com.dongqh.lotteryservice.domain.dto.benefit.ClaimPhysicalBenefitCommand;
+import com.dongqh.lotteryservice.service.benefit.LotteryBenefitQueryService;
+import com.dongqh.lotteryservice.service.benefit.LotteryPhysicalBenefitClaimService;
+import com.dongqh.lotteryservice.domain.vo.benefit.BenefitView;
+import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
+import com.dongqh.lotteryservice.domain.vo.prizecatalog.PageResponse;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -35,7 +33,6 @@ import java.time.LocalDate;
 @Validated
 @RestController
 @RequestMapping("/api/benefits")
-@RequirePermission(ServicePermissionCodes.BENEFIT_READ)
 public class LotteryBenefitController {
     private final LotteryBenefitQueryService queries;
     private final LotteryPhysicalBenefitClaimService claims;
@@ -78,3 +75,4 @@ public class LotteryBenefitController {
         return userId;
     }
 }
+

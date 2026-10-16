@@ -1,20 +1,20 @@
 package com.dongqh.luckyhub.shipping;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.order.dto.CreateCashOrderCommand;
-import com.dongqh.luckyhub.order.service.CashOrderService;
-import com.dongqh.luckyhub.payment.dto.CreatePaymentCommand;
-import com.dongqh.luckyhub.payment.dto.PaymentCallbackCommand;
-import com.dongqh.luckyhub.payment.enums.PaymentResult;
-import com.dongqh.luckyhub.payment.service.PaymentService;
-import com.dongqh.luckyhub.points.dto.AdminPointsAdjustmentCommand;
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.dto.ReversePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionService;
+import com.dongqh.luckyhub.domain.dto.order.CreateCashOrderCommand;
+import com.dongqh.luckyhub.service.order.CashOrderService;
+import com.dongqh.luckyhub.domain.dto.payment.CreatePaymentCommand;
+import com.dongqh.luckyhub.domain.dto.payment.PaymentCallbackCommand;
+import com.dongqh.luckyhub.enums.payment.PaymentResult;
+import com.dongqh.luckyhub.service.payment.PaymentService;
+import com.dongqh.luckyhub.domain.dto.points.AdminPointsAdjustmentCommand;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.dto.points.ReversePointsRedemptionCommand;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionService;
 import org.junit.jupiter.api.Test;
-import com.dongqh.luckyhub.shipping.enums.ShippingStatus;
+import com.dongqh.luckyhub.enums.shipping.ShippingStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 

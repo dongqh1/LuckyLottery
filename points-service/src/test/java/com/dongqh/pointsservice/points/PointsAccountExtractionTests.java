@@ -1,14 +1,15 @@
 package com.dongqh.pointsservice.points;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.entity.PointsAccount;
-import com.dongqh.luckyhub.points.enums.PointsBusinessType;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.exception.PointsDomainException;
-import com.dongqh.luckyhub.points.mapper.PointsAccountMapper;
-import com.dongqh.luckyhub.points.mapper.PointsLedgerMapper;
-import com.dongqh.luckyhub.points.service.impl.PointsAccountServiceImpl;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsAccount;
+import com.dongqh.luckyhub.enums.points.PointsBusinessType;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.points.domain.exception.PointsDomainException;
+import com.dongqh.luckyhub.points.integration.PointsIntegrationService;
+import com.dongqh.luckyhub.mapper.points.PointsAccountMapper;
+import com.dongqh.luckyhub.mapper.points.PointsLedgerMapper;
+import com.dongqh.luckyhub.service.points.impl.PointsAccountServiceImpl;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,10 +23,12 @@ class PointsAccountExtractionTests {
 
     private final PointsAccountMapper accounts = mock(PointsAccountMapper.class);
     private final PointsLedgerMapper ledger = mock(PointsLedgerMapper.class);
+    private final PointsIntegrationService integration = mock(PointsIntegrationService.class);
 
     @Test
     void rejectsCreditWhenUserEligibilityIsNotConfirmedBeforeWriting() {
-        PointsAccountServiceImpl service = new PointsAccountServiceImpl(userId -> false, accounts, ledger);
+        when(integration.isEnabledUser(42L)).thenReturn(false);
+        PointsAccountServiceImpl service = new PointsAccountServiceImpl(integration, accounts, ledger);
 
         assertThatThrownBy(() -> service.credit(new PointsMutationCommand(
                 42L, PointsBusinessType.LOTTERY_REWARD, "draw-1", 25L, null)))
@@ -38,7 +41,8 @@ class PointsAccountExtractionTests {
     @Test
     void returnsZeroForEligibleUserWithoutCreatingAnAccount() {
         when(accounts.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
-        PointsAccountServiceImpl service = new PointsAccountServiceImpl(userId -> userId == 42L, accounts, ledger);
+        when(integration.isEnabledUser(42L)).thenReturn(true);
+        PointsAccountServiceImpl service = new PointsAccountServiceImpl(integration, accounts, ledger);
 
         var account = service.get(42L);
 

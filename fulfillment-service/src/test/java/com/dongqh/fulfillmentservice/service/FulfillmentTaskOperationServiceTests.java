@@ -2,7 +2,7 @@ package com.dongqh.fulfillmentservice.service;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskDetails;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskOperationRepository;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskOperationSnapshot;
@@ -157,12 +157,12 @@ class FulfillmentTaskOperationServiceTests {
 
         @Override
         public java.util.List<FulfillmentTaskDetails> findPage(
-                com.dongqh.fulfillmentservice.model.FulfillmentTaskQuery query) {
+                com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery query) {
             return details == null ? java.util.List.of() : java.util.List.of(details);
         }
 
         @Override
-        public long count(com.dongqh.fulfillmentservice.model.FulfillmentTaskQuery query) {
+        public long count(com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery query) {
             return details == null ? 0 : 1;
         }
     }

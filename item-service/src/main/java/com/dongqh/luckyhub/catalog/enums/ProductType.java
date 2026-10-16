@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.catalog.enums;
+package com.dongqh.luckyhub.enums.catalog;
 
 public enum ProductType {
     PHYSICAL,

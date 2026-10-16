@@ -1,16 +1,16 @@
 package com.dongqh.luckyhub.shipping;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.integration.hmall.HmallAddressClient;
-import com.dongqh.luckyhub.integration.hmall.HmallAddressView;
-import com.dongqh.luckyhub.rbac.entity.SysUser;
-import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
-import com.dongqh.luckyhub.shipping.dto.CreateShippingAddressCommand;
-import com.dongqh.luckyhub.shipping.entity.ShippingAddressSnapshot;
-import com.dongqh.luckyhub.shipping.enums.ShippingErrorCode;
-import com.dongqh.luckyhub.shipping.enums.ShippingSourceType;
-import com.dongqh.luckyhub.shipping.service.ShippingAddressService;
-import com.dongqh.luckyhub.shipping.service.ShippingAddressSnapshotService;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallAddressClient;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallAddressView;
+import com.dongqh.luckyhub.domain.po.rbac.SysUser;
+import com.dongqh.luckyhub.mapper.rbac.SysUserMapper;
+import com.dongqh.luckyhub.domain.dto.shipping.CreateShippingAddressCommand;
+import com.dongqh.luckyhub.domain.po.shipping.ShippingAddressSnapshot;
+import com.dongqh.luckyhub.enums.shipping.ShippingErrorCode;
+import com.dongqh.luckyhub.enums.shipping.ShippingSourceType;
+import com.dongqh.luckyhub.service.shipping.ShippingAddressService;
+import com.dongqh.luckyhub.service.shipping.ShippingAddressSnapshotService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +55,7 @@ class ShippingAddressSnapshotTests {
         var originalCiphertexts = ciphertexts(created);
         var originalMasked = List.of(created.getReceiverMasked(), created.getPhoneMasked(), created.getRegionMasked());
 
-        addresses.update(userId, addressId, new com.dongqh.luckyhub.shipping.dto.UpdateShippingAddressCommand(
+        addresses.update(userId, addressId, new com.dongqh.luckyhub.domain.dto.shipping.UpdateShippingAddressCommand(
                 "李四", "13912345678", "上海市", "上海市", "浦东新区", "世纪大道2号", true));
         addresses.delete(userId, addressId);
         ShippingAddressSnapshot unchanged = snapshots.require(created.getId());
@@ -83,7 +83,7 @@ class ShippingAddressSnapshotTests {
         assertThat(snapshots.create(userId, first, ShippingSourceType.POINTS_REDEMPTION, sourceId).getId())
                 .isEqualTo(created.getId());
         assertError(() -> snapshots.create(userId, second, ShippingSourceType.POINTS_REDEMPTION, sourceId));
-        addresses.update(userId, first, new com.dongqh.luckyhub.shipping.dto.UpdateShippingAddressCommand(
+        addresses.update(userId, first, new com.dongqh.luckyhub.domain.dto.shipping.UpdateShippingAddressCommand(
                 "王五", "13712345678", "浙江省", "杭州市", "余杭区", "未来科技城3号", false));
         stubAddress(first, "王五", "13712345678", "杭州市", "未来科技城3号");
         assertError(() -> snapshots.create(userId, first, ShippingSourceType.POINTS_REDEMPTION, sourceId));

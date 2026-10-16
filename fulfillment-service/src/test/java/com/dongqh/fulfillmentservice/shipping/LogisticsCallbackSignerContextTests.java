@@ -1,7 +1,7 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.config.LogisticsCallbackProperties;
-import com.dongqh.fulfillmentservice.shipping.crypto.LogisticsCallbackSigner;
+import com.dongqh.fulfillmentservice.config.shipping.LogisticsCallbackProperties;
+import com.dongqh.fulfillmentservice.integration.crypto.shipping.LogisticsCallbackSigner;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;

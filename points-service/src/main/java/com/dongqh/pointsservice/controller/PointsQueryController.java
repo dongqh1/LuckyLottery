@@ -1,14 +1,12 @@
 package com.dongqh.pointsservice.controller;
 
-import com.dongqh.luckyhub.points.dto.PointsLedgerQuery;
-import com.dongqh.luckyhub.points.service.PointsQueryService;
-import com.dongqh.luckyhub.points.vo.PointsAccountView;
-import com.dongqh.luckyhub.points.vo.PointsLedgerView;
-import com.dongqh.luckyhub.points.vo.PointsPageResponse;
+import com.dongqh.luckyhub.domain.dto.points.PointsLedgerQuery;
+import com.dongqh.luckyhub.service.points.PointsQueryService;
+import com.dongqh.luckyhub.domain.vo.points.PointsAccountView;
+import com.dongqh.luckyhub.domain.vo.points.PointsLedgerView;
+import com.dongqh.luckyhub.domain.vo.points.PointsPageResponse;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
@@ -21,7 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Validated
 @RestController
 @RequestMapping("/api/points")
-@RequirePermission(ServicePermissionCodes.POINTS_READ)
 public class PointsQueryController {
 
     private final PointsQueryService points;
@@ -48,3 +45,4 @@ public class PointsQueryController {
         return userId;
     }
 }
+

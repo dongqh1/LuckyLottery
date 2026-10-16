@@ -1,6 +1,6 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.crypto.AesGcmAddressCipher;
+import com.dongqh.fulfillmentservice.integration.crypto.shipping.AesGcmAddressCipher;
 import org.junit.jupiter.api.Test;
 
 import java.util.Base64;

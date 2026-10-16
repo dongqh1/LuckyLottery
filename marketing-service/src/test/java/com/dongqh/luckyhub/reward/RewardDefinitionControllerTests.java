@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.reward;
 
-import com.dongqh.luckyhub.auth.model.JwtPayload;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.service.UserPermissionService;
-import com.dongqh.luckyhub.reward.enums.RewardType;
-import com.dongqh.luckyhub.reward.service.RewardDefinitionService;
-import com.dongqh.luckyhub.reward.vo.RewardDefinitionView;
+import com.dongqh.luckyhub.domain.model.auth.JwtPayload;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.service.rbac.UserPermissionService;
+import com.dongqh.luckyhub.enums.reward.RewardType;
+import com.dongqh.luckyhub.service.reward.RewardDefinitionService;
+import com.dongqh.luckyhub.domain.vo.reward.RewardDefinitionView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

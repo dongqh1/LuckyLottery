@@ -1,12 +1,12 @@
 package com.dongqh.lotteryservice.activitycatalog;
 
-import com.dongqh.lotteryservice.activitycatalog.vo.ActivityCatalogView;
-import com.dongqh.lotteryservice.activitycatalog.vo.ActivityPrizeCatalogView;
-import com.dongqh.lotteryservice.activityprize.config.ActivityPrizeMapperConfiguration;
-import com.dongqh.lotteryservice.activityprize.mapper.ActivityCatalogQueryMapper;
-import com.dongqh.lotteryservice.activityprize.mapper.ActivityMapper;
-import com.dongqh.lotteryservice.activityprize.domain.ActivityStatus;
-import com.dongqh.lotteryservice.activityprize.domain.PrizeType;
+import com.dongqh.lotteryservice.domain.vo.activitycatalog.ActivityCatalogView;
+import com.dongqh.lotteryservice.domain.vo.activitycatalog.ActivityPrizeCatalogView;
+import com.dongqh.lotteryservice.config.activityprize.ActivityPrizeMapperConfiguration;
+import com.dongqh.lotteryservice.mapper.activityprize.ActivityCatalogQueryMapper;
+import com.dongqh.lotteryservice.mapper.activityprize.ActivityMapper;
+import com.dongqh.lotteryservice.enums.activityprize.ActivityStatus;
+import com.dongqh.lotteryservice.enums.activityprize.PrizeType;
 import org.apache.ibatis.annotations.Select;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -33,7 +33,7 @@ class ActivityCatalogQueryContractTests {
         String sql = sql("findActivityById");
 
         assertThat(sql).contains("id", "activity_name", "description", "status", "start_time", "end_time",
-                "daily_limit", "FROM marketing_activity", "WHERE id = #{activityId}");
+                "FROM marketing_activity", "WHERE id = #{activityId}");
         assertThat(sql.toUpperCase()).doesNotContain("STATUS = 'RUNNING'");
     }
 
@@ -63,9 +63,9 @@ class ActivityCatalogQueryContractTests {
     @Test
     void viewsPreserveLegacyFieldNamesTypesAndEnumSpellings() {
         assertRecordComponents(ActivityCatalogView.class, new String[]{"id", "activityName", "description", "status",
-                "startTime", "endTime", "dailyLimit"},
+                "startTime", "endTime"},
                 new Class<?>[]{Long.class, String.class, String.class, ActivityStatus.class,
-                        LocalDateTime.class, LocalDateTime.class, Integer.class});
+                        LocalDateTime.class, LocalDateTime.class});
         assertRecordComponents(ActivityPrizeCatalogView.class,
                 new String[]{"prizeId", "prizeName", "prizeType", "imageUrl", "sortOrder", "hmallItemId"},
                 new Class<?>[]{Long.class, String.class, PrizeType.class, String.class, Integer.class, Long.class});
@@ -98,3 +98,5 @@ class ActivityCatalogQueryContractTests {
         }
     }
 }
+
+

@@ -1,7 +1,7 @@
 package com.dongqh.lotteryservice.activityprize;
 
-import com.dongqh.lotteryservice.activityprize.dto.AddActivityPrizeCommand;
-import com.dongqh.lotteryservice.activityprize.dto.UpdateActivityPrizeCommand;
+import com.dongqh.lotteryservice.domain.dto.activityprize.AddActivityPrizeCommand;
+import com.dongqh.lotteryservice.domain.dto.activityprize.UpdateActivityPrizeCommand;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;

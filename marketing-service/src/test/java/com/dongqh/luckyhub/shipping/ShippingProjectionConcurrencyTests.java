@@ -1,15 +1,15 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.fulfillment.enums.FulfillmentStatus;
-import com.dongqh.luckyhub.fulfillment.enums.FulfillmentType;
-import com.dongqh.luckyhub.fulfillment.service.FulfillmentTaskService;
-import com.dongqh.luckyhub.fulfillment.vo.FulfillmentTaskView;
-import com.dongqh.luckyhub.shipping.entity.ShippingOrder;
-import com.dongqh.luckyhub.shipping.enums.ShippingSourceType;
-import com.dongqh.luckyhub.shipping.enums.ShippingStatus;
-import com.dongqh.luckyhub.shipping.mapper.ShippingOrderMapper;
-import com.dongqh.luckyhub.shipping.service.ShippingAddressSnapshotService;
-import com.dongqh.luckyhub.shipping.service.impl.ShippingOrderServiceImpl;
+import com.dongqh.luckyhub.enums.fulfillment.FulfillmentStatus;
+import com.dongqh.luckyhub.enums.fulfillment.FulfillmentType;
+import com.dongqh.luckyhub.service.fulfillment.FulfillmentTaskService;
+import com.dongqh.luckyhub.domain.vo.fulfillment.FulfillmentTaskView;
+import com.dongqh.luckyhub.domain.po.shipping.ShippingOrder;
+import com.dongqh.luckyhub.enums.shipping.ShippingSourceType;
+import com.dongqh.luckyhub.enums.shipping.ShippingStatus;
+import com.dongqh.luckyhub.mapper.shipping.ShippingOrderMapper;
+import com.dongqh.luckyhub.service.shipping.ShippingAddressSnapshotService;
+import com.dongqh.luckyhub.service.shipping.impl.ShippingOrderServiceImpl;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;

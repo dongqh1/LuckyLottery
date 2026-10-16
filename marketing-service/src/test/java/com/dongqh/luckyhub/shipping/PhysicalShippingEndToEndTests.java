@@ -1,6 +1,6 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.shipping.enums.ShippingStatus;
+import com.dongqh.luckyhub.enums.shipping.ShippingStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 

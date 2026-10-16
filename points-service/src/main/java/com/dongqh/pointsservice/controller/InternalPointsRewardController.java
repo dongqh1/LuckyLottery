@@ -1,9 +1,9 @@
 package com.dongqh.pointsservice.controller;
 
 import com.dongqh.hmapi.dto.PointsRewardCreditRequest;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.enums.PointsBusinessType;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.enums.points.PointsBusinessType;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;

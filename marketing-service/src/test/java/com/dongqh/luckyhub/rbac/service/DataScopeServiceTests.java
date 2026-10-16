@@ -1,10 +1,10 @@
-package com.dongqh.luckyhub.rbac.service;
+package com.dongqh.luckyhub.service.rbac;
 
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.ForbiddenException;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.service.Impl.DataScopeServiceImpl;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.service.rbac.impl.DataScopeServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,22 +1,22 @@
 package com.dongqh.luckyhub.points;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
-import com.dongqh.luckyhub.catalog.service.CatalogService;
-import com.dongqh.luckyhub.inventory.channel.service.ChannelInventoryService;
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOffer;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOrder;
-import com.dongqh.luckyhub.points.enums.PointsBusinessType;
-import com.dongqh.luckyhub.points.enums.PointsRedemptionStatus;
-import com.dongqh.luckyhub.points.mapper.PointsRedemptionOrderMapper;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionOfferService;
-import com.dongqh.luckyhub.points.service.impl.PointsRedemptionServiceImpl;
-import com.dongqh.luckyhub.shipping.entity.ShippingAddressSnapshot;
-import com.dongqh.luckyhub.shipping.mapper.ShippingOrderMapper;
-import com.dongqh.luckyhub.shipping.service.ShippingAddressSnapshotService;
-import com.dongqh.luckyhub.shipping.service.ShippingOrderService;
-import com.dongqh.luckyhub.shipping.vo.ShippingOrderView;
+import com.dongqh.luckyhub.service.catalog.CatalogService;
+import com.dongqh.luckyhub.domain.channel.inventory.service.ChannelInventoryService;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOffer;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOrder;
+import com.dongqh.luckyhub.enums.points.PointsBusinessType;
+import com.dongqh.luckyhub.enums.points.PointsRedemptionStatus;
+import com.dongqh.luckyhub.mapper.points.PointsRedemptionOrderMapper;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionOfferService;
+import com.dongqh.luckyhub.service.points.impl.PointsRedemptionServiceImpl;
+import com.dongqh.luckyhub.domain.po.shipping.ShippingAddressSnapshot;
+import com.dongqh.luckyhub.mapper.shipping.ShippingOrderMapper;
+import com.dongqh.luckyhub.service.shipping.ShippingAddressSnapshotService;
+import com.dongqh.luckyhub.service.shipping.ShippingOrderService;
+import com.dongqh.luckyhub.domain.vo.shipping.ShippingOrderView;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -96,7 +96,7 @@ class HmallPointsRedemptionServiceTests {
         assertThat(result.shippingOrderId()).isEqualTo(501L);
 
         verify(offers).deductStock(71L, 1);
-        var debit = ArgumentCaptor.forClass(com.dongqh.luckyhub.points.dto.PointsMutationCommand.class);
+        var debit = ArgumentCaptor.forClass(com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand.class);
         verify(accounts).debit(debit.capture());
         assertThat(debit.getValue().businessType()).isEqualTo(PointsBusinessType.REDEMPTION);
         assertThat(debit.getValue().amount()).isEqualTo(30L);

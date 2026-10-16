@@ -11,6 +11,5 @@ public class UserPageQuery extends PageQuery {
     private String key;
 
     private Integer status;
-
-    private String role;
 }
+

@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.inventory.channel.mapper;
+package com.dongqh.luckyhub.domain.channel.inventory.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dongqh.luckyhub.inventory.channel.entity.InventoryLedger;
+import com.dongqh.luckyhub.domain.channel.inventory.entity.InventoryLedger;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 

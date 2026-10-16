@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.coupon.config;
+package com.dongqh.luckyhub.config.coupon;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Binding;

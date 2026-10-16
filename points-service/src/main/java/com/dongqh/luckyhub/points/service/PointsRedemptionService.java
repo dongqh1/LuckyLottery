@@ -1,10 +1,10 @@
-package com.dongqh.luckyhub.points.service;
+package com.dongqh.luckyhub.service.points;
 
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.dto.PointsRedemptionQuery;
-import com.dongqh.luckyhub.points.dto.ReversePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.vo.PointsPageResponse;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionView;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsRedemptionQuery;
+import com.dongqh.luckyhub.domain.dto.points.ReversePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.vo.points.PointsPageResponse;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionView;
 
 public interface PointsRedemptionService {
     PointsRedemptionView create(long userId, String authorization, CreatePointsRedemptionCommand command);

@@ -1,9 +1,9 @@
-package com.dongqh.luckyhub.lottery.lock;
+package com.dongqh.luckyhub.domain.lock.lottery;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.lottery.config.LotteryProperties;
-import com.dongqh.luckyhub.lottery.enums.LotteryErrorCode;
-import com.dongqh.luckyhub.lottery.quota.DrawQuotaKeys;
+import com.dongqh.luckyhub.config.lottery.LotteryProperties;
+import com.dongqh.luckyhub.enums.lottery.LotteryErrorCode;
+import com.dongqh.luckyhub.domain.lock.lottery.DrawLockKeys;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -27,13 +27,13 @@ class RedissonDrawLockServiceTests {
     private final LotteryProperties properties = new LotteryProperties(
             ZoneId.of("Asia/Shanghai"), Duration.ofMillis(275), Duration.ofMinutes(2),
             Duration.ofSeconds(30), Duration.ofSeconds(60), 100,
-            Duration.ofHours(72), Duration.ofSeconds(5), 100
+            Duration.ofSeconds(5), 100
     );
     private final RedissonDrawLockService service = new RedissonDrawLockService(redissonClient, properties);
 
     @Test
     void executesUnderOwnedLockAndUnlocksInFinally() throws InterruptedException {
-        when(redissonClient.getLock(DrawQuotaKeys.drawLock(12L, 34L))).thenReturn(lock);
+        when(redissonClient.getLock(DrawLockKeys.drawLock(12L, 34L))).thenReturn(lock);
         when(lock.tryLock(275, TimeUnit.MILLISECONDS)).thenReturn(true);
         when(lock.isHeldByCurrentThread()).thenReturn(true);
 
@@ -45,7 +45,7 @@ class RedissonDrawLockServiceTests {
 
     @Test
     void releasesOwnedLockWhenActionFails() throws InterruptedException {
-        when(redissonClient.getLock(DrawQuotaKeys.drawLock(12L, 34L))).thenReturn(lock);
+        when(redissonClient.getLock(DrawLockKeys.drawLock(12L, 34L))).thenReturn(lock);
         when(lock.tryLock(275, TimeUnit.MILLISECONDS)).thenReturn(true);
         when(lock.isHeldByCurrentThread()).thenReturn(true);
 
@@ -57,7 +57,7 @@ class RedissonDrawLockServiceTests {
 
     @Test
     void timeoutDoesNotExecuteOrUnlockAndBecomesBusinessError() throws InterruptedException {
-        when(redissonClient.getLock(DrawQuotaKeys.drawLock(12L, 34L))).thenReturn(lock);
+        when(redissonClient.getLock(DrawLockKeys.drawLock(12L, 34L))).thenReturn(lock);
         when(lock.tryLock(275, TimeUnit.MILLISECONDS)).thenReturn(false);
         AtomicBoolean executed = new AtomicBoolean();
 
@@ -71,7 +71,7 @@ class RedissonDrawLockServiceTests {
 
     @Test
     void interruptionRestoresFlagAndBecomesBusinessError() throws InterruptedException {
-        when(redissonClient.getLock(DrawQuotaKeys.drawLock(12L, 34L))).thenReturn(lock);
+        when(redissonClient.getLock(DrawLockKeys.drawLock(12L, 34L))).thenReturn(lock);
         when(lock.tryLock(275, TimeUnit.MILLISECONDS)).thenThrow(new InterruptedException("stop"));
 
         try {
@@ -88,7 +88,7 @@ class RedissonDrawLockServiceTests {
 
     @Test
     void doesNotExecuteOrUnlockWhenCurrentThreadDoesNotOwnLock() throws InterruptedException {
-        when(redissonClient.getLock(DrawQuotaKeys.drawLock(12L, 34L))).thenReturn(lock);
+        when(redissonClient.getLock(DrawLockKeys.drawLock(12L, 34L))).thenReturn(lock);
         when(lock.tryLock(275, TimeUnit.MILLISECONDS)).thenReturn(true);
         when(lock.isHeldByCurrentThread()).thenReturn(false);
         AtomicBoolean executed = new AtomicBoolean();
@@ -101,3 +101,4 @@ class RedissonDrawLockServiceTests {
         verify(lock, never()).unlock();
     }
 }
+

@@ -1,9 +1,9 @@
 package com.dongqh.fulfillmentservice.service;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentPage;
-import com.dongqh.fulfillmentservice.model.FulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskQuery;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentPage;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskDetails;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskQueryRepository;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskStatus;
@@ -82,13 +82,13 @@ public class FulfillmentTaskReadService {
         try {
             return switch (details.fulfillmentType()) {
                 case COUPON -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.model.CouponFulfillmentPayload.class);
+                        com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload.class);
                 case POINTS -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.model.PointsFulfillmentPayload.class);
+                        com.dongqh.fulfillmentservice.domain.model.PointsFulfillmentPayload.class);
                 case MEMBERSHIP -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.model.MembershipFulfillmentPayload.class);
+                        com.dongqh.fulfillmentservice.domain.model.MembershipFulfillmentPayload.class);
                 case LOGISTICS -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.model.LogisticsFulfillmentPayload.class);
+                        com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload.class);
             };
         } catch (JacksonException exception) {
             throw new FulfillmentTaskInvalidPayloadException(details.fulfillmentNo(), exception);

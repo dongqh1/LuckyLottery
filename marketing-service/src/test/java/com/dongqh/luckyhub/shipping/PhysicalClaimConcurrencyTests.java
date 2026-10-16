@@ -1,10 +1,10 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.shipping.dto.ClaimPhysicalBenefitCommand;
-import com.dongqh.luckyhub.shipping.service.PhysicalClaimService;
-import com.dongqh.luckyhub.shipping.service.PhysicalClaimExpiryService;
-import com.dongqh.luckyhub.shipping.vo.ShippingOrderView;
-import com.dongqh.luckyhub.benefit.mapper.UserBenefitMapper;
+import com.dongqh.luckyhub.domain.dto.shipping.ClaimPhysicalBenefitCommand;
+import com.dongqh.luckyhub.service.shipping.PhysicalClaimService;
+import com.dongqh.luckyhub.service.shipping.PhysicalClaimExpiryService;
+import com.dongqh.luckyhub.domain.vo.shipping.ShippingOrderView;
+import com.dongqh.luckyhub.mapper.benefit.UserBenefitMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

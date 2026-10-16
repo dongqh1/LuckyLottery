@@ -1,7 +1,7 @@
 package com.dongqh.fulfillmentservice.service;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskOperationRepository;
 import com.dongqh.fulfillmentservice.service.port.FulfillmentTaskReadyOutbox;
 import org.springframework.beans.factory.annotation.Autowired;

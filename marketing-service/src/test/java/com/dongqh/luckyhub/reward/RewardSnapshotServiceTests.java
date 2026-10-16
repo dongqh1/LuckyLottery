@@ -1,15 +1,15 @@
 package com.dongqh.luckyhub.reward;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
-import com.dongqh.luckyhub.integration.hmall.HmallItemView;
-import com.dongqh.luckyhub.prize.entity.MarketingPrize;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
-import com.dongqh.luckyhub.reward.enums.RewardType;
-import com.dongqh.luckyhub.reward.enums.RewardErrorCode;
-import com.dongqh.luckyhub.reward.model.RewardSnapshot;
-import com.dongqh.luckyhub.reward.service.RewardSnapshotService;
-import com.dongqh.luckyhub.reward.support.RewardPrizeTypeMapping;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallCatalogClient;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallItemView;
+import com.dongqh.luckyhub.domain.po.prize.MarketingPrize;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
+import com.dongqh.luckyhub.enums.reward.RewardType;
+import com.dongqh.luckyhub.enums.reward.RewardErrorCode;
+import com.dongqh.luckyhub.domain.model.reward.RewardSnapshot;
+import com.dongqh.luckyhub.service.reward.RewardSnapshotService;
+import com.dongqh.luckyhub.domain.support.reward.RewardPrizeTypeMapping;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

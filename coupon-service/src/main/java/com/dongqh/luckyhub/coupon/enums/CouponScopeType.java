@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.coupon.enums;
+package com.dongqh.luckyhub.enums.coupon;
 
 public enum CouponScopeType {
     ALL,

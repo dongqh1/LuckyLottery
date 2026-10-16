@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.fulfillment;
 
-import com.dongqh.luckyhub.fulfillment.config.FulfillmentProperties;
-import com.dongqh.luckyhub.fulfillment.scheduler.FulfillmentScheduler;
-import com.dongqh.luckyhub.fulfillment.service.FulfillmentStateService;
-import com.dongqh.luckyhub.fulfillment.worker.FulfillmentWorker;
+import com.dongqh.luckyhub.config.fulfillment.FulfillmentProperties;
+import com.dongqh.luckyhub.scheduler.fulfillment.FulfillmentScheduler;
+import com.dongqh.luckyhub.service.fulfillment.FulfillmentStateService;
+import com.dongqh.luckyhub.worker.fulfillment.FulfillmentWorker;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 

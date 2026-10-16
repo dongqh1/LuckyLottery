@@ -1,9 +1,7 @@
 package com.dongqh.lotteryservice.controller;
 
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
-import com.dongqh.lotteryservice.prizecatalog.service.PrizeImageService;
-import com.dongqh.lotteryservice.prizecatalog.vo.ImageUploadView;
+import com.dongqh.lotteryservice.service.prizecatalog.PrizeImageService;
+import com.dongqh.lotteryservice.domain.vo.prizecatalog.ImageUploadView;
 import com.hmall.common.domain.R;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,8 +24,8 @@ public class PrizeImageController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    @RequirePermission(ServicePermissionCodes.PRIZE_IMAGE_UPLOAD)
     public R<ImageUploadView> upload(@RequestPart("file") MultipartFile file) {
         return R.ok(images.upload(file));
     }
 }
+

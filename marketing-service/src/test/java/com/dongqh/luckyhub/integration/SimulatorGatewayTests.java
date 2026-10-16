@@ -1,10 +1,10 @@
 package com.dongqh.luckyhub.integration;
 
-import com.dongqh.luckyhub.fulfillment.enums.FulfillmentType;
-import com.dongqh.luckyhub.fulfillment.enums.GatewayOutcome;
-import com.dongqh.luckyhub.integration.gateway.*;
-import com.dongqh.luckyhub.integration.simulator.SimulatorFailureMode;
-import com.dongqh.luckyhub.integration.simulator.SimulatorFailureRuleService;
+import com.dongqh.luckyhub.enums.fulfillment.FulfillmentType;
+import com.dongqh.luckyhub.enums.fulfillment.GatewayOutcome;
+import com.dongqh.luckyhub.domain.gateway.integration.*;
+import com.dongqh.luckyhub.domain.simulator.integration.SimulatorFailureMode;
+import com.dongqh.luckyhub.domain.simulator.integration.SimulatorFailureRuleService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

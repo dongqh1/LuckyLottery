@@ -6,8 +6,8 @@ import com.dongqh.fulfillmentservice.service.FulfillmentTaskOperationConflictExc
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskOperationNotAllowedException;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskInvalidPayloadException;
 import com.dongqh.fulfillmentservice.service.FulfillmentLeaseConflictException;
-import com.dongqh.fulfillmentservice.shipping.domain.LogisticsCallbackErrorCode;
-import com.dongqh.fulfillmentservice.shipping.domain.LogisticsCallbackException;
+import com.dongqh.fulfillmentservice.domain.shipping.LogisticsCallbackErrorCode;
+import com.dongqh.fulfillmentservice.domain.shipping.LogisticsCallbackException;
 import com.hmall.common.domain.R;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

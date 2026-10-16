@@ -1,6 +1,6 @@
 package com.dongqh.fulfillmentservice.integration;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentGatewayResult;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
 import feign.FeignException;
 
 final class FulfillmentFeignFailure {

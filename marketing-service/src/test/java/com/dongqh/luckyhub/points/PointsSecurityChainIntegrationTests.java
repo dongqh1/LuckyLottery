@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.points;
 
-import com.dongqh.luckyhub.auth.model.JwtPayload;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
-import com.dongqh.luckyhub.rbac.service.UserPermissionService;
+import com.dongqh.luckyhub.domain.model.auth.JwtPayload;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
+import com.dongqh.luckyhub.service.rbac.UserPermissionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -13,7 +13,6 @@ public record LotteryProperties(
         Duration reconcileInterval,
         Duration reconcileInitialDelay,
         int reconcileBatchSize,
-        Duration reservationRetention,
         Duration outboxInterval,
         int outboxBatchSize
 ) {
@@ -30,7 +29,6 @@ public record LotteryProperties(
         if (reconcileBatchSize <= 0) {
             throw new IllegalArgumentException("reconcileBatchSize must be positive");
         }
-        requirePositive(reservationRetention, "reservationRetention");
         requirePositive(outboxInterval, "outboxInterval");
         if (outboxBatchSize <= 0) {
             throw new IllegalArgumentException("outboxBatchSize must be positive");
@@ -43,3 +41,4 @@ public record LotteryProperties(
         }
     }
 }
+

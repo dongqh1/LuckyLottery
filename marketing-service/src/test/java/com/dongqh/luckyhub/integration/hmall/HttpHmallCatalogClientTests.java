@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.integration.hmall;
+package com.dongqh.luckyhub.domain.hmall.integration;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;

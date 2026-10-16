@@ -1,2 +1,2 @@
-package com.dongqh.luckyhub.coupon.enums;
+package com.dongqh.luckyhub.enums.coupon;
 public enum CouponType { NO_THRESHOLD, THRESHOLD }

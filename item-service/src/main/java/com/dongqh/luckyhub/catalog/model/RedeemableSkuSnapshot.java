@@ -1,6 +1,6 @@
-package com.dongqh.luckyhub.catalog.model;
+package com.dongqh.luckyhub.domain.model.catalog;
 
-import com.dongqh.luckyhub.catalog.enums.ProductType;
+import com.dongqh.luckyhub.enums.catalog.ProductType;
 
 public record RedeemableSkuSnapshot(
         Long skuId,

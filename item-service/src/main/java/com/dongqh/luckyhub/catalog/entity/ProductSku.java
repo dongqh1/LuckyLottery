@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.catalog.entity;
+package com.dongqh.luckyhub.domain.po.catalog;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;

@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.prize.image;
+package com.dongqh.luckyhub.domain.image.prize;
 
-import com.dongqh.luckyhub.prize.config.OssProperties;
-import com.dongqh.luckyhub.prize.storage.ObjectStorageGateway;
+import com.dongqh.luckyhub.config.prize.OssProperties;
+import com.dongqh.luckyhub.domain.storage.prize.ObjectStorageGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 

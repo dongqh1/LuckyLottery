@@ -1,11 +1,11 @@
 package com.dongqh.luckyhub.points;
 
-import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
-import com.dongqh.luckyhub.integration.hmall.HmallItemView;
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionOfferCommand;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOffer;
-import com.dongqh.luckyhub.points.mapper.PointsRedemptionOfferMapper;
-import com.dongqh.luckyhub.points.service.impl.PointsRedemptionOfferServiceImpl;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallCatalogClient;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallItemView;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionOfferCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOffer;
+import com.dongqh.luckyhub.mapper.points.PointsRedemptionOfferMapper;
+import com.dongqh.luckyhub.service.points.impl.PointsRedemptionOfferServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

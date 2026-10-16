@@ -1,9 +1,9 @@
-package com.dongqh.luckyhub.points.service;
+package com.dongqh.luckyhub.service.points;
 
-import com.dongqh.luckyhub.points.dto.PointsLedgerQuery;
-import com.dongqh.luckyhub.points.vo.PointsAccountView;
-import com.dongqh.luckyhub.points.vo.PointsLedgerView;
-import com.dongqh.luckyhub.points.vo.PointsPageResponse;
+import com.dongqh.luckyhub.domain.dto.points.PointsLedgerQuery;
+import com.dongqh.luckyhub.domain.vo.points.PointsAccountView;
+import com.dongqh.luckyhub.domain.vo.points.PointsLedgerView;
+import com.dongqh.luckyhub.domain.vo.points.PointsPageResponse;
 
 public interface PointsQueryService {
     PointsAccountView getAccount(long userId);

@@ -1,0 +1,29 @@
+package com.dongqh.lotteryservice.config.prizecatalog;
+
+import com.aliyun.sdk.service.oss2.OSSClient;
+import com.aliyun.sdk.service.oss2.credentials.StaticCredentialsProvider;
+import com.dongqh.lotteryservice.integration.prizecatalog.AliyunOssObjectStorageGateway;
+import com.dongqh.lotteryservice.integration.prizecatalog.ObjectStorageGateway;
+import com.dongqh.lotteryservice.integration.prizecatalog.UnavailableObjectStorageGateway;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(OssProperties.class)
+public class OssConfiguration {
+
+    @Bean
+    public ObjectStorageGateway objectStorageGateway(OssProperties properties) {
+        if (!properties.enabled() || !properties.isComplete()) {
+            return new UnavailableObjectStorageGateway();
+        }
+        OSSClient client = OSSClient.newBuilder()
+                .region(properties.region())
+                .endpoint(properties.endpoint())
+                .credentialsProvider(new StaticCredentialsProvider(
+                        properties.accessKeyId(), properties.accessKeySecret()))
+                .build();
+        return new AliyunOssObjectStorageGateway(client, properties.bucket());
+    }
+}

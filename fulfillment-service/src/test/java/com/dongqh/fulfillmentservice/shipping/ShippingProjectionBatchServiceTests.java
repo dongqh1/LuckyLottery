@@ -1,8 +1,8 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingOrderRepository;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingOrderProjectionWorker;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingProjectionBatchService;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrderRepository;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingOrderProjectionWorker;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingProjectionBatchService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

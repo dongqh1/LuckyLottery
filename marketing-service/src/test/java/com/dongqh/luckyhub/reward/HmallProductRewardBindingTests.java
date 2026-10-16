@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.reward;
 
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
-import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
-import com.dongqh.luckyhub.integration.hmall.HmallItemView;
-import com.dongqh.luckyhub.membership.mapper.MembershipProductMapper;
-import com.dongqh.luckyhub.reward.dto.CreateRewardDefinitionCommand;
-import com.dongqh.luckyhub.reward.enums.RewardType;
-import com.dongqh.luckyhub.reward.mapper.RewardDefinitionMapper;
-import com.dongqh.luckyhub.reward.service.impl.RewardDefinitionServiceImpl;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallCatalogClient;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallItemView;
+import com.dongqh.luckyhub.mapper.membership.MembershipProductMapper;
+import com.dongqh.luckyhub.domain.dto.reward.CreateRewardDefinitionCommand;
+import com.dongqh.luckyhub.enums.reward.RewardType;
+import com.dongqh.luckyhub.mapper.reward.RewardDefinitionMapper;
+import com.dongqh.luckyhub.service.reward.impl.RewardDefinitionServiceImpl;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 

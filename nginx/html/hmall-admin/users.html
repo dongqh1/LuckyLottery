@@ -95,9 +95,6 @@
       <el-form-item label="手机号" >
         <el-input v-model="item.phone" autocomplete="off"></el-input>
       </el-form-item>
-      <el-form-item label="用户角色" >
-        <el-input v-model="item.role" autocomplete="off"></el-input>
-      </el-form-item>
     </el-form>
     <div slot="footer" class="dialog-footer">
       <el-button @click="formVisible = false">取 消</el-button>
@@ -183,7 +180,6 @@
                 "id": 317581,
                 "username": "Jack",
                 "phone": "13688990912",
-                "role": "用户",
                 "status": "连续失败",
                 "failureTimes": 3,
                 "latestFailTime": "2019-04-30 21:09:11",
@@ -193,7 +189,6 @@
                 "id": 3175802,
                 "username": "Jack",
                 "phone": "13688990912",
-                "role": "用户",
                 "status": "连续失败",
                 "failureTimes": 5,
                 "latestFailTime": "2019-04-30 21:09:11",
@@ -203,7 +198,6 @@
                 "id": 317583,
                 "username": "Hope",
                 "phone": "13688990913",
-                "role": "管理员",
                 "status": "正常",
                 "failureTimes": 0,
                 "latestFailTime": "2019-04-30 21:09:11",
@@ -337,3 +331,4 @@
 </script>
 </body>
 </html>
+

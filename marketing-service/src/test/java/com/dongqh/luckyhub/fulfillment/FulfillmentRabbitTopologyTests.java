@@ -1,7 +1,7 @@
 package com.dongqh.luckyhub.fulfillment;
 
-import com.dongqh.luckyhub.fulfillment.config.FulfillmentMessagingConfiguration;
-import com.dongqh.luckyhub.fulfillment.messaging.rabbit.FulfillmentRabbitTopology;
+import com.dongqh.luckyhub.config.fulfillment.FulfillmentMessagingConfiguration;
+import com.dongqh.luckyhub.messaging.fulfillment.rabbit.FulfillmentRabbitTopology;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;

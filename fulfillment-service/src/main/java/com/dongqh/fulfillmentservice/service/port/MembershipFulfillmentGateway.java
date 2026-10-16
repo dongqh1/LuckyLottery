@@ -1,7 +1,7 @@
 package com.dongqh.fulfillmentservice.service.port;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentGatewayResult;
-import com.dongqh.fulfillmentservice.model.MembershipFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
+import com.dongqh.fulfillmentservice.domain.model.MembershipFulfillmentPayload;
 
 public interface MembershipFulfillmentGateway {
 

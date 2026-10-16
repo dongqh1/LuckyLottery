@@ -1,6 +1,6 @@
 package com.dongqh.luckyhub.lottery;
 
-import com.dongqh.luckyhub.lottery.enums.RewardQuarantineReason;
+import com.dongqh.luckyhub.enums.lottery.RewardQuarantineReason;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

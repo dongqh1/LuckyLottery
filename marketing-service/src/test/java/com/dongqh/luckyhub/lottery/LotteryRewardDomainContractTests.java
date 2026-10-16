@@ -1,18 +1,18 @@
 package com.dongqh.luckyhub.lottery;
 
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.dongqh.luckyhub.drawchance.entity.DrawChanceAccount;
-import com.dongqh.luckyhub.drawchance.entity.DrawChanceLedger;
-import com.dongqh.luckyhub.drawchance.entity.DrawChanceReservation;
-import com.dongqh.luckyhub.drawchance.enums.DrawChanceBusinessType;
-import com.dongqh.luckyhub.drawchance.enums.DrawChanceDirection;
-import com.dongqh.luckyhub.drawchance.enums.DrawChanceReservationStatus;
-import com.dongqh.luckyhub.drawchance.mapper.DrawChanceAccountMapper;
-import com.dongqh.luckyhub.drawchance.mapper.DrawChanceLedgerMapper;
-import com.dongqh.luckyhub.drawchance.mapper.DrawChanceReservationMapper;
-import com.dongqh.luckyhub.lottery.entity.LotteryRewardQuarantine;
-import com.dongqh.luckyhub.lottery.enums.RewardQuarantineStatus;
-import com.dongqh.luckyhub.lottery.mapper.LotteryRewardQuarantineMapper;
+import com.dongqh.luckyhub.domain.po.drawchance.DrawChanceAccount;
+import com.dongqh.luckyhub.domain.po.drawchance.DrawChanceLedger;
+import com.dongqh.luckyhub.domain.po.drawchance.DrawChanceReservation;
+import com.dongqh.luckyhub.enums.drawchance.DrawChanceBusinessType;
+import com.dongqh.luckyhub.enums.drawchance.DrawChanceDirection;
+import com.dongqh.luckyhub.enums.drawchance.DrawChanceReservationStatus;
+import com.dongqh.luckyhub.mapper.drawchance.DrawChanceAccountMapper;
+import com.dongqh.luckyhub.mapper.drawchance.DrawChanceLedgerMapper;
+import com.dongqh.luckyhub.mapper.drawchance.DrawChanceReservationMapper;
+import com.dongqh.luckyhub.domain.po.lottery.LotteryRewardQuarantine;
+import com.dongqh.luckyhub.enums.lottery.RewardQuarantineStatus;
+import com.dongqh.luckyhub.mapper.lottery.LotteryRewardQuarantineMapper;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -1,0 +1,599 @@
+[
+  {
+    "id": "P01",
+    "service": "points",
+    "title": "实现积分变更的幂等闭环",
+    "level": "综合",
+    "minutes": 35,
+    "tags": [
+      "积分账户",
+      "幂等",
+      "事务",
+      "并发"
+    ],
+    "purpose": "完成一次已经校验参数的积分入账或扣账：更新余额、写入唯一业务流水，并处理重复调用与并发竞争。",
+    "component": "PointsAccountServiceImpl 是积分领域服务。公开的 credit/debit/adjust 方法开启 READ_COMMITTED 事务后调用 mutate；mutate 本身是私有方法，不能脱离该事务单独调用。账户 Mapper 负责原子余额更新，流水 Mapper 负责业务唯一键占位。",
+    "sources": [
+      {
+        "path": "points-service/src/main/java/com/dongqh/luckyhub/points/service/impl/PointsAccountServiceImpl.java",
+        "symbol": "mutate",
+        "line": 155
+      }
+    ],
+    "scope": "完整方法",
+    "context": [
+      "所在包为 com.dongqh.luckyhub.points.service.impl；这是 PointsAccountServiceImpl 的完整私有 mutate 方法。",
+      "已有成员：PointsAccountMapper accountMapper、PointsLedgerMapper ledgerMapper；类型均来自 com.dongqh.luckyhub.points.mapper。",
+      "ValidMutation 是本类私有 record，含 userId、businessType、businessId、amount、remark；公开入口已通过 validateMutation 保证金额为正、业务类型允许、业务号规范化。",
+      "PointsDirection 来自 com.dongqh.luckyhub.points.enums，只有 CREDIT 与 DEBIT；PointsAccount、PointsLedger 来自 .entity，PointsLedgerView 来自 .vo。",
+      "已有 requireEnabledUser、findLedger、validateLedger、requireAccount、requireLedger、view、error 辅助方法；validateLedger 不匹配时抛出 POINTS_IDEMPOTENCY_CONFLICT。",
+      "已有 markRollbackOnly()，内部调用 Spring TransactionAspectSupport.currentTransactionStatus().setRollbackOnly()。正常返回胜出流水时也要回滚本事务中的余额更新。",
+      "points_ledger 的 (business_type,business_id) 唯一键是幂等依据；accountMapper 更新返回影响行数，ledgerMapper.claim 使用 INSERT IGNORE，成功返回 1。"
+    ],
+    "requirements": [
+      "[P01-1] 检查用户是否启用，确保账户存在，再按业务类型和业务号查询流水。",
+      "[P01-2] 若流水已经存在，校验其与本次变更一致并立即返回，避免再次更新余额。",
+      "[P01-3] 根据 CREDIT/DEBIT 调用防溢出入账或余额充足扣账；影响行数不是 1 时抛出对应领域错误。",
+      "[P01-4] 读取账户余额，填齐流水的用户、业务类型、业务号、方向、金额、变更后余额与备注。",
+      "[P01-5] 流水占位成功时读取数据库中的该业务流水并转换为返回视图。",
+      "[P01-6] 流水占位失败时读取胜出流水、校验本次请求、标记本事务回滚并返回胜出结果。"
+    ],
+    "starter": "private PointsLedgerView mutate(ValidMutation mutation, PointsDirection direction) {\n    // TODO [P01-1]：检查用户、确保账户存在并查询已有流水。\n\n\n    // TODO [P01-2]：实现已有业务流水的校验与幂等返回。\n\n\n    // TODO [P01-3]：按积分方向原子更新余额，并处理更新失败。\n\n\n    // TODO [P01-4]：读取账户并构造完整流水对象。\n\n\n    // TODO [P01-5]：实现流水占位成功后的返回。\n\n\n    // TODO [P01-6]：处理并发胜出流水，回滚本事务的余额变更并返回。\n\n}",
+    "answer": "    private PointsLedgerView mutate(ValidMutation mutation, PointsDirection direction) {\n        // [P01-1] 确认用户可用，幂等创建积分账户，并查找该业务键已有流水。\n        requireEnabledUser(mutation.userId());\n        accountMapper.ensureAccount(mutation.userId());\n        PointsLedger existing = findLedger(mutation.businessType(), mutation.businessId());\n        // [P01-2] 已有流水必须与本次用户、业务、方向和金额一致，匹配时直接返回。\n        if (existing != null) {\n            validateLedger(existing, mutation, direction);\n            return view(existing);\n        }\n\n        // [P01-3] 按方向执行原子余额更新；入账溢出或扣账余额不足时抛出对应错误。\n        int updated = direction == PointsDirection.CREDIT\n                ? accountMapper.creditIfNoOverflow(mutation.userId(), mutation.amount())\n                : accountMapper.debitIfSufficient(mutation.userId(), mutation.amount());\n        if (updated != 1) {\n            throw error(direction == PointsDirection.CREDIT\n                    ? PointsErrorCode.POINTS_AMOUNT_INVALID\n                    : PointsErrorCode.POINTS_INSUFFICIENT);\n        }\n\n        // [P01-4] 读取更新后的余额，并构造记录本次业务与余额快照的完整流水。\n        PointsAccount account = requireAccount(mutation.userId());\n        PointsLedger ledger = new PointsLedger();\n        ledger.setUserId(mutation.userId());\n        ledger.setBusinessType(mutation.businessType());\n        ledger.setBusinessId(mutation.businessId());\n        ledger.setDirection(direction);\n        ledger.setAmount(mutation.amount());\n        ledger.setBalanceAfter(account.getBalance());\n        ledger.setRemark(mutation.remark());\n\n        // [P01-5] 尝试凭唯一键占位；成功后重新读取已落库流水并返回。\n        if (ledgerMapper.claim(ledger) == 1) {\n            return view(requireLedger(mutation.businessType(), mutation.businessId()));\n        }\n\n        // [P01-6] 并发占位失败时校验胜出流水，将本事务标记回滚，避免重复变更余额。\n        PointsLedger winner = requireLedger(mutation.businessType(), mutation.businessId());\n        validateLedger(winner, mutation, direction);\n        markRollbackOnly();\n        return view(winner);\n    }",
+    "explanation": [
+      "先查已有流水可快速处理重复调用，但并发请求可能同时查不到，最终仍需数据库唯一键确定胜者。",
+      "余额变更使用数据库条件更新，不能改为先在 Java 中检查余额再直接写回。",
+      "余额先更新而流水占位失败时，本事务必须回滚；仅返回胜出流水会造成重复入账或扣账。",
+      "校验幂等参数可阻止同一业务号被复用于其他用户、金额或方向。"
+    ],
+    "checks": [
+      "用户启用、余额 100、CREDIT 金额 20、首次业务号：返回余额快照 120，数据库只有一条该业务流水。",
+      "串行重复相同业务类型与业务号、用户、方向、金额：返回原流水，余额不再变化。",
+      "复用业务键但改金额或用户：抛出 POINTS_IDEMPOTENCY_CONFLICT。",
+      "DEBIT 金额大于余额：抛出 POINTS_INSUFFICIENT；CREDIT 将超过 Long.MAX_VALUE：抛出 POINTS_AMOUNT_INVALID。",
+      "两个相同业务并发竞争且 claim 一方失败：失败方校验胜出流水并标记回滚，最终余额只变化一次。",
+      "本题直接在私有方法上添加 @Transactional 不能替代公开入口的事务；参考答案依赖原调用链。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "P02",
+    "service": "points",
+    "title": "补全账户原子更新与流水占位 SQL",
+    "level": "进阶",
+    "minutes": 30,
+    "tags": [
+      "MyBatis",
+      "SQL",
+      "余额安全",
+      "行锁",
+      "唯一键"
+    ],
+    "purpose": "实现积分账户的幂等建账、余额充足扣减、防溢出入账，以及积分流水唯一业务占位。",
+    "component": "PointsAccountMapper 与 PointsLedgerMapper 是 MyBatis 数据访问组件。账户 UPDATE 在 InnoDB 事务中对目标行加锁并在同条 SQL 中校验余额；该实现没有显式 lockById/SELECT FOR UPDATE。流水 INSERT IGNORE 配合唯一键和调用方回滚处理并发幂等。",
+    "sources": [
+      {
+        "path": "points-service/src/main/java/com/dongqh/luckyhub/points/mapper/PointsAccountMapper.java",
+        "symbol": "ensureAccount",
+        "line": 19
+      },
+      {
+        "path": "points-service/src/main/java/com/dongqh/luckyhub/points/mapper/PointsAccountMapper.java",
+        "symbol": "debitIfSufficient",
+        "line": 26
+      },
+      {
+        "path": "points-service/src/main/java/com/dongqh/luckyhub/points/mapper/PointsAccountMapper.java",
+        "symbol": "creditIfNoOverflow",
+        "line": 34
+      },
+      {
+        "path": "points-service/src/main/java/com/dongqh/luckyhub/points/mapper/PointsLedgerMapper.java",
+        "symbol": "claim",
+        "line": 22
+      }
+    ],
+    "scope": "明确教学裁剪",
+    "context": [
+      "展示两个实际文件中的完整 Mapper 接口主体；PointsAccountMapper 与 PointsLedgerMapper 必须分别保存在同名文件中，本题不是一个可直接保存的双 public 接口文件。",
+      "导入 BaseMapper：com.baomidou.mybatisplus.core.mapper.BaseMapper；导入 PointsAccount/PointsLedger：com.dongqh.luckyhub.points.entity。",
+      "导入 @Insert、@Update、@Param、@Options：org.apache.ibatis.annotations；SQL 使用 Java 文本块。",
+      "points_account 有 user_id、balance、version、created_at、updated_at 字段，user_id 是唯一键；数据库 updated_at 具备自动更新时间规则。",
+      "points_ledger 有用户、业务类型/号、方向、金额、变更后余额、冲正关联、备注、创建时间字段；(business_type,business_id) 和 reversal_of_ledger_id 各有唯一键。",
+      "调用方已保证 amount > 0，使用 READ_COMMITTED 事务，并将 UPDATE 或 claim 的影响行数与 1 比较；本题不另加 Java 参数验证。"
+    ],
+    "requirements": [
+      "[P02-1] 给 ensureAccount 编写完整 @Insert：首次创建零余额零版本账户，重复 user_id 不重置余额。",
+      "[P02-2] 给 debitIfSufficient 编写完整 @Update：只在余额足够时扣账，并递增版本。",
+      "[P02-3] 给 creditIfNoOverflow 编写完整 @Update：避免 BIGINT 有符号上界溢出，并递增版本。",
+      "[P02-4] 给 claim 编写完整 @Insert 与 @Options：INSERT IGNORE 填齐流水字段，使用 ledger 参数前缀，并回填生成的主键。"
+    ],
+    "starter": "// 来自 PointsAccountMapper.java\npublic interface PointsAccountMapper extends BaseMapper<PointsAccount> {\n    // TODO [P02-1]：编写整个建账 SQL 注解，保留已有账户余额。\n\n    int ensureAccount(@Param(\"userId\") long userId);\n\n    // TODO [P02-2]：编写整个条件扣账 SQL 注解。\n\n    int debitIfSufficient(@Param(\"userId\") long userId, @Param(\"amount\") long amount);\n\n    // TODO [P02-3]：编写整个防溢出入账 SQL 注解。\n\n    int creditIfNoOverflow(@Param(\"userId\") long userId, @Param(\"amount\") long amount);\n}\n\n// 来自 PointsLedgerMapper.java\npublic interface PointsLedgerMapper extends BaseMapper<PointsLedger> {\n    // TODO [P02-4]：编写完整流水占位 SQL 与生成主键回填注解。\n\n    int claim(@Param(\"ledger\") PointsLedger ledger);\n}",
+    "answer": "public interface PointsAccountMapper extends BaseMapper<PointsAccount> {\n\n    // [P02-1] 积分账户 Mapper：按 user_id 唯一键创建零余额账户，重复调用不重置余额。\n    @Insert(\"\"\"\n            INSERT INTO points_account (\n                user_id, balance, version, created_at, updated_at\n            ) VALUES (\n                #{userId}, 0, 0, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3)\n            )\n            ON DUPLICATE KEY UPDATE user_id = #{userId}\n            \"\"\")\n    int ensureAccount(@Param(\"userId\") long userId);\n\n    // [P02-2] 积分账户 Mapper：把余额充足判断放进 UPDATE 条件，与扣账原子执行。\n    @Update(\"\"\"\n            UPDATE points_account\n            SET balance = balance - #{amount}, version = version + 1\n            WHERE user_id = #{userId} AND balance >= #{amount}\n            \"\"\")\n    int debitIfSufficient(@Param(\"userId\") long userId, @Param(\"amount\") long amount);\n\n    // [P02-3] 积分账户 Mapper：使用 Long.MAX_VALUE 减金额的上界保护，原子入账并递增版本。\n    @Update(\"\"\"\n            UPDATE points_account\n            SET balance = balance + #{amount}, version = version + 1\n            WHERE user_id = #{userId}\n              AND balance <= 9223372036854775807 - #{amount}\n            \"\"\")\n    int creditIfNoOverflow(@Param(\"userId\") long userId, @Param(\"amount\") long amount);\n}\n\npublic interface PointsLedgerMapper extends BaseMapper<PointsLedger> {\n\n    // [P02-4] 积分流水 Mapper：插入完整流水并用唯一键争抢业务占位，回填 ledger.id。\n    @Insert(\"\"\"\n            INSERT IGNORE INTO points_ledger (\n                user_id, business_type, business_id, direction, amount,\n                balance_after, reversal_of_ledger_id, remark, created_at\n            ) VALUES (\n                #{ledger.userId}, #{ledger.businessType}, #{ledger.businessId},\n                #{ledger.direction}, #{ledger.amount}, #{ledger.balanceAfter},\n                #{ledger.reversalOfLedgerId}, #{ledger.remark}, CURRENT_TIMESTAMP(3)\n            )\n            \"\"\")\n    @Options(useGeneratedKeys = true, keyProperty = \"ledger.id\")\n    int claim(@Param(\"ledger\") PointsLedger ledger);\n}",
+    "explanation": [
+      "SQL 条件更新把余额判断和修改合并为一次数据库操作，避免并发扣减造成负余额。",
+      "balance <= 9223372036854775807 - amount 在加法前判断上界，SQL 无需先产生可能溢出的余额。",
+      "version 在每次余额更新时递增；本实现没有把预读版本作为 WHERE 条件，因此不能把它描述为基于旧版本比较的乐观锁。",
+      "INSERT IGNORE 的返回值由调用方处理；重复业务键没有写入新流水时，调用方要校验既有记录并回滚此前余额变更。"
+    ],
+    "checks": [
+      "已存在 user_id 7、余额 200，重复 ensureAccount(7)：余额仍为 200；本方法返回值不用于断言首次创建。",
+      "余额 100，debitIfSufficient(7,80) 返回 1，余额变为 20；再次扣 80 返回 0。",
+      "余额 Long.MAX_VALUE-5，creditIfNoOverflow(7,6) 返回 0，余额不变。",
+      "相同业务类型与业务号的第二次 claim 返回 0，数据库仍只有一条流水。",
+      "首次 claim 插入成功时 ledger.id 被回填；不把 INSERT IGNORE 当作无需检查的成功写入。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "P03",
+    "service": "points",
+    "title": "实现用户积分流水条件分页",
+    "level": "基础",
+    "minutes": 20,
+    "tags": [
+      "MyBatis Plus",
+      "分页",
+      "动态查询",
+      "用户隔离"
+    ],
+    "purpose": "按当前用户查询积分流水，支持业务号、业务类型与积分方向筛选，并返回分页记录和元数据。",
+    "component": "PointsQueryServiceImpl 是只读积分查询服务。LambdaQueryWrapper 组合条件，MyBatis Plus 的 Page 承载分页请求与结果，PointsPageResponse 将分页数据提供给前端。",
+    "sources": [
+      {
+        "path": "points-service/src/main/java/com/dongqh/luckyhub/points/service/impl/PointsQueryServiceImpl.java",
+        "symbol": "pageLedgers",
+        "line": 38
+      }
+    ],
+    "scope": "完整方法",
+    "context": [
+      "已有成员 PointsLedgerMapper ledgerMapper，以及本类 view(PointsLedger) 转换辅助方法。",
+      "PointsLedgerQuery 来自 com.dongqh.luckyhub.points.dto，默认 page=1、size=20；Bean Validation 要求 page>=1、size 在 1..100 内。",
+      "PointsLedger 实体来自 com.dongqh.luckyhub.points.entity；PointsLedgerView、PointsPageResponse 来自 .vo。",
+      "导入 LambdaQueryWrapper：com.baomidou.mybatisplus.core.conditions.query；Page：com.baomidou.mybatisplus.extension.plugins.pagination；StringUtils：org.springframework.util；List：java.util。",
+      "userId 来自调用者的用户上下文；query 非 null 且参数校验已在控制器入口完成。该方法没有再次检查用户启用状态。"
+    ],
+    "requirements": [
+      "[P03-1] 规范化业务号：有文本时 trim，否则把筛选值设为 null。",
+      "[P03-2] 建立查询条件，必须限制 userId；非空业务号、业务类型和方向才添加等值条件；按 createdAt 再按 id 倒序。",
+      "[P03-3] 用 query 的 page 和 size 创建 Page，调用 Mapper 的 selectPage。",
+      "[P03-4] 将记录转为视图，并把 total/current/size/pages 全部写入分页响应。"
+    ],
+    "starter": "@Override\npublic PointsPageResponse<PointsLedgerView> pageLedgers(long userId, PointsLedgerQuery query) {\n    // TODO [P03-1]：规范化可选业务号。\n\n\n    // TODO [P03-2]：构造用户隔离、可选筛选与稳定排序。\n\n\n    // TODO [P03-3]：执行数据库分页。\n\n\n    // TODO [P03-4]：转换记录并返回完整分页元数据。\n\n}",
+    "answer": "    @Override\n    public PointsPageResponse<PointsLedgerView> pageLedgers(long userId, PointsLedgerQuery query) {\n        // [P03-1] 把有内容的业务号去掉首尾空白，空白业务号不参与筛选。\n        String businessId = StringUtils.hasText(query.getBusinessId())\n                ? query.getBusinessId().trim() : null;\n        // [P03-2] 始终限制当前用户，按需添加业务号、业务类型与方向过滤，并稳定倒序。\n        LambdaQueryWrapper<PointsLedger> wrapper = new LambdaQueryWrapper<PointsLedger>()\n                .eq(PointsLedger::getUserId, userId)\n                .eq(businessId != null, PointsLedger::getBusinessId, businessId)\n                .eq(query.getBusinessType() != null,\n                        PointsLedger::getBusinessType, query.getBusinessType())\n                .eq(query.getDirection() != null,\n                        PointsLedger::getDirection, query.getDirection())\n                .orderByDesc(PointsLedger::getCreatedAt)\n                .orderByDesc(PointsLedger::getId);\n        // [P03-3] 使用请求页码和大小执行数据库分页，获取记录与总量元数据。\n        Page<PointsLedger> result = ledgerMapper.selectPage(\n                new Page<>(query.getPage(), query.getSize()), wrapper);\n        // [P03-4] 转换当前页记录，并把总条数、页码、页大小和总页数一并返回。\n        List<PointsLedgerView> records = result.getRecords().stream().map(this::view).toList();\n        return new PointsPageResponse<>(records, result.getTotal(), result.getCurrent(),\n                result.getSize(), result.getPages());\n    }",
+    "explanation": [
+      "用户条件始终生效，可选筛选条件不能替代用户隔离。",
+      "业务号为空白时不添加业务号条件，避免把空串当作有效搜索词。",
+      "创建时间相同时再按 id 排序，使分页结果顺序确定。",
+      "total 与 pages 必须来自数据库分页结果，不能用当前页记录数代替总数。"
+    ],
+    "checks": [
+      "业务号输入 '  ORDER-7  '：查询使用 'ORDER-7'；输入空白文本：省略业务号条件。",
+      "只给 businessType：仍按 userId 限制用户，且只筛该业务类型。",
+      "两条流水 createdAt 相同：较大 id 排在前面。",
+      "总计 43 条、page=2、size=20：返回 20 条及 total=43、current=2、size=20、pages=3。",
+      "没有匹配流水：records 为空，并保留分页结果提供的元数据。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "P04",
+    "service": "points",
+    "title": "为商城商品创建积分兑换报价",
+    "level": "进阶",
+    "minutes": 20,
+    "tags": [
+      "积分兑换",
+      "商品校验",
+      "快照",
+      "创建"
+    ],
+    "purpose": "基于真实商城商品创建一个启用的积分兑换报价，确定单件积分与可兑换库存并保存商品展示快照。",
+    "component": "PointsRedemptionOfferServiceImpl 管理积分兑换报价。PointsItemCatalogPort 是商城商品查询端口，提供商品快照；PointsRedemptionOfferMapper 持久化本服务的报价数据。本题仅创建报价，不执行库存预占或积分扣款。",
+    "sources": [
+      {
+        "path": "points-service/src/main/java/com/dongqh/luckyhub/points/service/impl/PointsRedemptionOfferServiceImpl.java",
+        "symbol": "create",
+        "line": 33
+      }
+    ],
+    "scope": "完整方法",
+    "context": [
+      "已有常量 ENABLED=1，成员 PointsItemCatalogPort itemCatalog 与 PointsRedemptionOfferMapper mapper。",
+      "PointsItemCatalogPort 与 PointsItemSnapshot 来自 com.dongqh.luckyhub.points.service.port；getItem 返回 Optional<PointsItemSnapshot>。",
+      "CreatePointsRedemptionOfferCommand 来自 .dto；hmallItemId 与 unitPoints 必须为正，availableStock 范围是 1..1_000_000，入口已做 Bean Validation。",
+      "PointsRedemptionOffer 来自 .entity，PointsRedemptionOfferView 来自 .vo；已有 view(offer) 和 error(PointsErrorCode) 辅助方法。",
+      "PointsErrorCode 来自 .enums。Mapper 插入后回填报价 id；商品名称、图片和现金价格从商城读取，不能由练习中的请求参数伪造。",
+      "源实现未将商城库存与报价库存进行跨服务预占，也未在本方法转换重复商品的数据库唯一键异常。"
+    ],
+    "requirements": [
+      "[P04-1] 查询商城商品，保证快照 ID 与请求一致、status 为 1、stock 非 null 且至少等于拟分配库存；不满足时抛出 REDEMPTION_SKU_UNAVAILABLE。",
+      "[P04-2] 创建报价实体，设置商城商品 ID、单件所需积分、可兑换库存。",
+      "[P04-3] 复制商品名称、图片、现金价格快照，并设置启用状态。",
+      "[P04-4] 插入数据库后调用已有 view 返回新报价。"
+    ],
+    "starter": "@Override\npublic PointsRedemptionOfferView create(CreatePointsRedemptionOfferCommand command) {\n    // TODO [P04-1]：加载商城商品，完成 ID、状态和库存校验。\n\n\n    // TODO [P04-2]：构造报价并设置关联、积分和库存。\n\n\n    // TODO [P04-3]：保存商品展示快照并启用报价。\n\n\n    // TODO [P04-4]：插入并返回报价视图。\n\n}",
+    "answer": "    @Override\n    public PointsRedemptionOfferView create(CreatePointsRedemptionOfferCommand command) {\n        // [P04-1] 读取真实商城商品，核对 ID、启用状态与可分配库存。\n        PointsItemSnapshot item = itemCatalog.getItem(command.hmallItemId())\n                .filter(snapshot -> snapshot.id() != null && snapshot.id().equals(command.hmallItemId()))\n                .filter(snapshot -> Integer.valueOf(ENABLED).equals(snapshot.status()))\n                .filter(snapshot -> snapshot.stock() != null\n                        && snapshot.stock() >= command.availableStock())\n                .orElseThrow(() -> error(PointsErrorCode.REDEMPTION_SKU_UNAVAILABLE));\n        // [P04-2] 创建兑换报价并设置商城商品关联、单件积分和可兑换库存。\n        PointsRedemptionOffer offer = new PointsRedemptionOffer();\n        offer.setHmallItemId(item.id());\n        offer.setUnitPoints(command.unitPoints());\n        offer.setAvailableStock(command.availableStock());\n        // [P04-3] 从商城快照复制名称、图片和现金价格，并把报价置为启用。\n        offer.setItemName(item.name());\n        offer.setImageUrl(item.imageUrl());\n        offer.setCashPriceCent(item.priceCent());\n        offer.setStatus(ENABLED);\n        // [P04-4] 持久化报价，使用插入后回填的实体生成返回视图。\n        mapper.insert(offer);\n        return view(offer);\n    }",
+    "explanation": [
+      "端口返回的数据仍需核对 ID，防止错误商品快照被用于创建报价。",
+      "报价库存不能超过当前商城快照中的库存；该检查只反映创建时的库存情况。",
+      "展示数据来自商城快照，之后查询报价时不必依赖前端再次提交名称和价格。",
+      "本题保留源码创建行为，完整兑换订单、履约和补偿属于其他组件。"
+    ],
+    "checks": [
+      "商品 ID 匹配、status=1、stock=10，请求 availableStock=10：创建成功并保存快照。",
+      "商品查询为空、ID 不匹配、停用、stock=null 或库存小于请求：抛出 REDEMPTION_SKU_UNAVAILABLE。",
+      "请求 unitPoints=500，商品现金价格为 1999：报价积分为 500，cashPriceCent 为 1999，两者用途不同。",
+      "返回视图使用 Mapper 插入后回填的新 id。",
+      "重复为同一商城商品创建报价：数据库唯一键可能抛异常；参考答案不会伪称此方法已实现业务幂等。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "P05",
+    "service": "points",
+    "title": "补全积分服务的外部依赖与数据库配置",
+    "level": "基础",
+    "minutes": 15,
+    "tags": [
+      "YAML",
+      "OpenFeign",
+      "数据源",
+      "Flyway"
+    ],
+    "purpose": "配置积分服务调用商品、用户、履约服务的地址，并用环境变量提供专属数据库连接和迁移开关。",
+    "component": "OpenFeign 客户端连接外部服务；Spring datasource 创建本服务数据库连接；Flyway 在启用时执行本服务 resources/db/migration 下的迁移。它们分别承担跨服务调用、数据持久化和数据库结构演进。",
+    "sources": [
+      {
+        "path": "points-service/src/main/resources/application.yml",
+        "symbol": "spring.cloud.openfeign",
+        "line": 13
+      },
+      {
+        "path": "points-service/src/main/resources/application.yml",
+        "symbol": "spring.datasource",
+        "line": 22
+      },
+      {
+        "path": "points-service/src/main/resources/application.yml",
+        "symbol": "spring.flyway",
+        "line": 26
+      }
+    ],
+    "scope": "配置节选",
+    "context": [
+      "这是 points-service/src/main/resources/application.yml 的三个实际配置节点；省略的 application 与 Nacos 配置已存在，本题保留 spring/cloud 的必要父级。",
+      "OpenFeign 的 client.config 下使用实际服务名 item-service、user-service、fulfillment-service，url 采用 Spring ${变量:默认值} 语法。",
+      "三个客户端的环境变量分别是 ITEM_SERVICE_BASE_URL、USER_SERVICE_BASE_URL、FULFILLMENT_SERVICE_BASE_URL；默认地址分别为 http://localhost:8081、http://localhost:8083、http://localhost:8080。",
+      "数据源环境变量分别是 POINTS_DATABASE_URL、POINTS_DATABASE_USERNAME、POINTS_DATABASE_PASSWORD，源码默认值均为空。",
+      "迁移开关使用 POINTS_FLYWAY_ENABLED，默认 false。节选本身不是可直接替代整个 application.yml 的完整文件。"
+    ],
+    "requirements": [
+      "[P05-1] 在 spring.cloud 下写完整 openfeign.client.config 块，配置三个真实服务名及其环境变量和默认 URL。",
+      "[P05-2] 在 spring 下写完整 datasource 块，读取积分服务数据库 URL、用户名和密码，均保留空默认值。",
+      "[P05-3] 在 spring 下写完整 flyway 块，用环境变量控制 enabled，默认 false。"
+    ],
+    "starter": "spring:\n  cloud:\n    # TODO [P05-1]：补完整 OpenFeign 客户端配置块。\n\n\n  # TODO [P05-2]：补完整 datasource 配置块。\n\n\n  # TODO [P05-3]：补完整 flyway 配置块。\n",
+    "answer": "spring:\n  cloud:\n    # [P05-1] 为积分服务依赖的商品、用户和履约服务配置 Feign 直连地址，支持环境变量覆盖。\n    openfeign:\n      client:\n        config:\n          item-service:\n            url: ${ITEM_SERVICE_BASE_URL:http://localhost:8081}\n          user-service:\n            url: ${USER_SERVICE_BASE_URL:http://localhost:8083}\n          fulfillment-service:\n            url: ${FULFILLMENT_SERVICE_BASE_URL:http://localhost:8080}\n  # [P05-2] 将积分服务数据库地址与凭据交给部署环境；未配置时默认空字符串。\n  datasource:\n    url: ${POINTS_DATABASE_URL:}\n    username: ${POINTS_DATABASE_USERNAME:}\n    password: ${POINTS_DATABASE_PASSWORD:}\n  # [P05-3] 通过环境变量控制积分服务数据库迁移，默认关闭。\n  flyway:\n    enabled: ${POINTS_FLYWAY_ENABLED:false}",
+    "explanation": [
+      "独立数据库变量使积分账户和流水使用积分服务的数据源。",
+      "环境变量默认 URL 提供本地调用地址；部署环境可覆盖为对应服务地址。",
+      "冒号后没有文本是空默认值，表示数据库参数必须由实际环境准备。",
+      "迁移默认关闭，因此仅设置数据库连接并不代表新数据库表会自动创建。"
+    ],
+    "checks": [
+      "未设置三个外部服务变量：使用题目给定的 8081、8083、8080 本地默认地址。",
+      "设置 ITEM_SERVICE_BASE_URL：仅商品客户端 URL 被对应值覆盖。",
+      "未设置积分数据库变量：三个 datasource 参数解析为空字符串，不能据此断言服务可成功启动。",
+      "POINTS_FLYWAY_ENABLED=true：启用迁移；未设置时为 false。",
+      "缩进正确：openfeign 属于 spring.cloud，datasource 和 flyway 直接属于 spring。"
+    ],
+    "language": "yaml"
+  },
+  {
+    "id": "C01",
+    "service": "coupon",
+    "title": "创建带范围和有效期的优惠券模板",
+    "level": "基础",
+    "minutes": 25,
+    "tags": [
+      "优惠券模板",
+      "创建",
+      "领域校验",
+      "异常转换"
+    ],
+    "purpose": "把已提交的优惠券模板配置保存为启用模板，包含优惠金额、适用商品范围、有效期、发券上限及会员叠加策略。",
+    "component": "CouponServiceImpl 负责优惠券模板与用户券生命周期。createTemplate 是现有模板创建用例，CouponTemplateMapper 持久化模板，领域校验负责阻止互相矛盾的券配置。本题对应创建功能，源服务未提供模板修改或删除实现。",
+    "sources": [
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/luckyhub/coupon/service/impl/CouponServiceImpl.java",
+        "symbol": "createTemplate",
+        "line": 61
+      }
+    ],
+    "scope": "完整方法",
+    "context": [
+      "所在包为 com.dongqh.luckyhub.coupon.service.impl；已有成员 CouponTemplateMapper templates 和 CouponCatalogPort catalog。",
+      "CreateCouponTemplateCommand 来自 com.dongqh.luckyhub.coupon.dto；控制器已执行 @Valid，保证必填字段、正优惠金额和领券上限等基本约束。",
+      "已有 validate(command)：要求 validUntil>validFrom；NO_THRESHOLD 的 thresholdCent=0，THRESHOLD 的 thresholdCent>0；商城范围字段互斥，ITEM 范围还会查询商品是否可用。",
+      "validate 允许 scopeType=null 的历史兼容模板；本题不新增源码没有的强制范围校验。",
+      "已有 normalizeCategory(String)：null/空白返回 null，否则 trim；品牌字段同样调用此方法。",
+      "CouponTemplate 来自 .entity，CouponTemplateView 来自 .vo；已有 view(template) 和 error(CouponErrorCode) 辅助方法。",
+      "导入 DuplicateKeyException：org.springframework.dao；@Transactional：org.springframework.transaction.annotation；CouponErrorCode 来自 .enums。",
+      "templates.insert 会回填主键；数据库 template_code 有唯一约束。"
+    ],
+    "requirements": [
+      "[C01-1] 首先调用已有 validate 完成跨字段与商品范围校验。",
+      "[C01-2] 创建模板，trim 编码与名称，设置券类型、门槛金额和优惠金额。",
+      "[C01-3] 设置 applicableProductId、scopeType、hmallItemId、分类和品牌，以及起止时间；分类与品牌调用 normalizeCategory。",
+      "[C01-4] 设置 perUserLimit、stackableWithMembership，并将 status 设为 1。",
+      "[C01-5] 插入模板，捕获 DuplicateKeyException 后抛出 TEMPLATE_DUPLICATE。",
+      "[C01-6] 使用已有 view 返回创建后的模板视图。"
+    ],
+    "starter": "@Override\n@Transactional\npublic CouponTemplateView createTemplate(CreateCouponTemplateCommand command) {\n    // TODO [C01-1]：调用已有领域校验。\n\n\n    // TODO [C01-2]：构造模板并设置基础优惠规则。\n\n\n    // TODO [C01-3]：设置全部适用范围和有效期字段。\n\n\n    // TODO [C01-4]：设置领券上限、会员策略和启用状态。\n\n\n    // TODO [C01-5]：持久化并转换模板重复异常。\n\n\n    // TODO [C01-6]：返回模板视图。\n\n}",
+    "answer": "    @Override\n    @Transactional\n    public CouponTemplateView createTemplate(CreateCouponTemplateCommand command) {\n        // [C01-1] 调用已有领域校验，验证有效期、券类型和适用范围。\n        validate(command);\n        // [C01-2] 创建模板，规范化编码和名称，并设置券类型、门槛与优惠金额。\n        CouponTemplate template = new CouponTemplate();\n        template.setTemplateCode(command.templateCode().trim());\n        template.setTemplateName(command.templateName().trim());\n        template.setCouponType(command.couponType());\n        template.setThresholdCent(command.thresholdCent());\n        template.setDiscountCent(command.discountCent());\n        // [C01-3] 设置兼容商品字段、商城适用范围、品牌分类与有效期。\n        template.setApplicableProductId(command.applicableProductId());\n        template.setScopeType(command.scopeType());\n        template.setHmallItemId(command.hmallItemId());\n        template.setHmallCategory(normalizeCategory(command.hmallCategory()));\n        template.setHmallBrand(normalizeCategory(command.hmallBrand()));\n        template.setValidFrom(command.validFrom());\n        template.setValidUntil(command.validUntil());\n        // [C01-4] 设置每人领券上限、会员叠加策略，并启用模板。\n        template.setPerUserLimit(command.perUserLimit());\n        template.setStackableWithMembership(command.stackableWithMembership());\n        template.setStatus(1);\n        // [C01-5] 插入数据库，将模板唯一键重复异常转换为模板重复领域错误。\n        try {\n            templates.insert(template);\n        } catch (DuplicateKeyException exception) {\n            throw error(CouponErrorCode.TEMPLATE_DUPLICATE);\n        }\n        // [C01-6] 使用已回填主键的实体生成模板视图。\n        return view(template);\n    }",
+    "explanation": [
+      "基础 Bean Validation 不能比较两个时间，也不能判断范围字段是否互斥，因此首先复用领域 validate。",
+      "模板编码与名称在保存前去除首尾空白，分类和品牌空白值统一为 null。",
+      "将数据库唯一键错误转换为 TEMPLATE_DUPLICATE，使业务调用者得到可识别的领域结果。",
+      "本题学习模板创建的完整方法，查询用户券、订单预占与核销属于后续用例。"
+    ],
+    "checks": [
+      "编码和名称含首尾空白：数据库保存 trim 后文本；空白分类或品牌保存 null。",
+      "结束时间不晚于开始时间：validate 抛出 COUPON_NOT_APPLICABLE，模板不会插入。",
+      "NO_THRESHOLD 但门槛不是 0：校验失败；ITEM 范围关联商品不可用于奖励：校验失败。",
+      "重复 templateCode：转换为 TEMPLATE_DUPLICATE。",
+      "成功创建：status=1，返回视图含插入后回填的 id 和全部优惠规则。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "C02",
+    "service": "coupon",
+    "title": "实现幂等发券与每人领券限额",
+    "level": "综合",
+    "minutes": 35,
+    "tags": [
+      "发券",
+      "幂等",
+      "悲观锁",
+      "事务",
+      "限额"
+    ],
+    "purpose": "按业务号为用户发放一张优惠券，重复业务返回已有用户券，首次发放受用户状态、模板启用状态和每人领券上限约束。",
+    "component": "CouponServiceImpl.issue 是发券领域用例；CouponTemplateMapper.lockById 通过 SELECT FOR UPDATE 锁模板行，避免同一模板发券并发绕过累计限额。用户券和 CouponIssueRecord 必须在同一事务内持久化。",
+    "sources": [
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/luckyhub/coupon/service/impl/CouponServiceImpl.java",
+        "symbol": "issue",
+        "line": 89
+      }
+    ],
+    "scope": "完整方法",
+    "context": [
+      "已有成员：CouponTemplateMapper templates、UserCouponMapper coupons、CouponIssueRecordMapper issues、CouponUserEligibilityPort users。",
+      "IssueCouponCommand 来自 com.dongqh.luckyhub.coupon.dto，包含 businessNo、couponNo、templateId、userId；入口已校验业务号/券号非空、ID 为正。",
+      "CouponTemplate、UserCoupon、CouponIssueRecord 来自 .entity；UserCouponView 来自 .vo；UserCouponStatus 和 CouponErrorCode 来自 .enums。",
+      "导入 LambdaQueryWrapper：com.baomidou.mybatisplus.core.conditions.query；DuplicateKeyException：org.springframework.dao；Isolation 与 Transactional：org.springframework.transaction.annotation。",
+      "已有 existingIssue(existing,command)：检查发券记录中的 templateId/userId，以及实际用户券 couponNo 与本次请求一致，失败抛 COUPON_IDEMPOTENCY_CONFLICT，成功返回原视图。",
+      "已有 view(coupon,template) 与 error(CouponErrorCode)；templates.lockById 的实际 SQL 位于 coupon-service/src/main/java/com/dongqh/luckyhub/coupon/mapper/CouponTemplateMapper.java。",
+      "数据库 user_coupon.coupon_no 和 coupon_issue_record.business_no 有唯一约束；coupons.insert 会回填用户券 id。",
+      "本方法仅在事务开始的查询中复用既有业务记录；同时首次到达的竞争请求可能在后续重复键插入时抛领域冲突。参考答案不额外增加并发重查。"
+    ],
+    "requirements": [
+      "[C02-1] trim 业务号，按业务号查询发券记录；已有记录调用 existingIssue 返回。",
+      "[C02-2] 悲观锁定模板，检查模板存在且 status=1，再检查用户可用。",
+      "[C02-3] 按 userId/templateId 统计发券记录，计数达到 perUserLimit 时抛 ISSUE_LIMIT。",
+      "[C02-4] 构造用户券：规范化券号、设置模板和用户、AVAILABLE 状态、模板有效期、version=0。",
+      "[C02-5] 构造发券记录；先插入用户券，再关联其主键并插入记录；重复键异常转换为 COUPON_IDEMPOTENCY_CONFLICT。",
+      "[C02-6] 调用已有 view 返回用户券与模板合成的视图。"
+    ],
+    "starter": "@Override\n@Transactional(isolation = Isolation.READ_COMMITTED)\npublic UserCouponView issue(IssueCouponCommand command) {\n    // TODO [C02-1]：查询并处理已有业务发券记录。\n\n\n    // TODO [C02-2]：锁模板并检查模板与用户。\n\n\n    // TODO [C02-3]：统计累计领取数量并执行上限检查。\n\n\n    // TODO [C02-4]：构造完整用户券。\n\n\n    // TODO [C02-5]：构造发券记录并在事务内插入，处理重复键。\n\n\n    // TODO [C02-6]：返回用户券视图。\n\n}",
+    "answer": "    @Override\n    @Transactional(isolation = Isolation.READ_COMMITTED)\n    public UserCouponView issue(IssueCouponCommand command) {\n        // [C02-1] 规范化业务号并查发券记录；存在时复用已有结果并校验请求一致性。\n        String businessNo = command.businessNo().trim();\n        CouponIssueRecord existing = issues.selectOne(new LambdaQueryWrapper<CouponIssueRecord>()\n                .eq(CouponIssueRecord::getBusinessNo, businessNo));\n        if (existing != null) {\n            return existingIssue(existing, command);\n        }\n        // [C02-2] 锁定模板行，确认模板启用与用户可用，为同模板发券限额判断串行化。\n        CouponTemplate template = templates.lockById(command.templateId());\n        if (template == null || template.getStatus() != 1) {\n            throw error(CouponErrorCode.TEMPLATE_NOT_FOUND);\n        }\n        if (!users.isEnabled(command.userId())) {\n            throw error(CouponErrorCode.COUPON_UNAVAILABLE);\n        }\n        // [C02-3] 按用户和模板统计累计发券记录，达到每人上限时拒绝继续发券。\n        long count = issues.selectCount(new LambdaQueryWrapper<CouponIssueRecord>()\n                .eq(CouponIssueRecord::getUserId, command.userId())\n                .eq(CouponIssueRecord::getTemplateId, command.templateId()));\n        if (count >= template.getPerUserLimit()) {\n            throw error(CouponErrorCode.ISSUE_LIMIT);\n        }\n        // [C02-4] 构造用户券，设置券号、归属、模板有效期、可用状态与初始版本。\n        UserCoupon coupon = new UserCoupon();\n        coupon.setCouponNo(command.couponNo().trim());\n        coupon.setTemplateId(template.getId());\n        coupon.setUserId(command.userId());\n        coupon.setStatus(UserCouponStatus.AVAILABLE);\n        coupon.setValidFrom(template.getValidFrom());\n        coupon.setValidUntil(template.getValidUntil());\n        coupon.setVersion(0);\n        // [C02-5] 构造业务发券记录，在同一事务内插入用户券和关联记录，并转换重复键错误。\n        CouponIssueRecord issue = new CouponIssueRecord();\n        issue.setBusinessNo(businessNo);\n        issue.setTemplateId(template.getId());\n        issue.setUserId(command.userId());\n        try {\n            coupons.insert(coupon);\n            issue.setUserCouponId(coupon.getId());\n            issues.insert(issue);\n        } catch (DuplicateKeyException exception) {\n            throw error(CouponErrorCode.COUPON_IDEMPOTENCY_CONFLICT);\n        }\n        // [C02-6] 将本次用户券与模板规则转换为完整返回视图。\n        return view(coupon, template);\n    }",
+    "explanation": [
+      "发券业务号对应一张确定的用户券；复用业务号时必须校验用户、模板和券号。",
+      "模板行锁使同一模板的计数与后续插入在事务内串行执行，避免不同业务号同时超过每人限额。",
+      "限额统计的是累计发券记录，已使用的用户券仍占累计领取额度。",
+      "用户券插入后才有 id，发券记录必须使用回填 id 关联；失败抛异常让事务回滚。"
+    ],
+    "checks": [
+      "首次业务号、用户启用、模板启用且未达上限：新增一张 AVAILABLE 用户券及对应发券记录。",
+      "再次串行调用完全相同业务号与参数：返回原用户券，不增加数量。",
+      "同一业务号改模板、用户或券号：existingIssue 抛 COUPON_IDEMPOTENCY_CONFLICT。",
+      "模板不存在/停用：TEMPLATE_NOT_FOUND；用户停用：COUPON_UNAVAILABLE。",
+      "累计发券数等于 perUserLimit：抛 ISSUE_LIMIT，即使之前的券已经使用。",
+      "并发首次重复请求产生 DuplicateKeyException：转换为 COUPON_IDEMPOTENCY_CONFLICT，并回滚该事务中插入的数据。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "C03",
+    "service": "coupon",
+    "title": "为订单预占优惠券并处理并发竞争",
+    "level": "综合",
+    "minutes": 30,
+    "tags": [
+      "订单预占",
+      "状态机",
+      "并发",
+      "购物篮校验"
+    ],
+    "purpose": "为当前用户的订单锁定可用优惠券，根据实际购物篮和会员权益生成折扣快照，并使同一订单重复预占保持幂等。",
+    "component": "CouponCheckoutServiceImpl 是结算优惠券领域服务。reserve 先加载真实商品与会员权益计算折扣，再通过 UserCouponMapper.lock 进行 AVAILABLE→LOCKED 的条件更新，记录绑定订单号。",
+    "sources": [
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/luckyhub/coupon/service/impl/CouponCheckoutServiceImpl.java",
+        "symbol": "reserve",
+        "line": 85
+      }
+    ],
+    "scope": "完整方法",
+    "context": [
+      "已有成员 CouponTemplateMapper templates、UserCouponMapper coupons；商品与会员成员分别为 CouponCatalogPort catalog、CouponMembershipBenefitPort memberships。",
+      "ReserveCouponCommand 来自 com.dongqh.luckyhub.coupon.dto，提供 couponId、orderNo 和 items；入口已完成参数校验。",
+      "已有 loadBasket(userId,items)：查询真实商品价格、库存与状态，并获取有效会员折扣；返回本类私有 Basket，不能直接信任前端金额。",
+      "已有 calculateDiscount(template,basket)：检查模板启用、有效期、适用范围、门槛与会员叠加策略；不适用返回 null，成功优惠额不超过适用商品金额。",
+      "已有 snapshot(coupon,template,discount) 与 error(CouponErrorCode)；CouponLockSnapshot 来自 .model，UserCoupon/CouponTemplate 来自 .entity。",
+      "UserCouponStatus、CouponErrorCode 来自 .enums，@Transactional 来自 org.springframework.transaction.annotation。",
+      "coupons.lock 的 SQL 同时要求券归属当前用户、status=AVAILABLE、券有效期覆盖当前数据库时间，并设置 locked_order_no、递增 version。",
+      "同订单幂等分支位于购物篮与优惠计算之后，因此重放仍会重算适用性；本方法不是完整的下单、支付或订单补偿实现。"
+    ],
+    "requirements": [
+      "[C03-1] 查询用户券并校验 userId；不存在或归属不符时抛 COUPON_NOT_FOUND。",
+      "[C03-2] 查询模板，调用 loadBasket 和 calculateDiscount；优惠额为 null 时抛 COUPON_NOT_APPLICABLE。",
+      "[C03-3] 已被同一订单锁定时返回快照；否则仅 AVAILABLE 状态能继续。",
+      "[C03-4] 调用 lock 原子预占；失败时重读，若另一请求已替同一订单锁定则返回其快照，否则抛 COUPON_STATE_CONFLICT。",
+      "[C03-5] 原子预占成功后生成并返回折扣快照。"
+    ],
+    "starter": "@Override\n@Transactional\npublic CouponLockSnapshot reserve(long userId, ReserveCouponCommand command) {\n    // TODO [C03-1]：读取用户券并校验归属。\n\n\n    // TODO [C03-2]：加载模板与购物篮，计算适用优惠。\n\n\n    // TODO [C03-3]：处理同订单重放和不允许预占的状态。\n\n\n    // TODO [C03-4]：尝试原子预占，处理并发更新失败。\n\n\n    // TODO [C03-5]：返回预占成功的折扣快照。\n\n}",
+    "answer": "    @Override\n    @Transactional\n    public CouponLockSnapshot reserve(long userId, ReserveCouponCommand command) {\n        // [C03-1] 查询用户券并核对归属，其他用户的券不可预占。\n        UserCoupon coupon = coupons.selectById(command.couponId());\n        if (coupon == null || !Long.valueOf(userId).equals(coupon.getUserId())) {\n            throw error(CouponErrorCode.COUPON_NOT_FOUND);\n        }\n        // [C03-2] 加载模板与真实购物篮，计算适用优惠额，不适用时拒绝。\n        CouponTemplate template = templates.selectById(coupon.getTemplateId());\n        Basket basket = loadBasket(userId, command.items());\n        Long discount = calculateDiscount(template, basket);\n        if (discount == null) {\n            throw error(CouponErrorCode.COUPON_NOT_APPLICABLE);\n        }\n        // [C03-3] 同一订单重复预占直接返回；其他状态必须是 AVAILABLE。\n        if (coupon.getStatus() == UserCouponStatus.LOCKED\n                && command.orderNo().equals(coupon.getLockedOrderNo())) {\n            return snapshot(coupon, template, discount);\n        }\n        if (coupon.getStatus() != UserCouponStatus.AVAILABLE) {\n            throw error(CouponErrorCode.COUPON_UNAVAILABLE);\n        }\n        // [C03-4] 原子绑定订单并预占；更新失败后重读，识别同订单胜出结果或抛状态冲突。\n        if (coupons.lock(coupon.getId(), userId, command.orderNo()) != 1) {\n            UserCoupon winner = coupons.selectById(coupon.getId());\n            if (winner != null && winner.getStatus() == UserCouponStatus.LOCKED\n                    && command.orderNo().equals(winner.getLockedOrderNo())) {\n                return snapshot(winner, template, discount);\n            }\n            throw error(CouponErrorCode.COUPON_STATE_CONFLICT);\n        }\n        // [C03-5] 原子预占成功后返回本次优惠券折扣快照。\n        return snapshot(coupon, template, discount);\n    }",
+    "explanation": [
+      "归属校验必须先于优惠计算，避免用户操作他人的券。",
+      "预占使用数据库条件更新，而不是读取后无条件写 LOCKED，以保证一张券不会同时绑定多个订单。",
+      "条件更新返回 0 不一定是失败，也可能是同订单的另一请求刚刚成功，因此需要重读并识别胜者。",
+      "返回快照是该订单采用的优惠结果；并发失败分支必须返回重读的胜出用户券对象。"
+    ],
+    "checks": [
+      "券归属其他用户或不存在：抛 COUPON_NOT_FOUND。",
+      "购物篮不满足券范围或门槛：抛 COUPON_NOT_APPLICABLE。",
+      "AVAILABLE 且有效期内的券：lock 成功，状态变为 LOCKED，绑定本订单并返回快照。",
+      "同一订单重复请求、优惠仍适用：返回快照；被另一订单锁定：抛 COUPON_UNAVAILABLE。",
+      "lock 返回 0，但重读发现同订单已锁定：作为幂等成功返回；其他情况：COUPON_STATE_CONFLICT。",
+      "同订单重放时模板已经失效：优惠计算先失败，参考答案会拒绝此次重放，这与源码顺序一致。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "C04",
+    "service": "coupon",
+    "title": "实现支付确认核销与取消释放",
+    "level": "进阶",
+    "minutes": 20,
+    "tags": [
+      "优惠券核销",
+      "释放",
+      "幂等",
+      "状态机"
+    ],
+    "purpose": "完成两种订单后续操作：支付确认时把本订单预占券核销，取消订单时把本订单预占券恢复可用，并处理已完成状态的重复调用。",
+    "component": "CouponCheckoutServiceImpl.use/release 是优惠券订单状态推进接口。ownedCoupon 负责归属校验，UserCouponMapper 的条件 UPDATE 限制状态和订单号；每个公开方法各自在事务内执行。",
+    "sources": [
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/luckyhub/coupon/service/impl/CouponCheckoutServiceImpl.java",
+        "symbol": "use",
+        "line": 116
+      },
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/luckyhub/coupon/service/impl/CouponCheckoutServiceImpl.java",
+        "symbol": "release",
+        "line": 128
+      }
+    ],
+    "scope": "完整方法",
+    "context": [
+      "同一类中的两个完整公开方法；它们分别接受当前 userId、couponId 与 orderNo。",
+      "已有 ownedCoupon(userId,couponId)：查询用户券并比较归属，不存在或属于其他用户时抛 COUPON_NOT_FOUND。",
+      "已有成员 UserCouponMapper coupons，以及 error(CouponErrorCode)；UserCoupon 来自 com.dongqh.luckyhub.coupon.entity，两个枚举来自 .enums。",
+      "UserCouponMapper.use 只更新 status=LOCKED 且 locked_order_no 匹配的券，将 status 改为 USED、设置 used_order_no 并递增 version。",
+      "UserCouponMapper.release 只更新 status=LOCKED 且 locked_order_no 匹配的券，将 status 改为 AVAILABLE、清空 locked_order_no 并递增 version。",
+      "@Transactional 来自 org.springframework.transaction.annotation；本题保留源码对 AVAILABLE 券直接释放成功的行为，不另外核对历史订单。",
+      "预占见 C03；自动超时释放由调度组件处理，不在这两个方法内。"
+    ],
+    "requirements": [
+      "[C04-1] use 先调用 ownedCoupon；已为 USED 且 usedOrderNo 等于本订单时直接返回。",
+      "[C04-2] use 调用 Mapper 的条件核销，影响行数不是 1 时抛 COUPON_STATE_CONFLICT。",
+      "[C04-3] release 先调用 ownedCoupon；已经 AVAILABLE 时直接返回。",
+      "[C04-4] release 调用 Mapper 的条件释放，影响行数不是 1 时抛 COUPON_STATE_CONFLICT。"
+    ],
+    "starter": "@Override\n@Transactional\npublic void use(long userId, long couponId, String orderNo) {\n    // TODO [C04-1]：检查券归属并处理同订单已核销重放。\n\n\n    // TODO [C04-2]：执行条件核销，处理状态或订单冲突。\n\n}\n\n@Override\n@Transactional\npublic void release(long userId, long couponId, String orderNo) {\n    // TODO [C04-3]：检查券归属并处理已可用状态。\n\n\n    // TODO [C04-4]：执行条件释放，处理状态或订单冲突。\n\n}",
+    "answer": "    @Override\n    @Transactional\n    public void use(long userId, long couponId, String orderNo) {\n        // [C04-1] 确认用户券归属；同一订单已核销的重复请求直接返回。\n        UserCoupon coupon = ownedCoupon(userId, couponId);\n        if (coupon.getStatus() == UserCouponStatus.USED && orderNo.equals(coupon.getUsedOrderNo())) {\n            return;\n        }\n        // [C04-2] 要求 LOCKED 且绑定本订单才原子改为 USED；否则抛状态冲突。\n        if (coupons.use(couponId, orderNo) != 1) {\n            throw error(CouponErrorCode.COUPON_STATE_CONFLICT);\n        }\n    }\n\n    @Override\n    @Transactional\n    public void release(long userId, long couponId, String orderNo) {\n        // [C04-3] 确认用户券归属；已是 AVAILABLE 的释放请求直接返回。\n        UserCoupon coupon = ownedCoupon(userId, couponId);\n        if (coupon.getStatus() == UserCouponStatus.AVAILABLE) {\n            return;\n        }\n        // [C04-4] 要求 LOCKED 且绑定本订单才恢复 AVAILABLE，并清除锁定订单号。\n        if (coupons.release(couponId, orderNo) != 1) {\n            throw error(CouponErrorCode.COUPON_STATE_CONFLICT);\n        }\n    }",
+    "explanation": [
+      "核销幂等必须同时匹配 USED 状态和 usedOrderNo，其他订单不能把已核销券视为自己的成功结果。",
+      "条件 SQL 限制 locked_order_no，让只有预占该券的订单能够推进状态。",
+      "释放的已完成状态是 AVAILABLE；源码在此分支直接返回，不检查传入订单号。",
+      "两个方法都验证用户归属，不能因为是订单后续操作就跳过所有权检查。"
+    ],
+    "checks": [
+      "本用户、LOCKED、绑定订单 A：use(A) 改为 USED；再次 use(A) 直接返回。",
+      "已被订单 A 核销，调用 use(B)：条件更新失败，抛 COUPON_STATE_CONFLICT。",
+      "本用户、LOCKED、绑定订单 A：release(A) 恢复 AVAILABLE 并清空锁定订单号。",
+      "已经 AVAILABLE：重复 release 直接返回，即使传入另一个订单号也如此。",
+      "LOCKED 但绑定订单 A，调用 release(B)：抛 COUPON_STATE_CONFLICT。",
+      "券属于其他用户：两个方法均抛 COUPON_NOT_FOUND；USED 的券不能通过 release 恢复可用。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "C05",
+    "service": "coupon",
+    "title": "声明支付成功核销的 RabbitMQ 消息拓扑",
+    "level": "进阶",
+    "minutes": 25,
+    "tags": [
+      "RabbitMQ",
+      "Spring 配置",
+      "支付事件",
+      "死信队列"
+    ],
+    "purpose": "为优惠券服务声明支付成功事件的消费路径和死信路径，并注册 JSON 消息转换器，由消息开关控制是否启用。",
+    "component": "CouponMessagingConfiguration 是 Spring AMQP 配置类。pay.direct/pay.success 将支付成功事件路由到优惠券核销队列；pay.dlx 将最终被拒绝且不重入队的消息路由到死信队列，供失败处理。消费者 PaySuccessCouponListener 根据事件调用结算服务核销优惠券。",
+    "sources": [
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/couponservice/config/CouponMessagingConfiguration.java",
+        "symbol": "CouponMessagingConfiguration 注解与类主体",
+        "line": 15
+      },
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/couponservice/config/CouponMessagingConfiguration.java",
+        "symbol": "couponRabbitMessageConverter",
+        "line": 20
+      },
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/couponservice/config/CouponMessagingConfiguration.java",
+        "symbol": "couponPaySuccessDeclarables",
+        "line": 25
+      },
+      {
+        "path": "coupon-service/src/main/java/com/dongqh/couponservice/messaging/CouponMessagingTopology.java",
+        "symbol": "CouponMessagingTopology",
+        "line": 3
+      }
+    ],
+    "scope": "配置节选",
+    "context": [
+      "本题是 CouponMessagingConfiguration 的完整类主体与类注解，省略 package 和 import；实际包为 com.dongqh.couponservice.config。",
+      "CouponMessagingTopology 来自 com.dongqh.couponservice.messaging，与领域类的 com.dongqh.luckyhub.coupon 包不同。",
+      "现有常量：EXCHANGE='pay.direct'、ROUTING_KEY='pay.success'、QUEUE='marketing.pay.coupon-use.queue'、DEAD_LETTER_EXCHANGE='pay.dlx'、DEAD_LETTER_QUEUE='marketing.pay.coupon-use.dlq'。",
+      "导入 BindingBuilder、Declarables、DirectExchange、Queue、QueueBuilder：org.springframework.amqp.core；MessageConverter 与 JacksonJsonMessageConverter：org.springframework.amqp.support.converter。",
+      "导入 ConditionalOnProperty：org.springframework.boot.autoconfigure.condition；Bean 与 Configuration：org.springframework.context.annotation。",
+      "luckyhub.messaging.enabled 在 application.yml 中使用 COUPON_MESSAGING_ENABLED 环境变量，默认 false；消费者类也使用同一个开关。",
+      "DirectExchange 构造函数后两项分别是 durable 与 autoDelete；QueueBuilder.durable 创建持久化队列。",
+      "应用的 RabbitMQ listener.simple 配置了自动确认、default-requeue-rejected=false 与重试；此题只声明拓扑和转换器，不实现重试代码或消费者。"
+    ],
+    "requirements": [
+      "[C05-1] 添加配置类注解，关闭代理 Bean 方法；仅在 luckyhub.messaging.enabled=true 时生效。",
+      "[C05-2] 通过 @Bean 注册 JacksonJsonMessageConverter。",
+      "[C05-3] 用拓扑常量创建两个 DirectExchange，均为 durable=true、autoDelete=false。",
+      "[C05-4] 创建持久化主队列，设置死信交换机和死信 routing key；再创建持久化死信队列。",
+      "[C05-5] 返回 Declarables，包含交换机、队列，以及主队列/主交换机和死信队列/死信交换机各自使用 pay.success 的绑定。"
+    ],
+    "starter": "// TODO [C05-1]：补配置类注解与消息启用条件。\n\npublic class CouponMessagingConfiguration {\n\n    // TODO [C05-2]：添加 Bean 注解，并在方法内返回 JSON 转换器。\n\n    public MessageConverter couponRabbitMessageConverter() {\n\n    }\n\n    @Bean\n    public Declarables couponPaySuccessDeclarables() {\n        // TODO [C05-3]：声明支付主交换机和死信交换机。\n\n\n        // TODO [C05-4]：声明主队列的死信配置与死信队列。\n\n\n        // TODO [C05-5]：把全部声明和两条绑定放进 Declarables 返回。\n\n    }\n}",
+    "answer": "// [C05-1] 声明 Spring 配置类，仅在优惠券消息开关明确为 true 时启用。\n@Configuration(proxyBeanMethods = false)\n@ConditionalOnProperty(prefix = \"luckyhub.messaging\", name = \"enabled\", havingValue = \"true\")\npublic class CouponMessagingConfiguration {\n\n    // [C05-2] 注册 JSON 消息转换器，把支付成功消息转换为 Java 事件对象。\n    @Bean\n    public MessageConverter couponRabbitMessageConverter() {\n        return new JacksonJsonMessageConverter();\n    }\n\n    @Bean\n    public Declarables couponPaySuccessDeclarables() {\n        // [C05-3] 声明持久化、不自动删除的支付主交换机与死信交换机。\n        DirectExchange exchange = new DirectExchange(CouponMessagingTopology.EXCHANGE, true, false);\n        DirectExchange deadLetterExchange = new DirectExchange(\n                CouponMessagingTopology.DEAD_LETTER_EXCHANGE, true, false);\n        // [C05-4] 声明消费队列并设置死信出口，再声明持久化死信队列。\n        Queue queue = QueueBuilder.durable(CouponMessagingTopology.QUEUE)\n                .deadLetterExchange(CouponMessagingTopology.DEAD_LETTER_EXCHANGE)\n                .deadLetterRoutingKey(CouponMessagingTopology.ROUTING_KEY)\n                .build();\n        Queue deadLetterQueue = QueueBuilder.durable(CouponMessagingTopology.DEAD_LETTER_QUEUE).build();\n\n        // [C05-5] 将两个交换机、两个队列及各自路由绑定统一交给 Spring AMQP 声明。\n        return new Declarables(\n                exchange,\n                deadLetterExchange,\n                queue,\n                deadLetterQueue,\n                BindingBuilder.bind(queue).to(exchange).with(CouponMessagingTopology.ROUTING_KEY),\n                BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange)\n                        .with(CouponMessagingTopology.ROUTING_KEY));\n    }\n}",
+    "explanation": [
+      "队列不是直接订阅路由键；需要交换机、队列和 Binding 同时存在，事件才能进入消费队列。",
+      "主队列的死信出口必须与死信交换机上的绑定键一致，否则失败消息不会到达预期死信队列。",
+      "durable 与 autoDelete 是不同属性；持久化声明仍需与 RabbitMQ 服务器已有同名对象属性一致。",
+      "条件开关使本地未配置消息服务时可关闭消息基础设施；拓扑声明不等于已经启动或验证 RabbitMQ。",
+      "这里使用源码中的 JacksonJsonMessageConverter 类名，不能随意换成其他版本文档中的相似类型。"
+    ],
+    "checks": [
+      "luckyhub.messaging.enabled=false 或缺失：该配置类不启用；显式 true：注册转换器与 Declarables。",
+      "发布至 pay.direct，routing key=pay.success：匹配 marketing.pay.coupon-use.queue。",
+      "主队列消息最终拒绝且不重入队：死信经 pay.dlx 和 pay.success 路由至 marketing.pay.coupon-use.dlq。",
+      "Declarables 包含 2 个交换机、2 个队列、2 个绑定。",
+      "消费者与本题拓扑使用同一个队列常量；队列名保留实际源码中的 marketing 前缀。"
+    ],
+    "language": "java"
+  }
+]

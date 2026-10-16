@@ -13,11 +13,10 @@ public class UserAdminVO {
 
     private String phone;
 
-    private String role;
-
     private Integer status;
 
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
 }
+

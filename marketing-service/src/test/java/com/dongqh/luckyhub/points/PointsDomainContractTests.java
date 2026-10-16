@@ -4,11 +4,11 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dongqh.luckyhub.catalog.enums.ProductType;
-import com.dongqh.luckyhub.shipping.vo.ShippingAddressSnapshotView;
+import com.dongqh.luckyhub.enums.catalog.ProductType;
+import com.dongqh.luckyhub.domain.vo.shipping.ShippingAddressSnapshotView;
 import com.dongqh.luckyhub.common.enums.ErrorCode;
 import com.dongqh.luckyhub.config.MybatisPlusConfig;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -118,7 +118,7 @@ class PointsDomainContractTests {
         assertMapper("mapper.PointsRedemptionOrderMapper", "entity.PointsRedemptionOrder");
 
         MapperScan mapperScan = MybatisPlusConfig.class.getAnnotation(MapperScan.class);
-        assertThat(mapperScan.basePackages()).contains("com.dongqh.luckyhub.points.mapper");
+        assertThat(mapperScan.basePackages()).contains("com.dongqh.luckyhub.mapper.points");
     }
 
     @Test
@@ -187,7 +187,7 @@ class PointsDomainContractTests {
                 String.class, String.class, String.class, String.class, ProductType.class, String.class,
                 requiredClass("enums.PointsRedemptionStatus"), String.class, String.class,
                 ShippingAddressSnapshotView.class, Long.class, String.class,
-                com.dongqh.luckyhub.shipping.enums.ShippingStatus.class,
+                com.dongqh.luckyhub.enums.shipping.ShippingStatus.class,
                 LocalDateTime.class, LocalDateTime.class
         });
     }

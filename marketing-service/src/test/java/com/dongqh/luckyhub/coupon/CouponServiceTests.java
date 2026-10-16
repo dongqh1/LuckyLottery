@@ -1,10 +1,10 @@
 package com.dongqh.luckyhub.coupon;
 
-import com.dongqh.luckyhub.coupon.dto.*;
-import com.dongqh.luckyhub.coupon.enums.*;
-import com.dongqh.luckyhub.coupon.service.CouponService;
-import com.dongqh.luckyhub.rbac.entity.SysUser;
-import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
+import com.dongqh.luckyhub.domain.dto.coupon.*;
+import com.dongqh.luckyhub.enums.coupon.*;
+import com.dongqh.luckyhub.service.coupon.CouponService;
+import com.dongqh.luckyhub.domain.po.rbac.SysUser;
+import com.dongqh.luckyhub.mapper.rbac.SysUserMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

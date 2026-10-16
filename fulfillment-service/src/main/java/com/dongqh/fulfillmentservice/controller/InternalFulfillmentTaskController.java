@@ -1,12 +1,12 @@
 package com.dongqh.fulfillmentservice.controller;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.CouponFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.CreateFulfillmentTaskCommand;
-import com.dongqh.fulfillmentservice.model.FulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskRecord;
-import com.dongqh.fulfillmentservice.model.MembershipFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.PointsFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.CreateFulfillmentTaskCommand;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskRecord;
+import com.dongqh.fulfillmentservice.domain.model.MembershipFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.PointsFulfillmentPayload;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskCreationService;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskIdempotencyConflictException;
 import com.dongqh.hmapi.dto.CreateFulfillmentTaskRequest;

@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.auth.model.JwtPayload;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.service.UserPermissionService;
-import com.dongqh.luckyhub.shipping.enums.AddressStatus;
-import com.dongqh.luckyhub.shipping.service.ShippingAddressService;
-import com.dongqh.luckyhub.shipping.vo.ShippingAddressView;
+import com.dongqh.luckyhub.domain.model.auth.JwtPayload;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.service.rbac.UserPermissionService;
+import com.dongqh.luckyhub.enums.shipping.AddressStatus;
+import com.dongqh.luckyhub.service.shipping.ShippingAddressService;
+import com.dongqh.luckyhub.domain.vo.shipping.ShippingAddressView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

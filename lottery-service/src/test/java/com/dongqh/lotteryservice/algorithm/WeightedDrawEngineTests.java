@@ -19,7 +19,7 @@ class WeightedDrawEngineTests {
         assertCandidate(selectAt(39, active(11, 101, 10), active(12, 102, 30)), 12, 102);
 
         FixedRandomSource random = new FixedRandomSource(40);
-        DrawCandidate result = new WeightedDrawEngineImpl(random)
+        DrawCandidate result = new WeightedDrawEngine(random)
                 .select(List.of(active(11, 101, 10), active(12, 102, 30)), 60);
 
         assertThat(result.type()).isEqualTo(NO_WIN);
@@ -30,7 +30,7 @@ class WeightedDrawEngineTests {
     void zeroNoWinWeightLeavesTheLastPrizeBoundaryReachable() {
         FixedRandomSource random = new FixedRandomSource(39);
 
-        DrawCandidate result = new WeightedDrawEngineImpl(random)
+        DrawCandidate result = new WeightedDrawEngine(random)
                 .select(List.of(active(11, 101, 10), active(12, 102, 30)), 0);
 
         assertCandidate(result, 12, 102);
@@ -45,16 +45,16 @@ class WeightedDrawEngineTests {
                 active(13, 103, 20)
         );
 
-        assertThat(new WeightedDrawEngineImpl(new FixedRandomSource(0)).select(prizes, 40).type())
+        assertThat(new WeightedDrawEngine(new FixedRandomSource(0)).select(prizes, 40).type())
                 .isEqualTo(NO_WIN);
-        assertThat(new WeightedDrawEngineImpl(new FixedRandomSource(10)).select(prizes, 40).type())
+        assertThat(new WeightedDrawEngine(new FixedRandomSource(10)).select(prizes, 40).type())
                 .isEqualTo(NO_WIN);
-        assertCandidate(new WeightedDrawEngineImpl(new FixedRandomSource(40)).select(prizes, 40), 13, 103);
+        assertCandidate(new WeightedDrawEngine(new FixedRandomSource(40)).select(prizes, 40), 13, 103);
     }
 
     @Test
     void requiresValidPositiveTotalWeight() {
-        WeightedDrawEngine engine = new WeightedDrawEngineImpl(new FixedRandomSource(0));
+        WeightedDrawEngine engine = new WeightedDrawEngine(new FixedRandomSource(0));
 
         assertThatThrownBy(() -> engine.select(List.of(), 0))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -68,7 +68,7 @@ class WeightedDrawEngineTests {
     @Test
     void accumulatesBeyondIntegerRangeAndRejectsLongOverflow() {
         FixedRandomSource random = new FixedRandomSource(3_000_000_000L);
-        DrawCandidate result = new WeightedDrawEngineImpl(random).select(List.of(
+        DrawCandidate result = new WeightedDrawEngine(random).select(List.of(
                 active(11, 101, 2_000_000_000L),
                 active(12, 102, 2_000_000_000L)
         ), 0);
@@ -76,14 +76,14 @@ class WeightedDrawEngineTests {
         assertCandidate(result, 12, 102);
         assertThat(random.bound()).isEqualTo(4_000_000_000L);
 
-        assertThatThrownBy(() -> new WeightedDrawEngineImpl(new FixedRandomSource(0)).select(List.of(
+        assertThatThrownBy(() -> new WeightedDrawEngine(new FixedRandomSource(0)).select(List.of(
                 active(11, 101, Long.MAX_VALUE),
                 active(12, 102, 1)
         ), 0)).isInstanceOf(IllegalArgumentException.class);
     }
 
     private DrawCandidate selectAt(long value, PrizeWeightSnapshot... prizes) {
-        return new WeightedDrawEngineImpl(new FixedRandomSource(value))
+        return new WeightedDrawEngine(new FixedRandomSource(value))
                 .select(List.of(prizes), 60);
     }
 

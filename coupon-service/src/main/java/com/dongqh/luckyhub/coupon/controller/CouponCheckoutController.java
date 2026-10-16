@@ -1,13 +1,11 @@
-package com.dongqh.luckyhub.coupon.controller;
+package com.dongqh.luckyhub.controller.coupon;
 
-import com.dongqh.luckyhub.coupon.dto.CouponCheckoutCommand;
-import com.dongqh.luckyhub.coupon.dto.CouponOrderBindingCommand;
-import com.dongqh.luckyhub.coupon.dto.ReserveCouponCommand;
-import com.dongqh.luckyhub.coupon.model.CouponLockSnapshot;
-import com.dongqh.luckyhub.coupon.service.CouponCheckoutService;
-import com.dongqh.luckyhub.coupon.vo.ApplicableCouponView;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
+import com.dongqh.luckyhub.domain.dto.coupon.CouponCheckoutCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.CouponOrderBindingCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.ReserveCouponCommand;
+import com.dongqh.luckyhub.domain.model.coupon.CouponLockSnapshot;
+import com.dongqh.luckyhub.service.coupon.CouponCheckoutService;
+import com.dongqh.luckyhub.domain.vo.coupon.ApplicableCouponView;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
 import jakarta.validation.Valid;
@@ -27,7 +25,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/coupons/checkout")
-@RequirePermission(ServicePermissionCodes.COUPON_READ)
 public class CouponCheckoutController {
     private final CouponCheckoutService checkout;
 
@@ -65,3 +62,4 @@ public class CouponCheckoutController {
         return userId;
     }
 }
+

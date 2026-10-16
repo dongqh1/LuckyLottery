@@ -1,22 +1,20 @@
 package com.dongqh.fulfillmentservice.controller;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.CouponFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.CreateFulfillmentTaskCommand;
-import com.dongqh.fulfillmentservice.model.FulfillmentPage;
-import com.dongqh.fulfillmentservice.model.FulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskAdminQuery;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskQuery;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskRecord;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
-import com.dongqh.fulfillmentservice.model.LogisticsFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.MembershipFulfillmentPayload;
-import com.dongqh.fulfillmentservice.model.PointsFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.CreateFulfillmentTaskCommand;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentPage;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskAdminQuery;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskRecord;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.MembershipFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.PointsFulfillmentPayload;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskCreationService;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskOperationService;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskReadService;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
 import org.springframework.http.HttpStatus;
@@ -47,7 +45,6 @@ public class FulfillmentAdminController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @RequirePermission(ServicePermissionCodes.FULFILLMENT_CREATE)
     public R<FulfillmentTaskView> create(@RequestBody CreateTaskRequest request) {
         if (request == null || request.fulfillmentType() == null || request.payload() == null) {
             throw new IllegalArgumentException("履约参数无效");
@@ -60,26 +57,22 @@ public class FulfillmentAdminController {
     }
 
     @GetMapping
-    @RequirePermission(ServicePermissionCodes.FULFILLMENT_READ)
     public R<FulfillmentPage<FulfillmentTaskView>> page(@ModelAttribute FulfillmentTaskAdminQuery query) {
         return R.ok(reads.page(query.toQuery()));
     }
 
     @GetMapping("/{fulfillmentNo}")
-    @RequirePermission(ServicePermissionCodes.FULFILLMENT_READ)
     public R<FulfillmentTaskView> get(@PathVariable("fulfillmentNo") String fulfillmentNo) {
         return R.ok(reads.get(fulfillmentNo));
     }
 
     @PostMapping("/{fulfillmentNo}/retry")
-    @RequirePermission(ServicePermissionCodes.FULFILLMENT_OPERATE)
     public R<FulfillmentTaskView> retry(@PathVariable("fulfillmentNo") String fulfillmentNo,
                                         @RequestBody(required = false) OperationRequest request) {
         return R.ok(operations.retryQuarantined(fulfillmentNo, requireOperatorId(), note(request)));
     }
 
     @PostMapping("/{fulfillmentNo}/terminate")
-    @RequirePermission(ServicePermissionCodes.FULFILLMENT_OPERATE)
     public R<FulfillmentTaskView> terminate(@PathVariable("fulfillmentNo") String fulfillmentNo,
                                             @RequestBody(required = false) OperationRequest request) {
         return R.ok(operations.terminate(fulfillmentNo, requireOperatorId(), note(request)));
@@ -130,3 +123,4 @@ public class FulfillmentAdminController {
         }
     }
 }
+

@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.lottery.config;
+package com.dongqh.luckyhub.config.lottery;
 
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
@@ -35,7 +35,6 @@ class LotteryConfigurationTests {
         assertThat(properties.reconcileInterval()).isEqualTo(Duration.ofSeconds(30));
         assertThat(properties.reconcileInitialDelay()).isEqualTo(Duration.ofSeconds(60));
         assertThat(properties.reconcileBatchSize()).isEqualTo(100);
-        assertThat(properties.reservationRetention()).isEqualTo(Duration.ofHours(72));
         assertThat(properties.outboxInterval()).isEqualTo(Duration.ofSeconds(5));
         assertThat(properties.outboxBatchSize()).isEqualTo(100);
         assertThat(redissonClient).isNotNull();
@@ -70,7 +69,7 @@ class LotteryConfigurationTests {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new LotteryProperties(ZoneId.of("Asia/Shanghai"), Duration.ofSeconds(1),
                 Duration.ofMinutes(2), Duration.ofSeconds(30), Duration.ofSeconds(1), 100,
-                Duration.ofHours(72), Duration.ofSeconds(5), 0))
+                Duration.ofSeconds(5), 0))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> propertiesWithReconciliation(Duration.ZERO, Duration.ZERO, 100))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -80,7 +79,7 @@ class LotteryConfigurationTests {
                 Duration.ZERO, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new LotteryProperties(ZoneId.of("Asia/Shanghai"), Duration.ofSeconds(1),
                 Duration.ZERO, Duration.ofSeconds(30), Duration.ZERO, 100,
-                Duration.ofHours(72), Duration.ofSeconds(5), 100))
+                Duration.ofSeconds(5), 100))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -88,6 +87,8 @@ class LotteryConfigurationTests {
             Duration interval, Duration initialDelay, int batchSize) {
         return new LotteryProperties(ZoneId.of("Asia/Shanghai"), Duration.ofSeconds(1),
                 Duration.ofMinutes(2), interval, initialDelay, batchSize,
-                Duration.ofHours(72), Duration.ofSeconds(5), 100);
+                Duration.ofSeconds(5), 100);
     }
 }
+
+

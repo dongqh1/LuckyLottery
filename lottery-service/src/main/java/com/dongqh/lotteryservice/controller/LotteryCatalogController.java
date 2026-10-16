@@ -1,12 +1,10 @@
 package com.dongqh.lotteryservice.controller;
 
-import com.dongqh.lotteryservice.activitycatalog.service.ActivityCatalogQueryService;
-import com.dongqh.lotteryservice.activitycatalog.vo.ActivityCatalogView;
-import com.dongqh.lotteryservice.activitycatalog.vo.ActivityPrizeCatalogView;
+import com.dongqh.lotteryservice.service.activitycatalog.ActivityCatalogQueryService;
+import com.dongqh.lotteryservice.domain.vo.activitycatalog.ActivityCatalogView;
+import com.dongqh.lotteryservice.domain.vo.activitycatalog.ActivityPrizeCatalogView;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
@@ -21,7 +19,6 @@ import java.util.List;
 @Validated
 @RestController
 @RequestMapping("/api/lottery/activities")
-@RequirePermission(ServicePermissionCodes.LOTTERY_ACTIVITY_READ)
 public class LotteryCatalogController {
 
     private final ActivityCatalogQueryService catalog;
@@ -58,3 +55,4 @@ public class LotteryCatalogController {
         return userId;
     }
 }
+

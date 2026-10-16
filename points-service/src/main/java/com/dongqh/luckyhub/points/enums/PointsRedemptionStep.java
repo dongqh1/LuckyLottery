@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.points.enums;
+package com.dongqh.luckyhub.enums.points;
 
 public enum PointsRedemptionStep {
     CLAIMED,

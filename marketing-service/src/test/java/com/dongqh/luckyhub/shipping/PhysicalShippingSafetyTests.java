@@ -1,10 +1,10 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
-import com.dongqh.luckyhub.shipping.dto.ClaimPhysicalBenefitCommand;
-import com.dongqh.luckyhub.shipping.dto.LogisticsCallbackCommand;
-import com.dongqh.luckyhub.shipping.enums.TrackingEventType;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
+import com.dongqh.luckyhub.domain.dto.shipping.ClaimPhysicalBenefitCommand;
+import com.dongqh.luckyhub.domain.dto.shipping.LogisticsCallbackCommand;
+import com.dongqh.luckyhub.enums.shipping.TrackingEventType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;

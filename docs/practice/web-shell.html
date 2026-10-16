@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>抽奖微服务 · 代码练习册</title>
+  <style>{{STYLES}}</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">{ }</span>
+      <div><p class="eyebrow">LUCKYHUB / 代码练习册</p><h1>把抽奖业务，自己写一遍。</h1></div>
+    </div>
+    <div class="masthead-actions">
+      <span class="offline-label"><span aria-hidden="true"></span>离线可用</span>
+      <button id="export-drafts" class="button secondary" type="button">导出草稿</button>
+    </div>
+  </header>
+
+  <div class="intro-strip">
+    <p>抽奖 · 积分 · 优惠券 · 会员 · 履约 <span>五个服务的真实代码，按步骤补完整段逻辑。</span></p>
+    <span class="intro-note">答案在每题下方，默认折叠。</span>
+  </div>
+
+  <div class="workspace">
+    <aside class="sidebar" aria-label="服务与练习目录">
+      <div class="progress-head"><span>我的进度</span><strong id="progress-count">0 / 25</strong></div>
+      <div class="progress-track" aria-hidden="true"><span id="progress-bar"></span></div>
+      <p class="draft-note">草稿保存在当前浏览器，换浏览器前请导出。</p>
+      <nav id="service-nav" class="service-nav" aria-label="按服务筛选"></nav>
+      <label class="search-label" for="search-input">查找主题或代码文件</label>
+      <div class="search-box"><span aria-hidden="true">⌕</span><input id="search-input" type="search" placeholder="例如：幂等、锁、分页" autocomplete="off"></div>
+      <div class="list-heading"><span>练习目录</span><span id="result-count">25 题</span></div>
+      <ol id="question-list" class="question-list"></ol>
+      <p class="sidebar-footer">先独立补写，再展开答案。<br>“已完成”由你标记，不自动判题。</p>
+    </aside>
+
+    <main class="main-area">
+      <section id="empty-state" class="empty-state" hidden>
+        <span class="empty-symbol" aria-hidden="true">{ ? }</span>
+        <h2>没有找到匹配的练习</h2>
+        <p>试试“Redis”“事务”等关键词，或切换到全部服务。</p>
+        <button id="clear-filters" class="button primary" type="button">查看全部练习</button>
+      </section>
+
+      <article id="question-panel" class="question-panel">
+        <div class="question-topline"><div class="question-kicker"><span id="question-service"></span><span class="separator">/</span><span id="question-id"></span></div><div class="question-level"><span id="question-level"></span><span id="question-minutes"></span></div></div>
+        <h2 id="question-title"></h2>
+        <p id="question-purpose" class="purpose"></p>
+        <div id="question-tags" class="tags"></div>
+
+        <section class="source-section" aria-labelledby="source-title">
+          <h3 id="source-title">代码在哪里</h3>
+          <div id="source-list" class="source-list"></div>
+          <p id="question-scope" class="scope"></p>
+        </section>
+
+        <div class="component-note"><span class="small-label">主题组件</span><p id="question-component"></p></div>
+        <details class="context-details"><summary>已提供的上下文与依赖 <span>开始补写前先看这里</span></summary><ul id="question-context"></ul></details>
+
+        <section class="task-section" aria-labelledby="task-title"><div class="section-heading"><h3 id="task-title">这一题要完成什么</h3><span>按步骤补写</span></div><ol id="question-requirements" class="requirements"></ol></section>
+
+        <section class="editor-section" aria-labelledby="editor-title">
+          <div class="editor-toolbar"><h3 id="editor-title">你的实现 <span id="code-language"></span></h3><span id="save-status" role="status" aria-live="polite">未开始</span></div>
+          <div class="editor-shell"><textarea id="practice-editor" aria-label="填写本题代码" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"></textarea></div>
+          <div class="editor-footnote"><span>保留方法签名与中文步骤，把 TODO 换成你的代码。</span><span>Tab 缩进 · Shift+Tab 切换焦点</span></div>
+          <div class="editor-actions"><div><button id="copy-practice" class="button secondary" type="button">复制我的代码</button><button id="reset-draft" class="button quiet" type="button">恢复题目骨架</button></div><button id="mark-done" class="button primary" type="button" aria-pressed="false">标记已完成</button></div>
+        </section>
+
+        <details id="answer-details" class="answer-details">
+          <summary><span class="answer-summary"><span class="answer-icon" aria-hidden="true">＋</span>查看参考答案</span><span class="answer-hint">完成补写后再打开</span></summary>
+          <div class="answer-body"><div class="answer-toolbar"><span>完整参考代码 · 中文步骤注释</span><button id="copy-answer" class="button secondary" type="button">复制参考答案</button></div><pre class="answer-pre"><code id="answer-code"></code></pre><h3>为什么这样写</h3><ul id="answer-explanation"></ul></div>
+        </details>
+
+        <section class="checks-section" aria-labelledby="checks-title"><h3 id="checks-title">写完后，用这些场景自查</h3><ul id="question-checks"></ul></section>
+        <div class="bottom-nav"><button id="previous-question" class="button secondary" type="button">← 上一题</button><span id="question-position"></span><button id="next-question" class="button secondary" type="button">下一题 →</button></div>
+        <p class="usage-note">练习是现有类中的方法或配置片段。要运行 Java，请放进项目练习副本并保留原类依赖；网页用于补写和对照，不执行 Java。</p>
+      </article>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script id="exercise-data" type="application/json">{{DATA}}</script>
+  <script>{{APP}}</script>
+</body>
+</html>

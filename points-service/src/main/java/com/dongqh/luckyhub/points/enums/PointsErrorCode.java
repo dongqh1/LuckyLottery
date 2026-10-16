@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.points.enums;
+package com.dongqh.luckyhub.enums.points;
 
 import org.springframework.http.HttpStatus;
 

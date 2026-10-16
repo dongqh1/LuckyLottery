@@ -1,8 +1,8 @@
 package com.dongqh.fulfillmentservice.integration;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentGatewayResult;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
-import com.dongqh.fulfillmentservice.model.MembershipFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.MembershipFulfillmentPayload;
 import com.dongqh.fulfillmentservice.service.FulfillmentTaskReadService;
 import com.dongqh.fulfillmentservice.service.port.MembershipFulfillmentGateway;
 import com.dongqh.hmapi.client.MembershipClient;

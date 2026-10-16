@@ -1,28 +1,26 @@
-package com.dongqh.luckyhub.coupon.service.impl;
+package com.dongqh.luckyhub.service.coupon.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dongqh.luckyhub.coupon.dto.CreateCouponTemplateCommand;
-import com.dongqh.luckyhub.coupon.dto.IssueCouponCommand;
-import com.dongqh.luckyhub.coupon.entity.CouponIssueRecord;
-import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
-import com.dongqh.luckyhub.coupon.entity.UserCoupon;
-import com.dongqh.luckyhub.coupon.enums.CouponErrorCode;
-import com.dongqh.luckyhub.coupon.enums.CouponScopeType;
-import com.dongqh.luckyhub.coupon.enums.CouponType;
-import com.dongqh.luckyhub.coupon.enums.UserCouponStatus;
-import com.dongqh.luckyhub.coupon.exception.CouponDomainException;
-import com.dongqh.luckyhub.coupon.mapper.CouponIssueRecordMapper;
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
-import com.dongqh.luckyhub.coupon.mapper.UserCouponMapper;
-import com.dongqh.luckyhub.coupon.model.CouponLockSnapshot;
-import com.dongqh.luckyhub.coupon.service.CouponService;
-import com.dongqh.luckyhub.coupon.service.port.CouponCatalogPort;
-import com.dongqh.luckyhub.coupon.service.port.CouponItemSnapshot;
-import com.dongqh.luckyhub.coupon.service.port.CouponUserEligibilityPort;
-import com.dongqh.luckyhub.coupon.vo.CouponPageResponse;
-import com.dongqh.luckyhub.coupon.vo.CouponTemplateView;
-import com.dongqh.luckyhub.coupon.vo.UserCouponView;
+import com.dongqh.luckyhub.domain.dto.coupon.CreateCouponTemplateCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.IssueCouponCommand;
+import com.dongqh.luckyhub.domain.po.coupon.CouponIssueRecord;
+import com.dongqh.luckyhub.domain.po.coupon.CouponTemplate;
+import com.dongqh.luckyhub.domain.po.coupon.UserCoupon;
+import com.dongqh.luckyhub.enums.coupon.CouponErrorCode;
+import com.dongqh.luckyhub.enums.coupon.CouponScopeType;
+import com.dongqh.luckyhub.enums.coupon.CouponType;
+import com.dongqh.luckyhub.enums.coupon.UserCouponStatus;
+import com.dongqh.luckyhub.coupon.domain.exception.CouponDomainException;
+import com.dongqh.luckyhub.mapper.coupon.CouponIssueRecordMapper;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
+import com.dongqh.luckyhub.mapper.coupon.UserCouponMapper;
+import com.dongqh.luckyhub.coupon.integration.CouponIntegrationService;
+import com.dongqh.luckyhub.domain.model.coupon.CouponLockSnapshot;
+import com.dongqh.luckyhub.service.coupon.CouponService;
+import com.dongqh.luckyhub.domain.vo.coupon.CouponPageResponse;
+import com.dongqh.luckyhub.domain.vo.coupon.CouponTemplateView;
+import com.dongqh.luckyhub.domain.vo.coupon.UserCouponView;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -41,19 +39,16 @@ public class CouponServiceImpl implements CouponService {
     private final CouponTemplateMapper templates;
     private final UserCouponMapper coupons;
     private final CouponIssueRecordMapper issues;
-    private final CouponUserEligibilityPort users;
-    private final CouponCatalogPort catalog;
+    private final CouponIntegrationService integration;
 
     public CouponServiceImpl(CouponTemplateMapper templates,
                              UserCouponMapper coupons,
                              CouponIssueRecordMapper issues,
-                             CouponUserEligibilityPort users,
-                             CouponCatalogPort catalog) {
+                             CouponIntegrationService integration) {
         this.templates = templates;
         this.coupons = coupons;
         this.issues = issues;
-        this.users = users;
-        this.catalog = catalog;
+        this.integration = integration;
     }
 
     @Override
@@ -97,7 +92,7 @@ public class CouponServiceImpl implements CouponService {
         if (template == null || template.getStatus() != 1) {
             throw error(CouponErrorCode.TEMPLATE_NOT_FOUND);
         }
-        if (!users.isEnabled(command.userId())) {
+        if (!integration.isEnabledUser(command.userId())) {
             throw error(CouponErrorCode.COUPON_UNAVAILABLE);
         }
         long count = issues.selectCount(new LambdaQueryWrapper<CouponIssueRecord>()
@@ -297,7 +292,7 @@ public class CouponServiceImpl implements CouponService {
             throw error(CouponErrorCode.COUPON_NOT_APPLICABLE);
         }
         if (command.scopeType() == CouponScopeType.ITEM) {
-            CouponItemSnapshot item = catalog.getItem(command.hmallItemId());
+            CouponIntegrationService.ItemSnapshot item = integration.getItem(command.hmallItemId());
             if (item == null || !item.availableForReward()) {
                 throw error(CouponErrorCode.COUPON_NOT_APPLICABLE);
             }

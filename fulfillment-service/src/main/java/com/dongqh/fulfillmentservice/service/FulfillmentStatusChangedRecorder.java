@@ -2,7 +2,7 @@ package com.dongqh.fulfillmentservice.service;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
 import com.dongqh.fulfillmentservice.service.port.FulfillmentStatusChangedOutbox;
 import com.dongqh.hmapi.dto.FulfillmentStatusChangedEventV1;
 import org.springframework.stereotype.Service;

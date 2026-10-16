@@ -1,6 +1,6 @@
-package com.dongqh.luckyhub.coupon.scheduler;
+package com.dongqh.luckyhub.scheduler.coupon;
 
-import com.dongqh.luckyhub.coupon.mapper.UserCouponMapper;
+import com.dongqh.luckyhub.mapper.coupon.UserCouponMapper;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

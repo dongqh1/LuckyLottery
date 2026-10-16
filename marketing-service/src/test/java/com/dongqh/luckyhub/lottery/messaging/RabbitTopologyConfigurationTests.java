@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.lottery.messaging;
 
-import com.dongqh.luckyhub.lottery.config.LotteryMessagingConfiguration;
-import com.dongqh.luckyhub.lottery.config.MessagingProperties;
-import com.dongqh.luckyhub.lottery.messaging.rabbit.LotteryRabbitTopology;
+import com.dongqh.luckyhub.config.lottery.LotteryMessagingConfiguration;
+import com.dongqh.luckyhub.config.lottery.MessagingProperties;
+import com.dongqh.luckyhub.messaging.lottery.rabbit.LotteryRabbitTopology;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Declarables;

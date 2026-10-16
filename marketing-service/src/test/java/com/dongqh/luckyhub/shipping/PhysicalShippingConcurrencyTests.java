@@ -1,7 +1,7 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionCommand;
-import com.dongqh.luckyhub.shipping.dto.ClaimPhysicalBenefitCommand;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.dto.shipping.ClaimPhysicalBenefitCommand;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 

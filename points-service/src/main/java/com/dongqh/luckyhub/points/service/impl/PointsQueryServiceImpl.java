@@ -1,15 +1,15 @@
-package com.dongqh.luckyhub.points.service.impl;
+package com.dongqh.luckyhub.service.points.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dongqh.luckyhub.points.dto.PointsLedgerQuery;
-import com.dongqh.luckyhub.points.entity.PointsLedger;
-import com.dongqh.luckyhub.points.mapper.PointsLedgerMapper;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.points.service.PointsQueryService;
-import com.dongqh.luckyhub.points.vo.PointsAccountView;
-import com.dongqh.luckyhub.points.vo.PointsLedgerView;
-import com.dongqh.luckyhub.points.vo.PointsPageResponse;
+import com.dongqh.luckyhub.domain.dto.points.PointsLedgerQuery;
+import com.dongqh.luckyhub.domain.po.points.PointsLedger;
+import com.dongqh.luckyhub.mapper.points.PointsLedgerMapper;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.service.points.PointsQueryService;
+import com.dongqh.luckyhub.domain.vo.points.PointsAccountView;
+import com.dongqh.luckyhub.domain.vo.points.PointsLedgerView;
+import com.dongqh.luckyhub.domain.vo.points.PointsPageResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 

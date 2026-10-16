@@ -1,12 +1,12 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.shipping.crypto.LogisticsCallbackSigner;
-import com.dongqh.luckyhub.shipping.dto.LogisticsCallbackCommand;
-import com.dongqh.luckyhub.shipping.enums.ShippingSourceType;
-import com.dongqh.luckyhub.shipping.enums.TrackingEventType;
-import com.dongqh.luckyhub.shipping.model.CreateShippingOrderCommand;
-import com.dongqh.luckyhub.shipping.service.LogisticsCallbackService;
-import com.dongqh.luckyhub.shipping.service.ShippingOrderService;
+import com.dongqh.luckyhub.domain.crypto.shipping.LogisticsCallbackSigner;
+import com.dongqh.luckyhub.domain.dto.shipping.LogisticsCallbackCommand;
+import com.dongqh.luckyhub.enums.shipping.ShippingSourceType;
+import com.dongqh.luckyhub.enums.shipping.TrackingEventType;
+import com.dongqh.luckyhub.domain.model.shipping.CreateShippingOrderCommand;
+import com.dongqh.luckyhub.service.shipping.LogisticsCallbackService;
+import com.dongqh.luckyhub.service.shipping.ShippingOrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

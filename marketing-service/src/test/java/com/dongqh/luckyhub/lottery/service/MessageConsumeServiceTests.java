@@ -1,12 +1,12 @@
-package com.dongqh.luckyhub.lottery.service;
+package com.dongqh.luckyhub.service.lottery;
 
-import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
-import com.dongqh.luckyhub.lottery.config.MessagingProperties;
-import com.dongqh.luckyhub.lottery.mapper.MessageConsumeRecordMapper;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawReleaseRequestedEvent;
-import com.dongqh.luckyhub.lottery.quota.DrawQuotaService;
+import com.dongqh.luckyhub.service.drawchance.DrawChanceService;
+import com.dongqh.luckyhub.config.lottery.MessagingProperties;
+import com.dongqh.luckyhub.mapper.lottery.MessageConsumeRecordMapper;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventEnvelope;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventType;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawReleaseRequestedEvent;
+import com.dongqh.luckyhub.domain.quota.lottery.DrawQuotaService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.springframework.transaction.PlatformTransactionManager;

@@ -1,12 +1,10 @@
-package com.dongqh.luckyhub.coupon.controller;
+package com.dongqh.luckyhub.controller.coupon;
 
-import com.dongqh.hmsecurity.permission.RequirePermission;
-import com.dongqh.hmsecurity.permission.ServicePermissionCodes;
-import com.dongqh.luckyhub.coupon.dto.CreateCouponTemplateCommand;
-import com.dongqh.luckyhub.coupon.dto.IssueCouponCommand;
-import com.dongqh.luckyhub.coupon.service.CouponService;
-import com.dongqh.luckyhub.coupon.vo.CouponTemplateView;
-import com.dongqh.luckyhub.coupon.vo.UserCouponView;
+import com.dongqh.luckyhub.domain.dto.coupon.CreateCouponTemplateCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.IssueCouponCommand;
+import com.dongqh.luckyhub.service.coupon.CouponService;
+import com.dongqh.luckyhub.domain.vo.coupon.CouponTemplateView;
+import com.dongqh.luckyhub.domain.vo.coupon.UserCouponView;
 import com.hmall.common.domain.R;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -27,15 +25,14 @@ public class CouponAdminController {
 
     @PostMapping("/coupon-templates")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequirePermission(ServicePermissionCodes.COUPON_MANAGE)
     public R<CouponTemplateView> createTemplate(@Valid @RequestBody CreateCouponTemplateCommand command) {
         return R.ok(coupons.createTemplate(command));
     }
 
     @PostMapping("/coupons/issues")
     @ResponseStatus(HttpStatus.CREATED)
-    @RequirePermission(ServicePermissionCodes.COUPON_MANAGE)
     public R<UserCouponView> issue(@Valid @RequestBody IssueCouponCommand command) {
         return R.ok(coupons.issue(command));
     }
 }
+

@@ -1,10 +1,10 @@
-package com.dongqh.luckyhub.points.service;
+package com.dongqh.luckyhub.service.points;
 
-import com.dongqh.luckyhub.points.dto.AdminPointsAdjustmentCommand;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.dto.PointsReversalCommand;
-import com.dongqh.luckyhub.points.vo.PointsAccountView;
-import com.dongqh.luckyhub.points.vo.PointsLedgerView;
+import com.dongqh.luckyhub.domain.dto.points.AdminPointsAdjustmentCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsReversalCommand;
+import com.dongqh.luckyhub.domain.vo.points.PointsAccountView;
+import com.dongqh.luckyhub.domain.vo.points.PointsLedgerView;
 
 public interface PointsAccountService {
     PointsLedgerView credit(PointsMutationCommand command);

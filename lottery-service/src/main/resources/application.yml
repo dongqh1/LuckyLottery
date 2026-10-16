@@ -54,7 +54,6 @@ luckyhub:
     reconcile-interval: ${LOTTERY_RECONCILE_INTERVAL:30s}
     reconcile-initial-delay: ${LOTTERY_RECONCILE_INITIAL_DELAY:60s}
     reconcile-batch-size: ${LOTTERY_RECONCILE_BATCH_SIZE:100}
-    reservation-retention: ${LOTTERY_RESERVATION_RETENTION:72h}
     outbox-interval: ${LOTTERY_OUTBOX_INTERVAL:5s}
     outbox-batch-size: ${LOTTERY_OUTBOX_BATCH_SIZE:100}
     outbox:
@@ -65,3 +64,4 @@ luckyhub:
       port: ${LOTTERY_REDIS_PORT:6379}
       database: ${LOTTERY_REDIS_DATABASE:0}
       password: ${LOTTERY_REDIS_PASSWORD:}
+

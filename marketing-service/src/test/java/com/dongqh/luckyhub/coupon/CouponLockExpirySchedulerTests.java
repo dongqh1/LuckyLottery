@@ -1,7 +1,7 @@
 package com.dongqh.luckyhub.coupon;
 
-import com.dongqh.luckyhub.coupon.mapper.UserCouponMapper;
-import com.dongqh.luckyhub.coupon.scheduler.CouponLockExpiryScheduler;
+import com.dongqh.luckyhub.mapper.coupon.UserCouponMapper;
+import com.dongqh.luckyhub.scheduler.coupon.CouponLockExpiryScheduler;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

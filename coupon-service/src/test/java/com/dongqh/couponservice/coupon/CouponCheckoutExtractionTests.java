@@ -1,19 +1,16 @@
 package com.dongqh.couponservice.coupon;
 
-import com.dongqh.luckyhub.coupon.dto.CouponCheckoutCommand;
-import com.dongqh.luckyhub.coupon.dto.CouponCheckoutItemCommand;
-import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
-import com.dongqh.luckyhub.coupon.entity.UserCoupon;
-import com.dongqh.luckyhub.coupon.enums.CouponScopeType;
-import com.dongqh.luckyhub.coupon.enums.CouponType;
-import com.dongqh.luckyhub.coupon.enums.UserCouponStatus;
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
-import com.dongqh.luckyhub.coupon.mapper.UserCouponMapper;
-import com.dongqh.luckyhub.coupon.service.impl.CouponCheckoutServiceImpl;
-import com.dongqh.luckyhub.coupon.service.port.CouponCatalogPort;
-import com.dongqh.luckyhub.coupon.service.port.CouponItemSnapshot;
-import com.dongqh.luckyhub.coupon.service.port.CouponMembershipBenefit;
-import com.dongqh.luckyhub.coupon.service.port.CouponMembershipBenefitPort;
+import com.dongqh.luckyhub.domain.dto.coupon.CouponCheckoutCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.CouponCheckoutItemCommand;
+import com.dongqh.luckyhub.domain.po.coupon.CouponTemplate;
+import com.dongqh.luckyhub.domain.po.coupon.UserCoupon;
+import com.dongqh.luckyhub.enums.coupon.CouponScopeType;
+import com.dongqh.luckyhub.enums.coupon.CouponType;
+import com.dongqh.luckyhub.enums.coupon.UserCouponStatus;
+import com.dongqh.luckyhub.coupon.integration.CouponIntegrationService;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
+import com.dongqh.luckyhub.mapper.coupon.UserCouponMapper;
+import com.dongqh.luckyhub.service.coupon.impl.CouponCheckoutServiceImpl;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -27,13 +24,12 @@ import static org.mockito.Mockito.when;
 class CouponCheckoutExtractionTests {
 
     @Test
-    void checkoutUsesIndependentPortsAndRetainsMembershipRounding() {
+    void checkoutUsesOneIntegrationServiceAndRetainsMembershipRounding() {
         CouponTemplateMapper templates = mock(CouponTemplateMapper.class);
         UserCouponMapper coupons = mock(UserCouponMapper.class);
-        CouponCatalogPort catalog = mock(CouponCatalogPort.class);
-        CouponMembershipBenefitPort memberships = mock(CouponMembershipBenefitPort.class);
+        CouponIntegrationService integration = mock(CouponIntegrationService.class);
         CouponCheckoutServiceImpl service = new CouponCheckoutServiceImpl(
-                templates, coupons, catalog, memberships);
+                templates, coupons, integration);
 
         CouponTemplate template = new CouponTemplate();
         template.setId(20L);
@@ -57,10 +53,10 @@ class CouponCheckoutExtractionTests {
 
         when(coupons.selectList(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(coupon));
         when(templates.selectBatchIds(List.of(20L))).thenReturn(List.of(template));
-        when(catalog.getItem(55L)).thenReturn(new CouponItemSnapshot(
+        when(integration.getItem(55L)).thenReturn(new CouponIntegrationService.ItemSnapshot(
                 55L, "Item", 105, 3, "Category", "Brand", 1));
-        when(memberships.activeBenefit(1L)).thenReturn(Optional.of(
-                new CouponMembershipBenefit(9_000)));
+        when(integration.activeMembershipBenefit(1L)).thenReturn(Optional.of(
+                new CouponIntegrationService.MembershipBenefit(9_000)));
 
         var applicable = service.listApplicable(1L,
                 new CouponCheckoutCommand(List.of(new CouponCheckoutItemCommand(55L, 1))));
@@ -73,10 +69,9 @@ class CouponCheckoutExtractionTests {
     void membershipDiscountStillRequiresCouponStacking() {
         CouponTemplateMapper templates = mock(CouponTemplateMapper.class);
         UserCouponMapper coupons = mock(UserCouponMapper.class);
-        CouponCatalogPort catalog = mock(CouponCatalogPort.class);
-        CouponMembershipBenefitPort memberships = mock(CouponMembershipBenefitPort.class);
+        CouponIntegrationService integration = mock(CouponIntegrationService.class);
         CouponCheckoutServiceImpl service = new CouponCheckoutServiceImpl(
-                templates, coupons, catalog, memberships);
+                templates, coupons, integration);
 
         CouponTemplate template = new CouponTemplate();
         template.setId(20L);
@@ -97,10 +92,10 @@ class CouponCheckoutExtractionTests {
 
         when(coupons.selectList(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(coupon));
         when(templates.selectBatchIds(List.of(20L))).thenReturn(List.of(template));
-        when(catalog.getItem(55L)).thenReturn(new CouponItemSnapshot(
+        when(integration.getItem(55L)).thenReturn(new CouponIntegrationService.ItemSnapshot(
                 55L, "Item", 1_000, 3, "Category", "Brand", 1));
-        when(memberships.activeBenefit(1L)).thenReturn(Optional.of(
-                new CouponMembershipBenefit(9_000)));
+        when(integration.activeMembershipBenefit(1L)).thenReturn(Optional.of(
+                new CouponIntegrationService.MembershipBenefit(9_000)));
 
         var applicable = service.listApplicable(1L,
                 new CouponCheckoutCommand(List.of(new CouponCheckoutItemCommand(55L, 1))));

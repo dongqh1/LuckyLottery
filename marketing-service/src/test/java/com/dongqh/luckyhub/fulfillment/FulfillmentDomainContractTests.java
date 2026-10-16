@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.fulfillment;
 
-import com.dongqh.luckyhub.fulfillment.entity.FulfillmentAttempt;
-import com.dongqh.luckyhub.fulfillment.entity.FulfillmentQuarantine;
-import com.dongqh.luckyhub.fulfillment.entity.FulfillmentTask;
-import com.dongqh.luckyhub.fulfillment.enums.AttemptOperation;
-import com.dongqh.luckyhub.fulfillment.enums.FulfillmentErrorCode;
-import com.dongqh.luckyhub.fulfillment.enums.FulfillmentStatus;
-import com.dongqh.luckyhub.fulfillment.enums.FulfillmentType;
-import com.dongqh.luckyhub.fulfillment.enums.GatewayOutcome;
+import com.dongqh.luckyhub.domain.po.fulfillment.FulfillmentAttempt;
+import com.dongqh.luckyhub.domain.po.fulfillment.FulfillmentQuarantine;
+import com.dongqh.luckyhub.domain.po.fulfillment.FulfillmentTask;
+import com.dongqh.luckyhub.enums.fulfillment.AttemptOperation;
+import com.dongqh.luckyhub.enums.fulfillment.FulfillmentErrorCode;
+import com.dongqh.luckyhub.enums.fulfillment.FulfillmentStatus;
+import com.dongqh.luckyhub.enums.fulfillment.FulfillmentType;
+import com.dongqh.luckyhub.enums.fulfillment.GatewayOutcome;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

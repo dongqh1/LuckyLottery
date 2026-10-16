@@ -1,0 +1,637 @@
+[
+  {
+    "id": "M01",
+    "service": "membership",
+    "title": "按履约号幂等发放会员奖励",
+    "level": "进阶",
+    "minutes": 25,
+    "tags": [
+      "会员奖励",
+      "幂等",
+      "事务",
+      "MyBatis-Plus"
+    ],
+    "purpose": "履约服务请求发放多份会员奖励时，校验用户和会员产品，为每份奖励生成稳定业务号，跳过已经成功发放的同一份奖励。",
+    "component": "MembershipRewardGrantService 是会员奖励入账组件；本方法负责入口校验和逐份幂等，grantOne 负责会员期限更新及发放流水落库。",
+    "sources": [
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipRewardGrantService.java",
+        "symbol": "grant",
+        "line": 41
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipRewardGrantService.java",
+        "symbol": "grantOne",
+        "line": 110
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/mapper/MembershipGrantRecordMapper.java",
+        "symbol": "selectByBusinessNoForUpdate",
+        "line": 11
+      }
+    ],
+    "scope": "完整 grant 方法及事务注解，原文件第 40—75 行；只增加中文步骤注释。grantOne 与 Mapper 已存在，不需要重写整套会员期限逻辑。",
+    "context": [
+      "已有成员：MembershipProductMapper products、UserMembershipMapper memberships、MembershipGrantRecordMapper grants、UserClient users。",
+      "grants.selectByBusinessNoForUpdate(String) 按 business_no 查询并使用 FOR UPDATE；返回 MembershipGrantRecord 或 null。",
+      "已有 grantOne(String businessNo, long userId, MembershipProduct product, int durationDays, LocalDateTime effectiveAt)，负责锁定会员记录、更新期限和权益、插入发放流水。",
+      "使用实体 MembershipProduct、MembershipGrantRecord；java.util.UUID、java.util.Objects、java.nio.charset.StandardCharsets、java.time.LocalDateTime 已导入。",
+      "使用 org.springframework.transaction.annotation.Transactional、Isolation；错误类型为 org.springframework.web.server.ResponseStatusException，状态码为 org.springframework.http.HttpStatus。",
+      "productId 优先用于查询；未传 productId 时才按 productCode 查询。给定 productCode 非空时仍须核对它与查询结果一致。"
+    ],
+    "requirements": [
+      "[M01-1] 完整校验履约号、用户 ID、产品标识、有效天数和份数；履约号不超过 64 字符，份数为 1—100。非法参数抛 BAD_REQUEST，消息为“会员奖励参数无效”。",
+      "[M01-2] 调用 users.isEnabled(userId)，只允许 Boolean.TRUE；否则抛 CONFLICT，消息为“会员奖励用户不可用”。",
+      "[M01-3] 按 productId 或 productCode 查询产品，拒绝不存在、未启用、或传入编码不匹配的产品，抛 CONFLICT，消息为“会员奖励产品不可用”。",
+      "[M01-4] 遍历第 1 份到第 quantity 份，以 fulfillmentNo + \":\" + index 的 UTF-8 字节生成 UUID.nameUUIDFromBytes，业务号加前缀 LR-M-。",
+      "[M01-5] 按每份业务号锁定查询发放流水；已有流水必须属于同一用户和产品，否则抛 CONFLICT，消息为“会员奖励幂等键冲突”；一致则 continue。",
+      "[M01-6] 未发现流水时，调用 grantOne 并传入该业务号、用户、产品、天数与 LocalDateTime.now()。"
+    ],
+    "starter": "@Transactional(isolation = Isolation.READ_COMMITTED)\npublic void grant(String fulfillmentNo, long userId, Long productId, String productCode,\n                  int durationDays, int quantity) {\n    // TODO [M01-1]：写出完整参数校验与异常分支。\n\n    // TODO [M01-2]：查询用户可用状态并处理不可用情况。\n\n    // TODO [M01-3]：选择产品查询方式，并校验查询结果。\n\n    // TODO [M01-4]：遍历每份奖励，生成稳定且彼此不同的业务号。\n\n    // TODO [M01-5]：在循环内查流水，处理幂等冲突或跳过已发放项。\n\n    // TODO [M01-6]：在循环内发放尚未入账的一份奖励。\n\n}",
+    "answer": "@Transactional(isolation = Isolation.READ_COMMITTED)\npublic void grant(String fulfillmentNo, long userId, Long productId, String productCode,\n                  int durationDays, int quantity) {\n    // [M01-1]：限制参数范围，保证后续查询和逐份发放具有明确业务身份。\n    if (fulfillmentNo == null || fulfillmentNo.isBlank() || fulfillmentNo.length() > 64\n            || userId <= 0 || (productId == null && (productCode == null || productCode.isBlank()))\n            || (productId != null && productId <= 0) || durationDays <= 0\n            || quantity <= 0 || quantity > 100) {\n        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, \"会员奖励参数无效\");\n    }\n    // [M01-2]：远程查询用户状态，只把明确的 true 当作可用。\n    if (!Boolean.TRUE.equals(users.isEnabled(userId))) {\n        throw new ResponseStatusException(HttpStatus.CONFLICT, \"会员奖励用户不可用\");\n    }\n    // [M01-3]：优先按 ID 查询，再检查产品启用状态和可选编码。\n    MembershipProduct product = productId == null\n            ? products.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MembershipProduct>()\n                    .eq(MembershipProduct::getProductCode, productCode))\n            : products.selectById(productId);\n    if (product == null || !Integer.valueOf(1).equals(product.getStatus())\n            || (productCode != null && !productCode.isBlank()\n            && !productCode.equals(product.getProductCode()))) {\n        throw new ResponseStatusException(HttpStatus.CONFLICT, \"会员奖励产品不可用\");\n    }\n\n    // [M01-4]：每个序号生成固定业务号，重复请求得到相同的每份奖励身份。\n    for (int index = 1; index <= quantity; index++) {\n        String businessNo = \"LR-M-\" + UUID.nameUUIDFromBytes(\n                (fulfillmentNo + \":\" + index).getBytes(StandardCharsets.UTF_8));\n        // [M01-5]：已有流水要核对用户与产品，一致则直接跳过本份。\n        MembershipGrantRecord existing = grants.selectByBusinessNoForUpdate(businessNo);\n        if (existing != null) {\n            if (!Objects.equals(existing.getUserId(), userId)\n                    || !Objects.equals(existing.getMembershipProductId(), product.getId())) {\n                throw new ResponseStatusException(HttpStatus.CONFLICT, \"会员奖励幂等键冲突\");\n            }\n            continue;\n        }\n        // [M01-6]：只有缺少发放流水的奖励才进入会员入账辅助方法。\n        grantOne(businessNo, userId, product, durationDays, LocalDateTime.now());\n    }\n}",
+    "explanation": [
+      "同一个 fulfillmentNo 的同一序号始终得到同一个 LR-M- 业务号；quantity=2 会生成两份不同的业务号。",
+      "Objects.equals 比较已有流水的用户和产品，避免把同一个业务号复用给另一项业务。",
+      "本方法已有流水的冲突判断仅核对用户和产品，不核对 durationDays；练习保持这个真实范围。",
+      "事务注解覆盖本次发放；FOR UPDATE 和已有辅助方法属于项目中的持久化流程，题目没有把这些依赖改成内存集合。"
+    ],
+    "checks": [
+      "用户可用、产品启用、durationDays=30、quantity=2，且无已有流水：调用 grantOne 两次，业务号分别来自该履约号的序号 1 与 2。",
+      "同一请求顺序重放且两份流水已存在：核对通过后两次 continue，不再调用 grantOne。",
+      "已有第 1 份流水的用户或产品不同：抛 CONFLICT“会员奖励幂等键冲突”。",
+      "quantity=0 或 101、durationDays=0、履约号长度为 65：抛 BAD_REQUEST，尚未查询用户与产品。",
+      "users.isEnabled 返回 false 或 null：抛 CONFLICT；即使存在旧流水也会先检查用户状态。",
+      "products.selectById 返回启用产品，但非空 productCode 与其编码不同：抛 CONFLICT。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "M02",
+    "service": "membership",
+    "title": "查询我的会员记录与当前有效权益",
+    "level": "基础",
+    "minutes": 15,
+    "tags": [
+      "查询",
+      "Optional",
+      "MyBatis-Plus",
+      "有效期"
+    ],
+    "purpose": "查询指定用户的会员展示信息，并提供只返回尚未到期会员权益的查询入口，让调用方区分“有会员记录”和“权益当前有效”。",
+    "component": "MembershipQueryService 是会员读服务；MyBatis-Plus 构造用户范围与到期条件，Optional 表示没有查询结果。",
+    "sources": [
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipQueryService.java",
+        "symbol": "getMine",
+        "line": 68
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipQueryService.java",
+        "symbol": "activeBenefit(long userId)",
+        "line": 74
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipQueryService.java",
+        "symbol": "activeBenefit(long userId, LocalDateTime now)",
+        "line": 78
+      }
+    ],
+    "scope": "三个完整查询方法，原文件第 68—88 行；只增加中文注释。已有两个 view 重载留在原类中，不参与本题填空。",
+    "context": [
+      "已有成员 UserMembershipMapper memberships，它提供 selectOne(LambdaQueryWrapper<UserMembership>)。",
+      "已有 private static UserMembershipView view(UserMembership membership)，把会员实体转换为展示 VO。",
+      "已导入 com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper、UserMembership、UserMembershipView、ActiveMembershipBenefit、java.util.Optional、java.time.LocalDateTime。",
+      "ActiveMembershipBenefit 构造顺序：membershipLevel、discountBasisPoints、dailyDrawBonus、pointsMultiplierBasisPoints、expiresAt。",
+      "userId 由调用方确定；三个方法不在此自行读取登录上下文。到期过滤在数据库查询条件里完成。"
+    ],
+    "requirements": [
+      "[M02-1] getMine 只用 userId 等值条件查询 UserMembership，不添加到期条件。",
+      "[M02-2] 用 Optional.ofNullable 包装 getMine 的查询结果，并 map 到已有 view 方法。",
+      "[M02-3] 单参数 activeBenefit 使用 LocalDateTime.now()，委托给双参数重载。",
+      "[M02-4] 双参数 activeBenefit 同时使用 userId 等值条件和 expiresAt > now 条件；到期时间等于 now 时不算有效。",
+      "[M02-5] 用 Optional 包装有效会员查询结果，并按既定构造顺序生成 ActiveMembershipBenefit。"
+    ],
+    "starter": "public Optional<UserMembershipView> getMine(long userId) {\n    // TODO [M02-1]：构造限定到指定用户的会员查询。\n\n    // TODO [M02-2]：包装可能为空的结果，并通过 view 转换展示信息。\n\n}\n\npublic Optional<ActiveMembershipBenefit> activeBenefit(long userId) {\n    // TODO [M02-3]：取得当前时间并委托给另一个重载。\n\n}\n\npublic Optional<ActiveMembershipBenefit> activeBenefit(long userId, LocalDateTime now) {\n    // TODO [M02-4]：构造用户条件与严格到期条件并查询。\n\n    // TODO [M02-5]：包装结果并映射五个权益字段。\n\n}",
+    "answer": "public Optional<UserMembershipView> getMine(long userId) {\n    // [M02-1]：查看会员记录只限定用户，即使会员到期也可展示这条记录。\n    return Optional.ofNullable(memberships.selectOne(new LambdaQueryWrapper<UserMembership>()\n                    .eq(UserMembership::getUserId, userId)))\n            // [M02-2]：没有记录就得到空 Optional，有记录才执行 VO 转换。\n            .map(MembershipQueryService::view);\n}\n\npublic Optional<ActiveMembershipBenefit> activeBenefit(long userId) {\n    // [M02-3]：统一委托到支持指定时间的重载，便于调用与验证边界。\n    return activeBenefit(userId, LocalDateTime.now());\n}\n\npublic Optional<ActiveMembershipBenefit> activeBenefit(long userId, LocalDateTime now) {\n    // [M02-4]：有效权益要求同一用户，且到期时间严格晚于传入时间。\n    return Optional.ofNullable(memberships.selectOne(new LambdaQueryWrapper<UserMembership>()\n                    .eq(UserMembership::getUserId, userId)\n                    .gt(UserMembership::getExpiresAt, now)))\n            // [M02-5]：把实体中保存的权益字段和到期时间完整映射出去。\n            .map(membership -> new ActiveMembershipBenefit(\n                    membership.getMembershipLevel(),\n                    membership.getDiscountBasisPoints(),\n                    membership.getDailyDrawBonus(),\n                    membership.getPointsMultiplierBasisPoints(),\n                    membership.getExpiresAt()));\n}",
+    "explanation": [
+      "getMine 的展示查询保留已到期记录；activeBenefit 的权益查询通过 SQL 条件过滤到期记录。",
+      "Optional.ofNullable 允许 Mapper 返回 null，后续 map 不会在空结果上执行。",
+      "本实现只检查 expiresAt，不额外加入 startsAt 条件；请按真实查询完成练习。",
+      "双参数重载可以传入固定 now，检查恰好到期的边界时不必依赖系统当前时间。"
+    ],
+    "checks": [
+      "memberships.selectOne 返回 null：getMine 与双参数 activeBenefit 都返回 Optional.empty()。",
+      "数据库记录 expiresAt > now，级别 GOLD、折扣 9000、每日抽奖奖励 2、积分倍率 12000：权益返回值完整保留这五项字段。",
+      "记录 expiresAt == now 或早于 now：有效权益查询没有结果；getMine 仍可展示该用户的会员记录。",
+      "检查生成的查询条件：getMine 含 user_id =；activeBenefit 同时含 user_id = 和 expires_at >。",
+      "若只用 Mock 验证，除了返回值还需核对查询条件；Mock 不会自动替数据库执行 expiresAt 过滤。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "M03",
+    "service": "membership",
+    "title": "新增会员商品并转换编码重复异常",
+    "level": "基础",
+    "minutes": 20,
+    "tags": [
+      "新增",
+      "DTO",
+      "事务",
+      "异常转换"
+    ],
+    "purpose": "管理员提交会员商品时，校验卡种与天数一致性，保存商品与权益配置，并向页面返回新商品；编码冲突使用会员领域错误表达。",
+    "component": "MembershipProductAdminService 是会员商品管理组件；DTO 描述创建输入，Mapper 写库，MembershipErrorCode 统一业务错误。",
+    "sources": [
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipProductAdminService.java",
+        "symbol": "create",
+        "line": 23
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipProductAdminService.java",
+        "symbol": "durationDays",
+        "line": 50
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/dto/CreateMembershipProductCommand.java",
+        "symbol": "CreateMembershipProductCommand",
+        "line": 11
+      }
+    ],
+    "scope": "完整 create 方法与事务注解，原文件第 22—48 行；只增加中文注释。当前会员管理服务只实现新增，本题不虚构修改或删除接口。",
+    "context": [
+      "已有成员 MembershipProductMapper products；已有 durationDays(MembershipCardType) 返回 MONTH=30、QUARTER=90、YEAR=365。",
+      "已有 error(MembershipErrorCode) 返回 MembershipDomainException；使用 PRODUCT_INVALID 与 PRODUCT_DUPLICATE。",
+      "CreateMembershipProductCommand 在控制器通过 @Valid 校验非空、长度和数值范围；本方法继续检查卡种与 durationDays 是否一致。",
+      "已导入 CreateMembershipProductCommand、MembershipProduct、MembershipProductView、MembershipErrorCode、org.springframework.dao.DuplicateKeyException、org.springframework.transaction.annotation.Transactional。",
+      "MembershipProductView 构造顺序为 ID、编码、名称、级别、卡种、天数、分价、折扣基点、每日抽奖奖励、积分倍率基点、状态。"
+    ],
+    "requirements": [
+      "[M03-1] command 或 cardType 为空，或 durationDays 与卡种预设天数不符时，抛 error(PRODUCT_INVALID)。",
+      "[M03-2] 新建 MembershipProduct；对 productCode、productName、membershipLevel 执行 trim，并设置卡种。",
+      "[M03-3] 保存 durationDays 与 priceCent；价格单位为分，不做元与分的额外换算。",
+      "[M03-4] 保存折扣、每日抽奖奖励、积分倍率，并将 status 设为 1。",
+      "[M03-5] 在 try 中 insert，捕获 DuplicateKeyException 后转换为 error(PRODUCT_DUPLICATE)。",
+      "[M03-6] 将写库后的 product 完整转换为 MembershipProductView 并返回，包含 Mapper 回填的 ID。"
+    ],
+    "starter": "@Transactional\npublic MembershipProductView create(CreateMembershipProductCommand command) {\n    // TODO [M03-1]：写出卡种与天数一致性的校验分支。\n\n    // TODO [M03-2]：创建实体，清理三个文本字段，设置卡种。\n\n    // TODO [M03-3]：设置商品有效天数与分价。\n\n    // TODO [M03-4]：设置完整权益字段和启用状态。\n\n    // TODO [M03-5]：插入实体，并将数据库编码重复异常转为领域错误。\n\n    // TODO [M03-6]：按 VO 构造顺序返回保存后的完整商品。\n\n}",
+    "answer": "@Transactional\npublic MembershipProductView create(CreateMembershipProductCommand command) {\n    // [M03-1]：服务层再检查卡种与天数，拒绝不一致的商品配置。\n    if (command == null || command.cardType() == null\n            || command.durationDays() != durationDays(command.cardType())) {\n        throw error(MembershipErrorCode.PRODUCT_INVALID);\n    }\n    // [M03-2]：构造持久化实体，对编码、名称、级别去掉首尾空白。\n    MembershipProduct product = new MembershipProduct();\n    product.setProductCode(command.productCode().trim());\n    product.setProductName(command.productName().trim());\n    product.setMembershipLevel(command.membershipLevel().trim());\n    product.setCardType(command.cardType());\n    // [M03-3]：保存已校验的有效天数与分价。\n    product.setDurationDays(command.durationDays());\n    product.setPriceCent(command.priceCent());\n    // [M03-4]：保存三类权益数值，并默认启用新商品。\n    product.setDiscountBasisPoints(command.discountBasisPoints());\n    product.setDailyDrawBonus(command.dailyDrawBonus());\n    product.setPointsMultiplierBasisPoints(command.pointsMultiplierBasisPoints());\n    product.setStatus(1);\n    // [M03-5]：将数据库唯一键冲突转换为项目定义的会员商品重复错误。\n    try {\n        products.insert(product);\n    } catch (DuplicateKeyException exception) {\n        throw error(MembershipErrorCode.PRODUCT_DUPLICATE);\n    }\n    // [M03-6]：返回写库后的实体信息，保留生成的 ID 与全部商品字段。\n    return new MembershipProductView(product.getId(), product.getProductCode(), product.getProductName(),\n            product.getMembershipLevel(), product.getCardType(), product.getDurationDays(), product.getPriceCent(),\n            product.getDiscountBasisPoints(), product.getDailyDrawBonus(),\n            product.getPointsMultiplierBasisPoints(), product.getStatus());\n}",
+    "explanation": [
+      "卡种天数由已有 durationDays 方法定义；创建输入中的 durationDays 不能独立覆盖这套规则。",
+      "控制器的 Bean Validation 与服务里的业务一致性检查各有范围；直接调用本方法时，仍应满足 DTO 的非空字段前置条件。",
+      "不先查再插来判断编码重复，而是在 insert 的数据库冲突处转换错误。",
+      "创建 DTO 允许 priceCent=0；当前购买快照查询另有价格必须大于 0 的条件，本题不修改创建行为。"
+    ],
+    "checks": [
+      "MONTH 配合 durationDays=30，编码“ MONTH_CARD ”、名称“ 月卡 ”：保存值为 MONTH_CARD 与月卡，状态为 1。",
+      "QUARTER 配合 durationDays=30：抛 PRODUCT_INVALID，products.insert 不执行。",
+      "products.insert 抛 DuplicateKeyException：对外转换为 PRODUCT_DUPLICATE。",
+      "Mapper 插入后回填 ID=100：返回 MembershipProductView 的 ID 为 100，价格和三个权益字段与输入一致。",
+      "已通过 DTO 校验且 priceCent=0 的新增请求：按原实现保存，不在本方法附加价格必须正数的条件。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "M04",
+    "service": "membership",
+    "title": "消费支付成功事实并按购买快照发放会员",
+    "level": "综合",
+    "minutes": 25,
+    "tags": [
+      "支付消息",
+      "快照",
+      "幂等",
+      "会员发放"
+    ],
+    "purpose": "会员购买支付成功消息到达后，以订单号作为发放业务身份，使用付款时固定的会员购买快照发放权益，重复消息不会重复延期。",
+    "component": "MembershipPaySuccessListener 将 Rabbit 消息委托给 MembershipRewardGrantService；本题实现 grantPaidPurchase 的完整消费业务，消息监听器本身已存在。",
+    "sources": [
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/service/MembershipRewardGrantService.java",
+        "symbol": "grantPaidPurchase",
+        "line": 78
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/listener/MembershipPaySuccessListener.java",
+        "symbol": "listen",
+        "line": 20
+      },
+      {
+        "path": "hm-api/src/main/java/com/dongqh/hmapi/dto/PaySuccessMessage.java",
+        "symbol": "PaySuccessMessage",
+        "line": 18
+      }
+    ],
+    "scope": "完整 grantPaidPurchase 方法及 READ_COMMITTED 事务注解，原文件第 77—108 行；只增加中文注释。监听器、消息 DTO 校验与 grantOne 不参与本题填写。",
+    "context": [
+      "已有成员 MembershipGrantRecordMapper grants；已有 grantOne(String, long, MembershipProduct, int, LocalDateTime) 执行会员入账。",
+      "监听器的 @RabbitListener 绑定 MembershipPayMessagingConfiguration.QUEUE，listen(PaySuccessMessage message) 已调用 grants.grantPaidPurchase(message)。",
+      "PaySuccessMessage 含 orderId、userId、amount（Integer 分）、paidAt、orderDomain、couponId、membershipPurchase；构造时已校验金额为正且 paidAt 非空。",
+      "MembershipPurchaseSnapshotDTO 保存 productId、productCode、productName、membershipLevel、durationDays、priceCent、discountBasisPoints、dailyDrawBonus、pointsMultiplierBasisPoints。",
+      "已导入 OrderDomain、PaySuccessMessage、MembershipPurchaseSnapshotDTO、MembershipGrantRecord、MembershipProduct、java.util.Objects、java.time.temporal.ChronoUnit。",
+      "使用 Transactional、Isolation、ResponseStatusException、HttpStatus；本方法按已付订单快照构造商品，不查询当前商品或当前用户状态。"
+    ],
+    "requirements": [
+      "[M04-1] 拒绝空事件、非 MEMBERSHIP 订单、缺少购买快照、带 couponId、金额不等于快照分价的事件；抛 CONFLICT，消息为“会员支付事件无效”。",
+      "[M04-2] 取出购买快照，用 PAY-M- + event.orderId() 构造业务号，并锁定查询已有发放记录。",
+      "[M04-3] 存在记录时，用 ChronoUnit.DAYS 计算发放天数；用户、产品或天数不同则抛 CONFLICT“会员购买幂等键冲突”，完全一致则 return。",
+      "[M04-4] 没有记录时，新建 MembershipProduct，并从快照填写 ID、编码、名称、级别和有效天数。",
+      "[M04-5] 从快照填写分价与三项权益参数，再将临时商品状态设为 1。",
+      "[M04-6] 调用 grantOne，传入支付业务号、事件用户、快照商品、快照天数与 event.paidAt()，不要使用消费时的当前时间。"
+    ],
+    "starter": "@Transactional(isolation = Isolation.READ_COMMITTED)\npublic void grantPaidPurchase(PaySuccessMessage event) {\n    // TODO [M04-1]：校验消息属于完整且合法的会员支付事实。\n\n    // TODO [M04-2]：取得快照，创建订单级业务号，并查找发放记录。\n\n    // TODO [M04-3]：完整处理重复消息的一致性检查与提前返回。\n\n    // TODO [M04-4]：从快照构造商品身份、级别与期限。\n\n    // TODO [M04-5]：从快照构造价格、权益和状态。\n\n    // TODO [M04-6]：按支付发生时间执行一次会员入账。\n\n}",
+    "answer": "@Transactional(isolation = Isolation.READ_COMMITTED)\npublic void grantPaidPurchase(PaySuccessMessage event) {\n    // [M04-1]：只处理不使用优惠券、金额与购买快照一致的会员支付消息。\n    if (event == null || event.orderDomain() != OrderDomain.MEMBERSHIP\n            || event.membershipPurchase() == null || event.couponId() != null\n            || event.amount().longValue() != event.membershipPurchase().priceCent()) {\n        throw new ResponseStatusException(HttpStatus.CONFLICT, \"会员支付事件无效\");\n    }\n    // [M04-2]：订单号是购买发放的业务身份，同一订单的重复消息复用同一业务号。\n    MembershipPurchaseSnapshotDTO snapshot = event.membershipPurchase();\n    String businessNo = \"PAY-M-\" + event.orderId();\n    MembershipGrantRecord existing = grants.selectByBusinessNoForUpdate(businessNo);\n    // [M04-3]：已有发放记录要核对用户、商品和天数，完全一致就直接返回。\n    if (existing != null) {\n        long grantedDays = ChronoUnit.DAYS.between(existing.getStartsAt(), existing.getExpiresAt());\n        if (!Objects.equals(existing.getUserId(), event.userId())\n                || !Objects.equals(existing.getMembershipProductId(), snapshot.productId())\n                || grantedDays != snapshot.durationDays()) {\n            throw new ResponseStatusException(HttpStatus.CONFLICT, \"会员购买幂等键冲突\");\n        }\n        return;\n    }\n    // [M04-4]：会员商品身份和期限以订单内固定的购买快照为准。\n    MembershipProduct product = new MembershipProduct();\n    product.setId(snapshot.productId());\n    product.setProductCode(snapshot.productCode());\n    product.setProductName(snapshot.productName());\n    product.setMembershipLevel(snapshot.membershipLevel());\n    product.setDurationDays(snapshot.durationDays());\n    // [M04-5]：价格和权益同样来自快照，构造供入账使用的启用商品。\n    product.setPriceCent(snapshot.priceCent());\n    product.setDiscountBasisPoints(snapshot.discountBasisPoints());\n    product.setDailyDrawBonus(snapshot.dailyDrawBonus());\n    product.setPointsMultiplierBasisPoints(snapshot.pointsMultiplierBasisPoints());\n    product.setStatus(1);\n    // [M04-6]：按付款时间入账，使迟到或重放消息保持原来的生效时间依据。\n    grantOne(businessNo, event.userId(), product, snapshot.durationDays(), event.paidAt());\n}",
+    "explanation": [
+      "PAY-M- 业务号使用 orderId，eventId 不用来决定是否再次发放。",
+      "相比奖励 grant，购买重放还检查流水所覆盖的天数，避免同一订单被改成不同期限。",
+      "构造的 MembershipProduct 仅用于传递快照条款，不调用产品 Mapper 去覆盖当前商品配置。",
+      "paidAt 是付款事实的时间；如果使用 LocalDateTime.now()，消息延迟会改变本次发放的时间依据。"
+    ],
+    "checks": [
+      "首次收到合法 MEMBERSHIP 事件，orderId=900、快照天数 30：调用 grantOne，业务号为 PAY-M-900，effectiveAt 为 event.paidAt()。",
+      "同一订单重复到达，已有流水用户、产品、天数均匹配：直接返回，不再次调用 grantOne。",
+      "已有流水天数为 90，事件快照天数为 30：抛 CONFLICT“会员购买幂等键冲突”。",
+      "合法 TRADE 事件或传入 null：抛 CONFLICT“会员支付事件无效”。",
+      "修改当前商品表的权益后重放支付事实：本方法仍以消息快照为依据；若已有匹配流水则直接返回。",
+      "couponId 非空或金额与快照不符通常会先被 PaySuccessMessage 构造器拒绝；本方法仍保留对应事件防御条件。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "M05",
+    "service": "membership",
+    "title": "配置会员支付 Rabbit 主队列与死信拓扑",
+    "level": "进阶",
+    "minutes": 20,
+    "tags": [
+      "RabbitMQ",
+      "配置注解",
+      "Bean",
+      "死信队列"
+    ],
+    "purpose": "消息功能启用时声明会员支付主交换机、主队列、死信交换机、死信队列及其绑定，供支付消息监听器消费。",
+    "component": "MembershipPayMessagingConfiguration 是 Rabbit 拓扑配置组件；Declarables 将交换机、队列和绑定作为一个 Bean 交给 Spring AMQP。",
+    "sources": [
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/config/MembershipPayMessagingConfiguration.java",
+        "symbol": "MembershipPayMessagingConfiguration",
+        "line": 14
+      },
+      {
+        "path": "membership-service/src/main/java/com/dongqh/membershipservice/membership/config/MembershipPayMessagingConfiguration.java",
+        "symbol": "membershipPayTopology",
+        "line": 22
+      },
+      {
+        "path": "membership-service/src/main/resources/application.yml",
+        "symbol": "membership.messaging.enabled",
+        "line": 38
+      }
+    ],
+    "scope": "完整配置类的注解、常量与 Bean 方法，原文件第 12—31 行；package 和 imports 由上下文提供，只增加中文注释。保持当前主队列没有显式 deadLetterRoutingKey 的配置。",
+    "context": [
+      "已导入 org.springframework.amqp.core.BindingBuilder、Declarables、DirectExchange、Queue、QueueBuilder。",
+      "已导入 org.springframework.boot.autoconfigure.condition.ConditionalOnProperty、org.springframework.context.annotation.Bean、Configuration。",
+      "已有常量值：EXCHANGE=pay.direct、DLX=pay.dlx、ROUTING_KEY=pay.membership.success、QUEUE=membership.pay.success.queue、DLQ=membership.pay.success.dlq。",
+      "application.yml 的 membership.messaging.enabled 来自 ${MEMBERSHIP_MESSAGING_ENABLED:false}；同一开关还用于 Rabbit 动态声明和监听器自动启动。",
+      "同名监听器 MembershipPaySuccessListener 也使用 enabled=true 的条件，并通过 QUEUE 常量订阅主队列。"
+    ],
+    "requirements": [
+      "[M05-1] 添加 @Configuration(proxyBeanMethods = false)，并在 membership.messaging.enabled 明确为 true 时启用此类；不添加 matchIfMissing=true。",
+      "[M05-2] 将 membershipPayTopology 注册为 @Bean，返回 Declarables。",
+      "[M05-3] 使用给定 EXCHANGE、DLX 创建两个持久化且不自动删除的 DirectExchange。",
+      "[M05-4] 创建持久化主队列并设置 deadLetterExchange(DLX)，再创建持久化死信队列。",
+      "[M05-5] 在 Declarables 中返回两个交换机、两个队列与两条绑定：主队列绑定 EXCHANGE，死信队列绑定 DLX，均用 ROUTING_KEY。"
+    ],
+    "starter": "// TODO [M05-1]：补齐配置类注解与 membership.messaging.enabled 条件。\n\npublic class MembershipPayMessagingConfiguration {\n    public static final String EXCHANGE = \"pay.direct\";\n    public static final String DLX = \"pay.dlx\";\n    public static final String ROUTING_KEY = \"pay.membership.success\";\n    public static final String QUEUE = \"membership.pay.success.queue\";\n    public static final String DLQ = \"membership.pay.success.dlq\";\n\n    // TODO [M05-2]：在方法上注册 Bean。\n\n    public Declarables membershipPayTopology() {\n        // TODO [M05-3]：创建主交换机与死信交换机。\n\n        // TODO [M05-4]：创建两个队列，并配置主队列的死信交换机。\n\n        // TODO [M05-5]：创建两条绑定，返回包含全部声明的 Declarables。\n\n    }\n}",
+    "answer": "// [M05-1]：仅在消息开关明确为 true 时加载拓扑配置，关闭配置方法代理。\n@Configuration(proxyBeanMethods = false)\n@ConditionalOnProperty(prefix = \"membership.messaging\", name = \"enabled\", havingValue = \"true\")\npublic class MembershipPayMessagingConfiguration {\n    public static final String EXCHANGE = \"pay.direct\";\n    public static final String DLX = \"pay.dlx\";\n    public static final String ROUTING_KEY = \"pay.membership.success\";\n    public static final String QUEUE = \"membership.pay.success.queue\";\n    public static final String DLQ = \"membership.pay.success.dlq\";\n\n    // [M05-2]：将交换机、队列与绑定作为一个可声明的 Bean 返回。\n    @Bean\n    public Declarables membershipPayTopology() {\n        // [M05-3]：两个 DirectExchange 都持久化，并且不会自动删除。\n        DirectExchange exchange = new DirectExchange(EXCHANGE, true, false);\n        DirectExchange deadLetterExchange = new DirectExchange(DLX, true, false);\n        // [M05-4]：持久化主队列设置死信交换机，死信队列也持久化。\n        Queue queue = QueueBuilder.durable(QUEUE).deadLetterExchange(DLX).build();\n        Queue deadLetterQueue = QueueBuilder.durable(DLQ).build();\n        // [M05-5]：两个队列各绑定自己的交换机，使用一致的会员支付路由键。\n        return new Declarables(exchange, deadLetterExchange, queue, deadLetterQueue,\n                BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY),\n                BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(ROUTING_KEY));\n    }\n}",
+    "explanation": [
+      "这里的条件开关不会在配置缺失时默认启用；仓库 YAML 的默认开关也是 false。",
+      "DirectExchange 的第二个构造参数 true 表示 durable，第三个 false 表示 autoDelete=false。",
+      "主队列设置的是 deadLetterExchange(DLX)，死信队列通过独立 Binding 连接到 DLX；两处都要写完整。",
+      "Declarables 包含六项声明：两个交换机、两个队列、两个绑定。创建 Bean 并不等同于已经收到或处理支付消息。"
+    ],
+    "checks": [
+      "membership.messaging.enabled=true：配置类满足条件，Bean 中包含两个 DirectExchange、两个 Queue、两条 Binding。",
+      "membership.messaging.enabled=false 或未提供该属性：配置类不满足条件，不注册本拓扑 Bean。",
+      "检查主队列声明参数：durable=true，dead-letter-exchange=pay.dlx。",
+      "检查绑定：membership.pay.success.queue 绑定 pay.direct，membership.pay.success.dlq 绑定 pay.dlx，两条 routing key 均为 pay.membership.success。",
+      "队列或交换机名称必须来自给定常量，与监听器 QUEUE 一致；不要把死信队列作为正常支付监听目标。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "F01",
+    "service": "fulfillment",
+    "title": "幂等创建履约任务并写入就绪 Outbox",
+    "level": "综合",
+    "minutes": 30,
+    "tags": [
+      "创建任务",
+      "幂等",
+      "并发",
+      "Outbox"
+    ],
+    "purpose": "业务服务提交履约请求时，同一履约号和相同请求返回已有任务，首次请求创建 PENDING 任务，并在同一事务里记录待发送的就绪事件。",
+    "component": "FulfillmentTaskCreationService 是履约写入入口；Repository 保存任务，请求指纹识别冲突，FulfillmentTaskReadyOutbox 保存可靠消息事件。",
+    "sources": [
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/service/FulfillmentTaskCreationService.java",
+        "symbol": "create",
+        "line": 44
+      },
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/service/FulfillmentTaskCreationService.java",
+        "symbol": "requireSameRequest",
+        "line": 80
+      },
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/service/FulfillmentTaskCreationService.java",
+        "symbol": "fingerprint",
+        "line": 95
+      }
+    ],
+    "scope": "完整 create 方法与 READ_COMMITTED 注解，原文件第 43—78 行；只增加中文注释。序列化、指纹计算和请求一致性辅助方法已存在，不把整套类复制进练习。",
+    "context": [
+      "已有成员 FulfillmentTaskRepository repository、FulfillmentTaskReadyOutbox outbox、tools.jackson.databind.ObjectMapper json、java.time.Clock clock。",
+      "CreateFulfillmentTaskCommand 构造器已检查业务标识、目标用户、履约类型与 payload 一致性；maxAttempts 默认 5，范围 1—100。",
+      "已有 serialize(command) 生成 payload JSON；fingerprint(command, payload) 计算 SHA-256，请求内容包含来源、类型、目标用户、maxAttempts 和 payload。",
+      "已有 requireSameRequest(task, fingerprint)：指纹不同时抛 FulfillmentTaskIdempotencyConflictException，否则返回 task。",
+      "repository.findByFulfillmentNo 返回 Optional<FulfillmentTaskRecord>；insert 返回带 ID 的记录，唯一键竞争时抛 DuplicateFulfillmentTaskException。",
+      "已导入 FulfillmentTaskRecord、CreateFulfillmentTaskCommand、FulfillmentStatus、DuplicateFulfillmentTaskException、Transactional、Isolation、LocalDateTime；本项目 Jackson 类型来自 tools.jackson，沿用 Boot 4 的实际导入。",
+      "FulfillmentTaskRecord 构造顺序：id、fulfillmentNo、sourceType、sourceId、fulfillmentType、targetUserId、requestPayload、requestFingerprint、status、attemptCount、maxAttempts、nextAttemptAt；最后一个时间字段是下次尝试时间。"
+    ],
+    "requirements": [
+      "[F01-1] 调用 serialize 与 fingerprint，生成待保存快照和请求内容指纹。",
+      "[F01-2] 按 fulfillmentNo 查询；已有任务则调用 requireSameRequest 并返回。",
+      "[F01-3] 构造候选任务：ID 为 null，复制业务身份、履约类型与目标用户，保存 payload 与指纹，状态 PENDING，attemptCount=0，maxAttempts 来自命令，nextAttemptAt 为 LocalDateTime.now(clock)。",
+      "[F01-4] 尝试 insert；捕获 DuplicateFulfillmentTaskException 后再次查询同号记录，校验指纹并返回；仍查不到时重新抛原 race。",
+      "[F01-5] 只有本次成功插入任务，才调用 outbox.appendTaskReady(created.fulfillmentNo())。",
+      "[F01-6] 返回 created；保留事务范围，让任务和 Outbox 在同一个事务中写入。"
+    ],
+    "starter": "@Transactional(isolation = Isolation.READ_COMMITTED)\npublic FulfillmentTaskRecord create(CreateFulfillmentTaskCommand command) {\n    // TODO [F01-1]：生成 payload 快照和请求指纹。\n\n    // TODO [F01-2]：完整处理已存在任务的幂等返回或冲突。\n\n    // TODO [F01-3]：构造完整的 PENDING 候选任务。\n\n    // TODO [F01-4]：插入任务，并完整处理唯一键并发竞争。\n\n    // TODO [F01-5]：给本次新建任务追加就绪 Outbox 事件。\n\n    // TODO [F01-6]：返回真正写入数据库的任务。\n\n}",
+    "answer": "@Transactional(isolation = Isolation.READ_COMMITTED)\npublic FulfillmentTaskRecord create(CreateFulfillmentTaskCommand command) {\n    // [F01-1]：先固定 payload 快照，再计算包含请求业务内容的指纹。\n    String payload = serialize(command);\n    String fingerprint = fingerprint(command, payload);\n    // [F01-2]：同号任务已经存在时，只有指纹一致才允许作为幂等结果返回。\n    var existing = repository.findByFulfillmentNo(command.fulfillmentNo());\n    if (existing.isPresent()) {\n        return requireSameRequest(existing.get(), fingerprint);\n    }\n\n    // [F01-3]：新任务从 PENDING 和零执行次数开始，时间来自可注入时钟。\n    FulfillmentTaskRecord candidate = new FulfillmentTaskRecord(\n            null,\n            command.fulfillmentNo(),\n            command.sourceType(),\n            command.sourceId(),\n            command.fulfillmentType(),\n            command.targetUserId(),\n            payload,\n            fingerprint,\n            FulfillmentStatus.PENDING,\n            0,\n            command.maxAttempts(),\n            LocalDateTime.now(clock)\n    );\n\n    // [F01-4]：插入竞争失败时重新读同号任务，仍校验内容，查不到则抛回原异常。\n    FulfillmentTaskRecord created;\n    try {\n        created = repository.insert(candidate);\n    } catch (DuplicateFulfillmentTaskException race) {\n        return repository.findByFulfillmentNo(command.fulfillmentNo())\n                .map(task -> requireSameRequest(task, fingerprint))\n                .orElseThrow(() -> race);\n    }\n\n    // [F01-5]：仅成功创建者写就绪事件，重复请求不会重复追加。\n    outbox.appendTaskReady(created.fulfillmentNo());\n    // [F01-6]：返回 Repository 生成的已保存任务。\n    return created;\n}",
+    "explanation": [
+      "同一个履约号只有请求内容也一致时才是合法重试；换用户、换 payload 或换 maxAttempts 会改变指纹。",
+      "第一次查询不能消除并发插入竞争，所以 DuplicateFulfillmentTaskException 分支仍要重新读取并比较指纹。",
+      "已有任务分支和插入竞争分支都直接返回；Outbox 只在当前插入成功后追加。",
+      "Outbox 记录表示事件等待可靠发送；这个方法不直接调用 RabbitMQ，也不执行奖品发放。"
+    ],
+    "checks": [
+      "首次提交合法请求、repository 中无同号任务：插入状态 PENDING、attemptCount=0 的任务，Outbox 追加一次，返回带 ID 的记录。",
+      "已有同号同指纹任务：返回已有任务，insert 与 appendTaskReady 均不执行。",
+      "已有同号任务但 targetUserId、payload 或 maxAttempts 变化：requireSameRequest 抛 FulfillmentTaskIdempotencyConflictException。",
+      "insert 抛重复异常，重查得到同指纹任务：返回竞争获胜者，不追加 Outbox。",
+      "insert 抛重复异常，重查仍为空：抛出捕获到的原 DuplicateFulfillmentTaskException。",
+      "固定 Clock 后调用 create：候选记录的 nextAttemptAt 等于 LocalDateTime.now(clock)，不会绕过注入时钟。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "F02",
+    "service": "fulfillment",
+    "title": "计算有上限且防溢出的指数退避时间",
+    "level": "进阶",
+    "minutes": 15,
+    "tags": [
+      "重试",
+      "Duration",
+      "指数退避",
+      "边界"
+    ],
+    "purpose": "履约失败等待重试时，根据执行次数扩大基础等待时间，并限制在最大延迟内，避免长次数或 Duration 乘法溢出破坏重试调度。",
+    "component": "FulfillmentTransitionPolicy 的 backoff 是状态转换的退避辅助方法；本题只计算时间，不改数据库，也不调用远程网关。",
+    "sources": [
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/domain/FulfillmentTransitionPolicy.java",
+        "symbol": "backoff",
+        "line": 47
+      },
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/service/FulfillmentTaskStateService.java",
+        "symbol": "FulfillmentTaskStateService",
+        "line": 41
+      }
+    ],
+    "scope": "完整 private backoff 方法，原文件第 47—56 行；只增加中文分步注释。正数配置校验由已有 FulfillmentTaskStateService 构造器负责，本题保持辅助方法的输入前置条件。",
+    "context": [
+      "在 FulfillmentTransitionPolicy 类内编写；已导入 java.time.Duration。",
+      "调用方已校验 baseDelay 为正数、maxDelay 非空且不小于 baseDelay；这里不重复写配置校验。",
+      "attempts 表示已经发生的执行次数；第 1 次失败使用 baseDelay，第 2 次使用两倍，后续按二的幂增长。",
+      "本方法为 private，可通过现有 resolve 方法观察重试时间，或在学习代码中单独验证计算结果。"
+    ],
+    "requirements": [
+      "[F02-1] 以 1L 左移生成倍率，指数为 Math.min(30, Math.max(0, attempts - 1))，保持原方法的 0—30 夹限。",
+      "[F02-2] 声明 Duration calculated，在 try 中调用 baseDelay.multipliedBy(multiplier)。",
+      "[F02-3] 仅捕获 ArithmeticException，发生乘法溢出时将 calculated 设为 maxDelay。",
+      "[F02-4] 比较 calculated 与 maxDelay；超过最大延迟则返回 maxDelay，否则返回 calculated。"
+    ],
+    "starter": "private Duration backoff(int attempts, Duration baseDelay, Duration maxDelay) {\n    // TODO [F02-1]：计算带指数夹限的 long 倍率。\n\n    // TODO [F02-2]：声明计算结果，并执行 Duration 乘法。\n\n    // TODO [F02-3]：完整处理 Duration 乘法的算术溢出。\n\n    // TODO [F02-4]：把正常计算或兜底结果限制到最大延迟后返回。\n\n}",
+    "answer": "// 退避辅助方法只返回等待 Duration，由状态转换方法计算下一次尝试时间。\nprivate Duration backoff(int attempts, Duration baseDelay, Duration maxDelay) {\n    // [F02-1]：第 1 次按一倍等待；对指数做 0—30 夹限，使用 long 左移。\n    long multiplier = 1L << Math.min(30, Math.max(0, attempts - 1));\n    // [F02-2]：先声明结果，try 内按倍数扩大基础 Duration。\n    Duration calculated;\n    try {\n        calculated = baseDelay.multipliedBy(multiplier);\n    // [F02-3]：Duration 运算溢出时改用最大延迟，让调度仍得到确定结果。\n    } catch (ArithmeticException exception) {\n        calculated = maxDelay;\n    }\n    // [F02-4]：正常结果也可能超过上限，比较后返回较小的延迟。\n    return calculated.compareTo(maxDelay) > 0 ? maxDelay : calculated;\n}",
+    "explanation": [
+      "倍率是 1、2、4、8 等；attempts=1 对应指数 0，因此第一次失败不额外翻倍。",
+      "指数夹限和 Duration 上限是两层限制：前者控制位移范围，后者控制业务允许等待多久。",
+      "ArithmeticException 兜底覆盖 Duration 乘法溢出；正常计算后的 compareTo 负责常见的封顶情况。",
+      "不要把本题改写成 Thread.sleep；它返回的是下一次尝试要使用的延迟值。"
+    ],
+    "checks": [
+      "baseDelay=2s、maxDelay=5s：attempts=1 返回 2s，attempts=2 返回 4s，attempts=3 返回 5s。",
+      "attempts=0、baseDelay=1s、maxDelay=30s：指数下限为 0，返回 1s。",
+      "attempts=40、baseDelay=1s、maxDelay=30s：指数封顶后计算结果仍封顶为 30s。",
+      "baseDelay=Duration.ofSeconds(Long.MAX_VALUE / 2 + 1)、maxDelay=Duration.ofSeconds(Long.MAX_VALUE)、attempts=2：乘法溢出被捕获，返回 maxDelay。",
+      "正常 calculated 恰好等于 maxDelay：返回该同等 Duration，不额外延长。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "F03",
+    "service": "fulfillment",
+    "title": "把网关结果转换为履约状态与下次时间",
+    "level": "综合",
+    "minutes": 25,
+    "tags": [
+      "状态机",
+      "重试",
+      "对账",
+      "switch"
+    ],
+    "purpose": "一次远程履约或查询结束后，按网关结果决定成功、待对账、等待重试、隔离或重新执行，并给出下次尝试和完成时间。",
+    "component": "FulfillmentTransitionPolicy 是纯领域状态转换组件；它返回 FulfillmentTransition，由已有状态服务负责保存结果和尝试记录。",
+    "sources": [
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/domain/FulfillmentTransitionPolicy.java",
+        "symbol": "resolve",
+        "line": 13
+      },
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/domain/FulfillmentTransition.java",
+        "symbol": "FulfillmentTransition",
+        "line": 8
+      }
+    ],
+    "scope": "完整 resolve 方法，原文件第 13—45 行；只增加中文注释。backoff 与 category 均为已有辅助方法；数据库结果落库不在本题范围。",
+    "context": [
+      "已导入 GatewayOutcome、AttemptOperation、FailureCategory、FulfillmentStatus、java.time.Duration、java.time.LocalDateTime。",
+      "FulfillmentTransition 构造顺序：status、nextAttemptAt、completedAt、failureCategory。",
+      "已有 category(outcome)：RETRYABLE_FAILURE 对应 RETRYABLE，PERMANENT_FAILURE 对应 PERMANENT，UNKNOWN 对应 UNKNOWN，其余返回 null。",
+      "已有 backoff(executionAttempts, baseDelay, maxDelay) 返回带最大延迟上限的指数退避 Duration。",
+      "executionAttempts 是累计执行次数，QUERY 不增加它；已有状态服务在调用前完成计数，本题不自行加一。",
+      "GatewayOutcome 枚举包含 SUCCEEDED、UNKNOWN、RETRYABLE_FAILURE、PERMANENT_FAILURE、NOT_FOUND。"
+    ],
+    "requirements": [
+      "[F03-1] 先调用 category(outcome)，再按 outcome 用 switch 表达式返回转换结果。",
+      "[F03-2] SUCCEEDED 转为 SUCCEEDED，nextAttemptAt=null、completedAt=now、failureCategory=null。",
+      "[F03-3] UNKNOWN 转为 RECONCILING，下次尝试为 now、完成时间为空、失败类别为 UNKNOWN。",
+      "[F03-4] RETRYABLE_FAILURE：executionAttempts >= maxAttempts 时隔离；否则 RETRY_WAITING，下次时间 now.plus(backoff(...))，保留相应失败类别。",
+      "[F03-5] PERMANENT_FAILURE 直接 QUARANTINED，无下次时间和完成时间，保留相应失败类别。",
+      "[F03-6] NOT_FOUND 要按操作区分：QUERY 转 PENDING 并立即可再尝试；EXECUTE 转 RETRY_WAITING 并使用退避。两者失败类别均为空，保持原实现对此分支不再检查 maxAttempts。"
+    ],
+    "starter": "public FulfillmentTransition resolve(\n        GatewayOutcome outcome,\n        AttemptOperation operation,\n        int executionAttempts,\n        int maxAttempts,\n        LocalDateTime now,\n        Duration baseDelay,\n        Duration maxDelay\n) {\n    // TODO [F03-1]：准备失败分类，并建立完整的 switch 表达式。\n\n    // TODO [F03-2]：写出成功结果的状态和两个时间字段。\n\n    // TODO [F03-3]：写出结果未知时的立即对账转换。\n\n    // TODO [F03-4]：写出可重试失败的次数上限和退避两个分支。\n\n    // TODO [F03-5]：写出永久失败的隔离转换。\n\n    // TODO [F03-6]：写出 NOT_FOUND 在查询与执行下的不同转换。\n\n}",
+    "answer": "public FulfillmentTransition resolve(\n        GatewayOutcome outcome,\n        AttemptOperation operation,\n        int executionAttempts,\n        int maxAttempts,\n        LocalDateTime now,\n        Duration baseDelay,\n        Duration maxDelay\n) {\n    // [F03-1]：先得到失败类别，再根据网关结果生成领域转换。\n    FailureCategory failureCategory = category(outcome);\n    return switch (outcome) {\n        // [F03-2]：成功保存完成时间，不再安排后续尝试。\n        case SUCCEEDED -> new FulfillmentTransition(FulfillmentStatus.SUCCEEDED, null, now, null);\n        // [F03-3]：未知结果进入对账，立即安排查询确认真实结果。\n        case UNKNOWN -> new FulfillmentTransition(\n                FulfillmentStatus.RECONCILING, now, null, FailureCategory.UNKNOWN);\n        // [F03-4]：可重试失败只有未达执行上限时才安排退避重试。\n        case RETRYABLE_FAILURE -> executionAttempts >= maxAttempts\n                ? new FulfillmentTransition(\n                        FulfillmentStatus.QUARANTINED, null, null, failureCategory)\n                : new FulfillmentTransition(\n                        FulfillmentStatus.RETRY_WAITING,\n                        now.plus(backoff(executionAttempts, baseDelay, maxDelay)),\n                        null,\n                        failureCategory);\n        // [F03-5]：永久失败无需继续自动尝试，直接进入隔离状态。\n        case PERMANENT_FAILURE -> new FulfillmentTransition(\n                FulfillmentStatus.QUARANTINED, null, null, failureCategory);\n        // [F03-6]：查询未找到可回到待执行；执行未找到则先按退避等待。\n        case NOT_FOUND -> operation == AttemptOperation.QUERY\n                ? new FulfillmentTransition(FulfillmentStatus.PENDING, now, null, null)\n                : new FulfillmentTransition(\n                        FulfillmentStatus.RETRY_WAITING,\n                        now.plus(backoff(executionAttempts, baseDelay, maxDelay)),\n                        null,\n                        null);\n    };\n}",
+    "explanation": [
+      "UNKNOWN 代表远程结果未确定，进入 RECONCILING 后通过查询确认，不能直接当作失败再次发放。",
+      "完成时间只在 SUCCEEDED 中写 now；等待重试、对账和隔离都不伪造成功完成时间。",
+      "可重试失败按已发生的 executionAttempts 与 maxAttempts 比较，不在转换方法里再增加次数。",
+      "NOT_FOUND 的判断取决于当前操作；原实现的 NOT_FOUND 分支不应用可重试失败的次数上限条件，练习不要擅自合并这两类结果。"
+    ],
+    "checks": [
+      "SUCCEEDED + EXECUTE：状态 SUCCEEDED，completedAt=now，nextAttemptAt 和 failureCategory 为空。",
+      "UNKNOWN + EXECUTE：状态 RECONCILING，nextAttemptAt=now，failureCategory=UNKNOWN。",
+      "RETRYABLE_FAILURE、executionAttempts=1、maxAttempts=5、baseDelay=2s、maxDelay=5s：状态 RETRY_WAITING，下次时间 now+2s。",
+      "RETRYABLE_FAILURE、executionAttempts=5、maxAttempts=5：状态 QUARANTINED，没有下次时间。",
+      "PERMANENT_FAILURE：状态 QUARANTINED，失败类别 PERMANENT。",
+      "NOT_FOUND + QUERY，即使 executionAttempts=5 且 maxAttempts=5：状态 PENDING，下次时间 now；NOT_FOUND + EXECUTE、executionAttempts=2、baseDelay=1s：下次时间 now+2s。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "F04",
+    "service": "fulfillment",
+    "title": "人工重试被隔离的履约任务",
+    "level": "进阶",
+    "minutes": 20,
+    "tags": [
+      "人工重试",
+      "行锁",
+      "状态机",
+      "Outbox"
+    ],
+    "purpose": "管理员选择隔离任务重试时，锁定任务并验证状态，把它恢复为待执行，记录隔离处理人和说明，再写入就绪事件。",
+    "component": "FulfillmentTaskOperationService 是人工运维操作组件；Repository 处理任务状态与隔离记录，Outbox 将恢复后的任务重新送入执行流程。",
+    "sources": [
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/service/FulfillmentTaskOperationService.java",
+        "symbol": "retryQuarantined",
+        "line": 39
+      },
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/persistence/JdbcFulfillmentTaskOperationRepository.java",
+        "symbol": "retryQuarantined",
+        "line": 30
+      }
+    ],
+    "scope": "完整 retryQuarantined 方法与事务注解，原文件第 38—53 行；只增加中文注释。Repository SQL、说明截断辅助方法与权限检查组件已存在，本题不把状态机操作变成记录删除。",
+    "context": [
+      "已有成员 FulfillmentTaskOperationRepository repository、FulfillmentTaskReadService tasks、FulfillmentTaskReadyOutbox outbox。",
+      "已有 requiredFulfillmentNo(value)：拒绝 null/空白并 trim；requireOperator(operatorId)：要求 ID 大于 0。",
+      "已有 safeNote(note)：空白返回 null，否则 trim 并截取最多 500 字符。",
+      "repository.lockByFulfillmentNo 返回 Optional<FulfillmentTaskOperationSnapshot>，快照含 id() 和 status()，查询使用 FOR UPDATE。",
+      "repository.retryQuarantined(taskId) 返回更新行数；已有 SQL 将任务设为 PENDING，清理租约及错误字段，并把 max_attempts 调整为 LEAST(100, attempt_count+5)。",
+      "repository.resolveQuarantine(taskId, resolution, operatorId, note) 更新隔离处理信息；tasks.get(normalized) 查询最新视图。",
+      "已导入 FulfillmentTaskView、FulfillmentStatus、Transactional；同包已有 FulfillmentTaskNotFoundException、FulfillmentTaskOperationNotAllowedException、FulfillmentTaskOperationConflictException。"
+    ],
+    "requirements": [
+      "[F04-1] 标准化履约号并校验 operatorId。",
+      "[F04-2] 使用锁定查询读取任务，缺失则抛 FulfillmentTaskNotFoundException(normalized)。",
+      "[F04-3] 仅允许 QUARANTINED 状态，否则抛 FulfillmentTaskOperationNotAllowedException(\"RETRY\", task.status())。",
+      "[F04-4] 调用 repository.retryQuarantined(task.id())，更新行数不为 1 时抛 FulfillmentTaskOperationConflictException(task.id())。",
+      "[F04-5] 用 \"RETRY\"、操作人和 safeNote(note) 记录隔离解决信息，然后追加规范化履约号的就绪 Outbox。",
+      "[F04-6] 查询并返回 tasks.get(normalized) 的最新视图，保留整个方法的事务。"
+    ],
+    "starter": "@Transactional\npublic FulfillmentTaskView retryQuarantined(String fulfillmentNo, long operatorId, String note) {\n    // TODO [F04-1]：标准化任务标识，并校验操作人。\n\n    // TODO [F04-2]：锁定查询任务，处理任务不存在。\n\n    // TODO [F04-3]：完整限制只有隔离状态可以人工重试。\n\n    // TODO [F04-4]：更新任务并检查受影响行数。\n\n    // TODO [F04-5]：记录隔离解决信息，追加待执行事件。\n\n    // TODO [F04-6]：返回恢复后的最新任务视图。\n\n}",
+    "answer": "@Transactional\npublic FulfillmentTaskView retryQuarantined(String fulfillmentNo, long operatorId, String note) {\n    // [F04-1]：先统一履约号格式，再检查有效操作人。\n    String normalized = requiredFulfillmentNo(fulfillmentNo);\n    requireOperator(operatorId);\n    // [F04-2]：锁住任务状态，避免同一任务的人工操作相互穿插。\n    var task = repository.lockByFulfillmentNo(normalized)\n            .orElseThrow(() -> new FulfillmentTaskNotFoundException(normalized));\n    // [F04-3]：只有已隔离任务可以使用本操作恢复执行。\n    if (task.status() != FulfillmentStatus.QUARANTINED) {\n        throw new FulfillmentTaskOperationNotAllowedException(\"RETRY\", task.status());\n    }\n    // [F04-4]：必须恰好更新一条任务，否则按操作冲突处理。\n    if (repository.retryQuarantined(task.id()) != 1) {\n        throw new FulfillmentTaskOperationConflictException(task.id());\n    }\n    // [F04-5]：记录本次人工处理，并在同一事务中写就绪事件。\n    repository.resolveQuarantine(task.id(), \"RETRY\", operatorId, safeNote(note));\n    outbox.appendTaskReady(normalized);\n    // [F04-6]：返回数据库中的最新任务视图。\n    return tasks.get(normalized);\n}",
+    "explanation": [
+      "人工重试是受状态限制的操作：PENDING、PROCESSING、SUCCEEDED 等状态不能通过此方法重复恢复。",
+      "锁定查询后还检查更新行数，要求本次状态写入确实作用于一条任务。",
+      "隔离记录保留处理人、解决方式和说明，任务继续存在，便于后续追踪。",
+      "已有 Repository 不把 attempt_count 清零，而是将新的 max_attempts 设为至多 attempt_count+5 且不超过 100；方法无需自行改计数。"
+    ],
+    "checks": [
+      "输入履约号“ F-100 ”、operatorId=9、任务为 QUARANTINED：所有后续按 F-100 操作，记录 RETRY，并追加一次就绪事件。",
+      "锁定查询为空：抛 FulfillmentTaskNotFoundException，不执行更新、隔离解决或 Outbox。",
+      "任务状态为 SUCCEEDED 或 PROCESSING：抛 FulfillmentTaskOperationNotAllowedException，操作名 RETRY。",
+      "repository.retryQuarantined 返回 0 或 2：抛 FulfillmentTaskOperationConflictException，不追加 Outbox。",
+      "note 为全空白：resolveQuarantine 收到 null；trim 后长度超过 500 时收到前 500 字符。",
+      "operatorId=0 或履约号为空白：已有参数校验辅助方法抛 IllegalArgumentException，尚未锁定查询。"
+    ],
+    "language": "java"
+  },
+  {
+    "id": "F05",
+    "service": "fulfillment",
+    "title": "配置定时租约恢复、常规执行与补偿执行",
+    "level": "进阶",
+    "minutes": 20,
+    "tags": [
+      "Scheduled",
+      "条件注解",
+      "Value",
+      "补偿"
+    ],
+    "purpose": "周期性恢复超时租约后处理已到期任务，并运行补偿批次，弥补消息或执行过程中的遗漏。",
+    "component": "FulfillmentScheduler 是履约调度组件；条件注解控制是否加载，@Value 注入恢复批量大小，@Scheduled 决定轮询时机。",
+    "sources": [
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/worker/FulfillmentScheduler.java",
+        "symbol": "FulfillmentScheduler",
+        "line": 11
+      },
+      {
+        "path": "fulfillment-service/src/main/java/com/dongqh/fulfillmentservice/worker/FulfillmentScheduler.java",
+        "symbol": "poll",
+        "line": 34
+      },
+      {
+        "path": "fulfillment-service/src/main/resources/application.yml",
+        "symbol": "luckyhub.fulfillment",
+        "line": 45
+      }
+    ],
+    "scope": "完整 FulfillmentScheduler 组件类，原文件第 9—39 行；package 和 imports 由上下文提供，只增加中文注释。保留构造器、调度注解与 poll，未将 Worker 内部流程塞入本题。",
+    "context": [
+      "已导入 FulfillmentTaskStateService、org.springframework.beans.factory.annotation.Value、org.springframework.boot.autoconfigure.condition.ConditionalOnProperty、org.springframework.scheduling.annotation.Scheduled、org.springframework.stereotype.Component。",
+      "FulfillmentWorker 与当前类同包，已有 runBatch() 和 runCompensationBatch()；state 已有 recoverExpiredLeases(int)。",
+      "已有三个 final 字段：state、worker、recoveryBatchSize；构造器需要保存这些成员。",
+      "恢复批量参数来自 luckyhub.fulfillment.recovery-batch-size，注解缺省值为 100。",
+      "@Scheduled 属性名为 luckyhub.fulfillment.poll-interval 与 initial-delay，注解回退值分别为 5s、60s。",
+      "仓库 application.yml 已给 poll-interval 默认 1s、initial-delay 默认 0s；存在这些属性时实际使用 YAML 值，不能把注解回退值当作仓库最终默认值。",
+      "启动类已有 @EnableScheduling，本题只完成调度组件。"
+    ],
+    "requirements": [
+      "[F05-1] 添加 @Component；用 luckyhub.messaging.enabled=true 的条件控制加载，并设置 matchIfMissing=true。",
+      "[F05-2] 在构造器 recoveryBatchSize 参数上添加 @Value(\"${luckyhub.fulfillment.recovery-batch-size:100}\")。",
+      "[F05-3] 校验恢复批量为 1—1000；不满足则抛 IllegalArgumentException，消息为“recoveryBatchSize必须为1到1000”。",
+      "[F05-4] 构造器保存 state、worker 与 recoveryBatchSize 三个成员。",
+      "[F05-5] 给 poll 添加 @Scheduled，固定延迟表达式为 ${luckyhub.fulfillment.poll-interval:5s}，首次延迟表达式为 ${luckyhub.fulfillment.initial-delay:60s}。",
+      "[F05-6] poll 严格依次调用 recoverExpiredLeases(recoveryBatchSize)、runBatch()、runCompensationBatch()。"
+    ],
+    "starter": "// TODO [F05-1]：注册组件，并配置消息开关条件及缺失时启用。\n\npublic class FulfillmentScheduler {\n    private final FulfillmentTaskStateService state;\n    private final FulfillmentWorker worker;\n    private final int recoveryBatchSize;\n\n    public FulfillmentScheduler(\n            FulfillmentTaskStateService state,\n            FulfillmentWorker worker,\n            // TODO [F05-2]：为下面参数补上带缺省值的 @Value 注解。\n\n            int recoveryBatchSize\n    ) {\n        // TODO [F05-3]：写出批量范围校验与异常。\n\n        // TODO [F05-4]：保存三个构造器依赖到成员字段。\n\n    }\n\n    // TODO [F05-5]：添加固定延迟与首次延迟的 @Scheduled 配置。\n\n    public void poll() {\n        // TODO [F05-6]：按顺序执行恢复租约、正常批次、补偿批次。\n\n    }\n}",
+    "answer": "// [F05-1]：启用条件组件；消息开关缺失时沿用本组件默认启用行为。\n@Component\n@ConditionalOnProperty(prefix = \"luckyhub.messaging\", name = \"enabled\", havingValue = \"true\", matchIfMissing = true)\npublic class FulfillmentScheduler {\n\n    private final FulfillmentTaskStateService state;\n    private final FulfillmentWorker worker;\n    private final int recoveryBatchSize;\n\n    public FulfillmentScheduler(\n            FulfillmentTaskStateService state,\n            FulfillmentWorker worker,\n            // [F05-2]：按配置注入每轮租约恢复批量，缺少属性时用 100。\n            @Value(\"${luckyhub.fulfillment.recovery-batch-size:100}\") int recoveryBatchSize\n    ) {\n        // [F05-3]：限制单轮恢复量，拒绝零、负数和过大的批量。\n        if (recoveryBatchSize < 1 || recoveryBatchSize > 1000) {\n            throw new IllegalArgumentException(\"recoveryBatchSize必须为1到1000\");\n        }\n        // [F05-4]：保存状态服务、执行 Worker 与本组件配置。\n        this.state = state;\n        this.worker = worker;\n        this.recoveryBatchSize = recoveryBatchSize;\n    }\n\n    // [F05-5]：使用可覆盖的固定延迟与首次延迟配置。\n    @Scheduled(\n            fixedDelayString = \"${luckyhub.fulfillment.poll-interval:5s}\",\n            initialDelayString = \"${luckyhub.fulfillment.initial-delay:60s}\"\n    )\n    public void poll() {\n        // [F05-6]：先恢复过期租约，再处理正常任务，最后运行补偿任务。\n        state.recoverExpiredLeases(recoveryBatchSize);\n        worker.runBatch();\n        worker.runCompensationBatch();\n    }\n}",
+    "explanation": [
+      "消息开关条件既用于此调度器，也用于 Worker；matchIfMissing=true 与会员拓扑的缺省条件不同。",
+      "批量校验在组件构造时执行，错误配置会尽早暴露，而非每轮调度后才发现。",
+      "fixedDelayString 控制上一次执行结束到下一次开始之间的延迟；方法体按顺序执行三个已有业务入口。",
+      "注解里 5s、60s 是属性缺失时的回退值；当前 YAML 为这两个属性给出 1s、0s，需要分清两层默认。",
+      "poll 不捕获异常；某个调用抛出异常时，后面的调用在这次 poll 中不会执行，保持原方法行为。"
+    ],
+    "checks": [
+      "luckyhub.messaging.enabled=false：条件不满足；为 true 或属性缺失：条件满足。",
+      "recoveryBatchSize=1 或 1000：构造成功；0、-1 或 1001：抛 IllegalArgumentException。",
+      "手动调用 poll 并记录调用顺序：先 state.recoverExpiredLeases(配置值)，再 worker.runBatch()，最后 worker.runCompensationBatch()。",
+      "未配置调度属性时，注解回退值是 5s 与 60s；使用仓库 YAML 且无环境变量覆盖时，属性值是 1s 与 0s。",
+      "recoverExpiredLeases 抛异常：本次 poll 不会继续调用 runBatch 或 runCompensationBatch。"
+    ],
+    "language": "java"
+  }
+]

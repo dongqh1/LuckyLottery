@@ -1,10 +1,10 @@
 package com.dongqh.luckyhub.lottery.messaging;
 
-import com.dongqh.luckyhub.lottery.messaging.event.DrawConfirmedEvent;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
-import com.dongqh.luckyhub.lottery.messaging.rabbit.RabbitDrawEventListener;
-import com.dongqh.luckyhub.lottery.service.MessageConsumeService;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawConfirmedEvent;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventEnvelope;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventType;
+import com.dongqh.luckyhub.messaging.lottery.rabbit.RabbitDrawEventListener;
+import com.dongqh.luckyhub.service.lottery.MessageConsumeService;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 

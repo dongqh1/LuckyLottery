@@ -1,6 +1,6 @@
 package com.dongqh.fulfillmentservice.shipping;
 
-import com.dongqh.fulfillmentservice.shipping.persistence.JdbcShippingOrderRepository;
+import com.dongqh.fulfillmentservice.persistence.shipping.JdbcShippingOrderRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;

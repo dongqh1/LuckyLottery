@@ -1,27 +1,27 @@
-package com.dongqh.luckyhub.lottery.controller;
+package com.dongqh.luckyhub.controller.lottery;
 
-import com.dongqh.luckyhub.activity.enums.ActivityStatus;
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
+import com.dongqh.luckyhub.enums.activity.ActivityStatus;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
 import com.dongqh.luckyhub.common.result.PageResponse;
 import com.dongqh.luckyhub.common.web.GlobalExceptionHandler;
-import com.dongqh.luckyhub.lottery.dto.DrawCommand;
-import com.dongqh.luckyhub.lottery.dto.DrawOrderQuery;
-import com.dongqh.luckyhub.lottery.dto.DrawRecordQuery;
-import com.dongqh.luckyhub.lottery.enums.DrawOrderStatus;
-import com.dongqh.luckyhub.lottery.enums.DrawResultType;
-import com.dongqh.luckyhub.lottery.service.LotteryQueryService;
-import com.dongqh.luckyhub.lottery.service.LotteryService;
-import com.dongqh.luckyhub.lottery.service.impl.LotteryQueryServiceImpl;
-import com.dongqh.luckyhub.lottery.vo.DrawOrderView;
-import com.dongqh.luckyhub.lottery.vo.LotteryActivityView;
-import com.dongqh.luckyhub.lottery.vo.DrawResultView;
-import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.interceptor.PermissionInterceptor;
-import com.dongqh.luckyhub.rbac.service.MarketingPermissionLookup;
-import com.dongqh.luckyhub.rbac.service.RolePermissionResolver;
-import com.dongqh.luckyhub.rbac.service.UserPermissionService;
+import com.dongqh.luckyhub.domain.dto.lottery.DrawCommand;
+import com.dongqh.luckyhub.domain.dto.lottery.DrawOrderQuery;
+import com.dongqh.luckyhub.domain.dto.lottery.DrawRecordQuery;
+import com.dongqh.luckyhub.enums.lottery.DrawOrderStatus;
+import com.dongqh.luckyhub.enums.lottery.DrawResultType;
+import com.dongqh.luckyhub.service.lottery.LotteryQueryService;
+import com.dongqh.luckyhub.service.lottery.LotteryService;
+import com.dongqh.luckyhub.service.lottery.impl.LotteryQueryServiceImpl;
+import com.dongqh.luckyhub.domain.vo.lottery.DrawOrderView;
+import com.dongqh.luckyhub.domain.vo.lottery.LotteryActivityView;
+import com.dongqh.luckyhub.domain.vo.lottery.DrawResultView;
+import com.dongqh.luckyhub.domain.annotation.rbac.RequirePermission;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.integration.interceptor.rbac.PermissionInterceptor;
+import com.dongqh.luckyhub.service.rbac.MarketingPermissionLookup;
+import com.dongqh.luckyhub.service.rbac.RolePermissionResolver;
+import com.dongqh.luckyhub.service.rbac.UserPermissionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,8 +83,8 @@ class LotteryControllerTests {
                 DrawOrderStatus.SUCCESS, null, LocalDateTime.now(), List.of());
         when(queryService.listActivities()).thenReturn(List.of(activity));
         when(queryService.listPrizes(8L)).thenReturn(List.of(
-                new com.dongqh.luckyhub.lottery.vo.LotteryPrizeView(
-                        3L, "幸运礼盒", com.dongqh.luckyhub.prize.enums.PrizeType.PHYSICAL,
+                new com.dongqh.luckyhub.domain.vo.lottery.LotteryPrizeView(
+                        3L, "幸运礼盒", com.dongqh.luckyhub.enums.prize.PrizeType.PHYSICAL,
                         null, 1, 1001L)));
         when(queryService.getActivity(8L)).thenReturn(activity);
         when(lotteryService.draw(any())).thenReturn(order);
@@ -191,11 +191,11 @@ class LotteryControllerTests {
     @Test
     void myOrdersOverwriteIncomingUserIdWithCurrentUser() {
         LotteryQueryServiceImpl service = spy(new LotteryQueryServiceImpl(
-                mock(com.dongqh.luckyhub.activity.mapper.MarketingActivityMapper.class),
-                mock(com.dongqh.luckyhub.lottery.mapper.LotteryDrawOrderMapper.class),
-                mock(com.dongqh.luckyhub.lottery.mapper.LotteryDrawRecordMapper.class),
-                mock(com.dongqh.luckyhub.benefit.mapper.UserBenefitMapper.class),
-                mock(com.dongqh.luckyhub.rbac.service.DataScopeService.class)));
+                mock(com.dongqh.luckyhub.mapper.activity.MarketingActivityMapper.class),
+                mock(com.dongqh.luckyhub.mapper.lottery.LotteryDrawOrderMapper.class),
+                mock(com.dongqh.luckyhub.mapper.lottery.LotteryDrawRecordMapper.class),
+                mock(com.dongqh.luckyhub.mapper.benefit.UserBenefitMapper.class),
+                mock(com.dongqh.luckyhub.service.rbac.DataScopeService.class)));
         DrawOrderQuery query = new DrawOrderQuery();
         query.setUserId(99L);
         doReturn(new PageResponse<DrawOrderView>(List.of(), 0, 1, 20, 0))

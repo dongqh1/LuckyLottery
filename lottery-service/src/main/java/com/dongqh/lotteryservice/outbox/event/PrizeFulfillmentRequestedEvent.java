@@ -1,7 +1,7 @@
 package com.dongqh.lotteryservice.outbox.event;
 
-import com.dongqh.lotteryservice.prizecatalog.domain.PrizeType;
-import com.dongqh.lotteryservice.prizecatalog.domain.RewardType;
+import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import java.util.Objects;
 
 public record PrizeFulfillmentRequestedEvent(

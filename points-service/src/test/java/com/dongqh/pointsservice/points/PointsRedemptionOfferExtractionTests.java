@@ -1,13 +1,12 @@
 package com.dongqh.pointsservice.points;
 
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionOfferCommand;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOffer;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.exception.PointsDomainException;
-import com.dongqh.luckyhub.points.mapper.PointsRedemptionOfferMapper;
-import com.dongqh.luckyhub.points.service.impl.PointsRedemptionOfferServiceImpl;
-import com.dongqh.luckyhub.points.service.port.PointsItemCatalogPort;
-import com.dongqh.luckyhub.points.service.port.PointsItemSnapshot;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionOfferCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOffer;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.points.domain.exception.PointsDomainException;
+import com.dongqh.luckyhub.points.integration.PointsIntegrationService;
+import com.dongqh.luckyhub.mapper.points.PointsRedemptionOfferMapper;
+import com.dongqh.luckyhub.service.points.impl.PointsRedemptionOfferServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -24,14 +23,14 @@ import static org.mockito.Mockito.when;
 
 class PointsRedemptionOfferExtractionTests {
 
-    private final PointsItemCatalogPort catalog = mock(PointsItemCatalogPort.class);
+    private final PointsIntegrationService integration = mock(PointsIntegrationService.class);
     private final PointsRedemptionOfferMapper mapper = mock(PointsRedemptionOfferMapper.class);
     private final PointsRedemptionOfferServiceImpl service =
-            new PointsRedemptionOfferServiceImpl(catalog, mapper);
+            new PointsRedemptionOfferServiceImpl(integration, mapper);
 
     @Test
     void createsOfferFromAuthoritativeItemSnapshot() {
-        when(catalog.getItem(1001L)).thenReturn(Optional.of(item(1001L, 8, 1)));
+        when(integration.getItem(1001L)).thenReturn(Optional.of(item(1001L, 8, 1)));
         doAnswer(invocation -> {
             PointsRedemptionOffer offer = invocation.getArgument(0);
             offer.setId(71L);
@@ -51,7 +50,7 @@ class PointsRedemptionOfferExtractionTests {
 
     @Test
     void rejectsUnavailableOrInsufficientItemBeforeCreatingOffer() {
-        when(catalog.getItem(1001L)).thenReturn(Optional.of(item(1001L, 4, 1)));
+        when(integration.getItem(1001L)).thenReturn(Optional.of(item(1001L, 4, 1)));
 
         assertThatThrownBy(() -> service.create(new CreatePointsRedemptionOfferCommand(1001L, 3_000L, 5)))
                 .isInstanceOfSatisfying(PointsDomainException.class,
@@ -62,7 +61,7 @@ class PointsRedemptionOfferExtractionTests {
 
     @Test
     void rejectsItemServiceMissBeforeCreatingOffer() {
-        when(catalog.getItem(1001L)).thenReturn(Optional.empty());
+        when(integration.getItem(1001L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(new CreatePointsRedemptionOfferCommand(1001L, 3_000L, 1)))
                 .isInstanceOfSatisfying(PointsDomainException.class,
@@ -71,7 +70,7 @@ class PointsRedemptionOfferExtractionTests {
         verifyNoInteractions(mapper);
     }
 
-    private PointsItemSnapshot item(long id, int stock, int status) {
-        return new PointsItemSnapshot(id, "商城耳机", 9_900, stock, "/imgs/1001.jpg", status);
+    private PointsIntegrationService.ItemSnapshot item(long id, int stock, int status) {
+        return new PointsIntegrationService.ItemSnapshot(id, "商城耳机", 9_900, stock, "/imgs/1001.jpg", status);
     }
 }

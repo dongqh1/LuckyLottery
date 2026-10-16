@@ -1,5 +1,5 @@
 package com.dongqh.luckyhub.fulfillment;
-import com.dongqh.luckyhub.common.exception.BusinessException;import com.dongqh.luckyhub.fulfillment.dto.CreateFulfillmentTaskCommand;import com.dongqh.luckyhub.fulfillment.enums.*;import com.dongqh.luckyhub.fulfillment.model.PointsFulfillmentPayload;import com.dongqh.luckyhub.fulfillment.model.FulfillmentClaim;import com.dongqh.luckyhub.fulfillment.service.*;import com.dongqh.luckyhub.integration.gateway.GatewayResult;
+import com.dongqh.luckyhub.common.exception.BusinessException;import com.dongqh.luckyhub.domain.dto.fulfillment.CreateFulfillmentTaskCommand;import com.dongqh.luckyhub.enums.fulfillment.*;import com.dongqh.luckyhub.domain.model.fulfillment.PointsFulfillmentPayload;import com.dongqh.luckyhub.domain.model.fulfillment.FulfillmentClaim;import com.dongqh.luckyhub.service.fulfillment.*;import com.dongqh.luckyhub.domain.gateway.integration.GatewayResult;
 import org.junit.jupiter.api.*;import org.springframework.beans.factory.annotation.Autowired;import org.springframework.boot.test.context.SpringBootTest;import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.Duration;import java.util.*;import java.util.concurrent.*;import java.util.stream.IntStream;import static org.assertj.core.api.Assertions.*;
 @SpringBootTest class FulfillmentLeaseConcurrencyTests {

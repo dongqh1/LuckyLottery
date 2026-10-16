@@ -1,18 +1,18 @@
 package com.dongqh.luckyhub.catalog;
 
-import com.dongqh.luckyhub.auth.model.JwtPayload;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
-import com.dongqh.luckyhub.catalog.controller.CatalogAdminController;
-import com.dongqh.luckyhub.catalog.controller.CatalogController;
-import com.dongqh.luckyhub.catalog.enums.ProductType;
-import com.dongqh.luckyhub.catalog.service.CatalogService;
-import com.dongqh.luckyhub.catalog.vo.ProductView;
-import com.dongqh.luckyhub.catalog.vo.SkuView;
+import com.dongqh.luckyhub.domain.model.auth.JwtPayload;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
+import com.dongqh.luckyhub.controller.catalog.CatalogAdminController;
+import com.dongqh.luckyhub.controller.catalog.CatalogController;
+import com.dongqh.luckyhub.enums.catalog.ProductType;
+import com.dongqh.luckyhub.service.catalog.CatalogService;
+import com.dongqh.luckyhub.domain.vo.catalog.ProductView;
+import com.dongqh.luckyhub.domain.vo.catalog.SkuView;
 import com.dongqh.luckyhub.common.result.PageResponse;
-import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.service.UserPermissionService;
+import com.dongqh.luckyhub.domain.annotation.rbac.RequirePermission;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.service.rbac.UserPermissionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -120,9 +120,9 @@ class CatalogControllerTests {
     @Test
     void assignsExactPermissions() throws NoSuchMethodException {
         Method create = CatalogAdminController.class.getMethod(
-                "create", com.dongqh.luckyhub.catalog.dto.CreateProductCommand.class);
+                "create", com.dongqh.luckyhub.domain.dto.catalog.CreateProductCommand.class);
         Method page = CatalogController.class.getMethod(
-                "page", com.dongqh.luckyhub.catalog.dto.ProductQuery.class);
+                "page", com.dongqh.luckyhub.domain.dto.catalog.ProductQuery.class);
         Method getById = CatalogController.class.getMethod("get", long.class);
 
         assertThat(create.getAnnotation(RequirePermission.class).value()).isEqualTo(PermissionCodes.CATALOG_MANAGE);

@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.auth.security;
+package com.dongqh.luckyhub.security.auth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

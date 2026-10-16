@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.inventory.channel.dto;
+package com.dongqh.luckyhub.domain.channel.inventory.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

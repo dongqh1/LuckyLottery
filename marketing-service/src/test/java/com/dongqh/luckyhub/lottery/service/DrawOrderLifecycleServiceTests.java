@@ -1,12 +1,12 @@
-package com.dongqh.luckyhub.lottery.service;
+package com.dongqh.luckyhub.service.lottery;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.lottery.entity.LotteryDrawOrder;
-import com.dongqh.luckyhub.lottery.enums.DrawOrderStatus;
-import com.dongqh.luckyhub.lottery.enums.LotteryErrorCode;
-import com.dongqh.luckyhub.lottery.mapper.LotteryDrawOrderMapper;
-import com.dongqh.luckyhub.lottery.model.NewDrawOrder;
-import com.dongqh.luckyhub.lottery.service.impl.DrawOrderLifecycleServiceImpl;
+import com.dongqh.luckyhub.domain.po.lottery.LotteryDrawOrder;
+import com.dongqh.luckyhub.enums.lottery.DrawOrderStatus;
+import com.dongqh.luckyhub.enums.lottery.LotteryErrorCode;
+import com.dongqh.luckyhub.mapper.lottery.LotteryDrawOrderMapper;
+import com.dongqh.luckyhub.domain.model.lottery.NewDrawOrder;
+import com.dongqh.luckyhub.service.lottery.impl.DrawOrderLifecycleServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

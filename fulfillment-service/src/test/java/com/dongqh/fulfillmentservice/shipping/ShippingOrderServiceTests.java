@@ -1,19 +1,19 @@
 package com.dongqh.fulfillmentservice.shipping;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.CreateFulfillmentTaskCommand;
-import com.dongqh.fulfillmentservice.model.LogisticsFulfillmentPayload;
-import com.dongqh.fulfillmentservice.shipping.domain.ShippingDomainException;
-import com.dongqh.fulfillmentservice.shipping.domain.ShippingErrorCode;
-import com.dongqh.fulfillmentservice.shipping.enums.ShippingSourceType;
-import com.dongqh.fulfillmentservice.shipping.enums.ShippingStatus;
-import com.dongqh.fulfillmentservice.shipping.model.CreateShippingOrderCommand;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingAddressSnapshot;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingOrder;
-import com.dongqh.fulfillmentservice.shipping.persistence.ShippingOrderRepository;
-import com.dongqh.fulfillmentservice.shipping.port.LogisticsTaskCreator;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingAddressSnapshotService;
-import com.dongqh.fulfillmentservice.shipping.service.ShippingOrderService;
+import com.dongqh.fulfillmentservice.domain.model.CreateFulfillmentTaskCommand;
+import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
+import com.dongqh.fulfillmentservice.domain.shipping.ShippingDomainException;
+import com.dongqh.fulfillmentservice.domain.shipping.ShippingErrorCode;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingStatus;
+import com.dongqh.fulfillmentservice.domain.model.shipping.CreateShippingOrderCommand;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingAddressSnapshot;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrder;
+import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrderRepository;
+import com.dongqh.fulfillmentservice.service.FulfillmentTaskCreationService;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingAddressSnapshotService;
+import com.dongqh.fulfillmentservice.service.shipping.ShippingOrderService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -32,7 +32,7 @@ class ShippingOrderServiceTests {
     void createsFulfillmentTaskWithMaskedAddressAndReturnsOrder() {
         ShippingOrderRepository orders = mock(ShippingOrderRepository.class);
         ShippingAddressSnapshotService snapshots = mock(ShippingAddressSnapshotService.class);
-        LogisticsTaskCreator tasks = mock(LogisticsTaskCreator.class);
+        FulfillmentTaskCreationService tasks = mock(FulfillmentTaskCreationService.class);
         ShippingAddressSnapshot snapshot = snapshot();
         when(snapshots.require(3L)).thenReturn(snapshot);
         when(orders.findBySource(ShippingSourceType.CASH_ORDER, "order-1")).thenReturn(Optional.empty());
@@ -60,7 +60,7 @@ class ShippingOrderServiceTests {
     void doesNotCreateAnotherTaskForAnIdenticalSourceRequest() {
         ShippingOrderRepository orders = mock(ShippingOrderRepository.class);
         ShippingAddressSnapshotService snapshots = mock(ShippingAddressSnapshotService.class);
-        LogisticsTaskCreator tasks = mock(LogisticsTaskCreator.class);
+        FulfillmentTaskCreationService tasks = mock(FulfillmentTaskCreationService.class);
         when(snapshots.require(3L)).thenReturn(snapshot());
         when(orders.findBySource(ShippingSourceType.CASH_ORDER, "order-1"))
                 .thenReturn(Optional.of(order(44L, "LOGISTICS-44")));
@@ -75,7 +75,7 @@ class ShippingOrderServiceTests {
     void rejectsSourceIdentityReuseWithDifferentOrderData() {
         ShippingOrderRepository orders = mock(ShippingOrderRepository.class);
         ShippingAddressSnapshotService snapshots = mock(ShippingAddressSnapshotService.class);
-        LogisticsTaskCreator tasks = mock(LogisticsTaskCreator.class);
+        FulfillmentTaskCreationService tasks = mock(FulfillmentTaskCreationService.class);
         ShippingOrder existing = order(44L, "LOGISTICS-44");
         when(snapshots.require(3L)).thenReturn(snapshot());
         when(orders.findBySource(ShippingSourceType.CASH_ORDER, "order-1")).thenReturn(Optional.of(existing));
@@ -93,7 +93,7 @@ class ShippingOrderServiceTests {
         ShippingAddressSnapshotService snapshots = mock(ShippingAddressSnapshotService.class);
         when(orders.findByShippingNo("SHIPPING-44")).thenReturn(Optional.of(order(44L, "LOGISTICS-44")));
         when(snapshots.require(3L)).thenReturn(snapshot());
-        ShippingOrderService service = new ShippingOrderService(orders, snapshots, mock(LogisticsTaskCreator.class));
+        ShippingOrderService service = new ShippingOrderService(orders, snapshots, mock(FulfillmentTaskCreationService.class));
 
         var result = service.getForUser(7L, " SHIPPING-44 ");
 

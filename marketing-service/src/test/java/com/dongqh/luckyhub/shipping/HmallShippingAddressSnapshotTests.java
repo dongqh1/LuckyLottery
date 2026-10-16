@@ -1,12 +1,12 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.integration.hmall.HmallAddressClient;
-import com.dongqh.luckyhub.integration.hmall.HmallAddressView;
-import com.dongqh.luckyhub.shipping.crypto.AddressCipher;
-import com.dongqh.luckyhub.shipping.entity.ShippingAddressSnapshot;
-import com.dongqh.luckyhub.shipping.enums.ShippingSourceType;
-import com.dongqh.luckyhub.shipping.mapper.ShippingAddressSnapshotMapper;
-import com.dongqh.luckyhub.shipping.service.impl.ShippingAddressSnapshotServiceImpl;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallAddressClient;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallAddressView;
+import com.dongqh.luckyhub.domain.crypto.shipping.AddressCipher;
+import com.dongqh.luckyhub.domain.po.shipping.ShippingAddressSnapshot;
+import com.dongqh.luckyhub.enums.shipping.ShippingSourceType;
+import com.dongqh.luckyhub.mapper.shipping.ShippingAddressSnapshotMapper;
+import com.dongqh.luckyhub.service.shipping.impl.ShippingAddressSnapshotServiceImpl;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

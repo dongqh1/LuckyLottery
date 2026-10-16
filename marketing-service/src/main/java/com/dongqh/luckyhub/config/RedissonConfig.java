@@ -1,6 +1,6 @@
 package com.dongqh.luckyhub.config;
 
-import com.dongqh.luckyhub.lottery.config.LotteryProperties;
+import com.dongqh.luckyhub.config.lottery.LotteryProperties;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;

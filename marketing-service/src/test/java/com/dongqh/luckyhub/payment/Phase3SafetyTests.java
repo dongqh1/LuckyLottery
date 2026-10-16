@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.payment;
 
-import com.dongqh.luckyhub.payment.dto.CreatePaymentCommand;
-import com.dongqh.luckyhub.payment.service.PaymentService;
+import com.dongqh.luckyhub.domain.dto.payment.CreatePaymentCommand;
+import com.dongqh.luckyhub.service.payment.PaymentService;
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.rbac.entity.SysUser;
+import com.dongqh.luckyhub.domain.po.rbac.SysUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,7 +52,7 @@ class Phase3SafetyTests extends PaymentTestFixture {
         for (int i = 0; i < 8; i++) {
             futures.add(pool.submit(() -> {
                 gate.await();
-                return orders.create(userId, new com.dongqh.luckyhub.order.dto.CreateCashOrderCommand(
+                return orders.create(userId, new com.dongqh.luckyhub.domain.dto.order.CreateCashOrderCommand(
                         "SAME-O", skuId, 1, couponId));
             }));
         }

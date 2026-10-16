@@ -1,13 +1,13 @@
 package com.dongqh.luckyhub.lottery;
 
-import com.dongqh.luckyhub.benefit.mapper.UserBenefitMapper;
-import com.dongqh.luckyhub.lottery.enums.RewardQuarantineReason;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventEnvelope;
-import com.dongqh.luckyhub.lottery.messaging.event.DrawEventType;
-import com.dongqh.luckyhub.lottery.messaging.event.PrizeFulfillmentRequestedEvent;
-import com.dongqh.luckyhub.lottery.service.RewardIdentityMismatchException;
-import com.dongqh.luckyhub.lottery.service.impl.LotteryRewardIdentityServiceImpl;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
+import com.dongqh.luckyhub.mapper.benefit.UserBenefitMapper;
+import com.dongqh.luckyhub.enums.lottery.RewardQuarantineReason;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventEnvelope;
+import com.dongqh.luckyhub.messaging.lottery.event.DrawEventType;
+import com.dongqh.luckyhub.messaging.lottery.event.PrizeFulfillmentRequestedEvent;
+import com.dongqh.luckyhub.service.lottery.RewardIdentityMismatchException;
+import com.dongqh.luckyhub.service.lottery.impl.LotteryRewardIdentityServiceImpl;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 

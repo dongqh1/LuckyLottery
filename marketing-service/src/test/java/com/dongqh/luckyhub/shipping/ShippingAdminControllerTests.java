@@ -1,17 +1,17 @@
 package com.dongqh.luckyhub.shipping;
 
-import com.dongqh.luckyhub.auth.model.JwtPayload;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
+import com.dongqh.luckyhub.domain.model.auth.JwtPayload;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
 import com.dongqh.luckyhub.common.result.PageResponse;
-import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
-import com.dongqh.luckyhub.rbac.service.UserPermissionService;
-import com.dongqh.luckyhub.shipping.enums.ShippingSourceType;
-import com.dongqh.luckyhub.shipping.enums.ShippingStatus;
-import com.dongqh.luckyhub.shipping.service.ShippingAdminService;
-import com.dongqh.luckyhub.shipping.vo.ShippingOrderView;
-import com.dongqh.luckyhub.shipping.vo.ShippingTrackingView;
+import com.dongqh.luckyhub.domain.annotation.rbac.RequirePermission;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
+import com.dongqh.luckyhub.service.rbac.UserPermissionService;
+import com.dongqh.luckyhub.enums.shipping.ShippingSourceType;
+import com.dongqh.luckyhub.enums.shipping.ShippingStatus;
+import com.dongqh.luckyhub.service.shipping.ShippingAdminService;
+import com.dongqh.luckyhub.domain.vo.shipping.ShippingOrderView;
+import com.dongqh.luckyhub.domain.vo.shipping.ShippingTrackingView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,7 +48,7 @@ class ShippingAdminControllerTests {
         when(service.get("SHIPPING-7")).thenReturn(view(ShippingStatus.FAILED));
                 when(service.tracking("SHIPPING-7")).thenReturn(List.of(
                         new ShippingTrackingView.TrackingEvent(
-                                com.dongqh.luckyhub.shipping.enums.TrackingEventType.IN_TRANSIT,
+                                com.dongqh.luckyhub.enums.shipping.TrackingEventType.IN_TRANSIT,
                                 java.time.LocalDateTime.parse("2026-08-12T10:00:00"),
                                 "杭州中转站", "运输中")));
                 when(service.page(any())).thenReturn(new PageResponse<>(List.of(view(ShippingStatus.FAILED)), 1, 1, 20, 1));
@@ -79,7 +79,7 @@ class ShippingAdminControllerTests {
 
     @Test
     void everyAdminRouteRequiresExactShippingOperatePermission() throws Exception {
-        var method = com.dongqh.luckyhub.shipping.controller.ShippingAdminController.class
+        var method = com.dongqh.luckyhub.controller.shipping.ShippingAdminController.class
                 .getMethod("tracking", String.class);
         assertThat(method.getAnnotation(RequirePermission.class).value())
                 .isEqualTo(PermissionCodes.SHIPPING_OPERATE);

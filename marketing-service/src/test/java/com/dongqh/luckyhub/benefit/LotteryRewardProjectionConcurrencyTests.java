@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.benefit;
 
-import com.dongqh.luckyhub.benefit.service.LotteryRewardProjectionService;
-import com.dongqh.luckyhub.rbac.entity.SysUser;
-import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
+import com.dongqh.luckyhub.service.benefit.LotteryRewardProjectionService;
+import com.dongqh.luckyhub.domain.po.rbac.SysUser;
+import com.dongqh.luckyhub.mapper.rbac.SysUserMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

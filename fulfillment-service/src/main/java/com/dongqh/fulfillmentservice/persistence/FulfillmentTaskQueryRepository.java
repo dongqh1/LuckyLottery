@@ -1,6 +1,6 @@
 package com.dongqh.fulfillmentservice.persistence;
 
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskQuery;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery;
 
 import java.util.List;
 import java.util.Collection;

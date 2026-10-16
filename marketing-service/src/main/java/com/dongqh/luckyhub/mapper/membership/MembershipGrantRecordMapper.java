@@ -1,0 +1,1 @@
+package com.dongqh.luckyhub.mapper.membership; import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.dongqh.luckyhub.domain.po.membership.MembershipGrantRecord; public interface MembershipGrantRecordMapper extends BaseMapper<MembershipGrantRecord> {}

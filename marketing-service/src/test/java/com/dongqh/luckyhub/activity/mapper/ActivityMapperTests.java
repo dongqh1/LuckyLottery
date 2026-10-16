@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.activity.mapper;
+package com.dongqh.luckyhub.mapper.activity;
 
-import com.dongqh.luckyhub.activity.entity.MarketingActivity;
-import com.dongqh.luckyhub.activity.enums.ActivityStatus;
+import com.dongqh.luckyhub.domain.po.activity.MarketingActivity;
+import com.dongqh.luckyhub.enums.activity.ActivityStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

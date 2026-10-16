@@ -61,11 +61,5 @@ public class User implements Serializable {
      * 账户余额
      */
     private Integer balance;
-
-    /**
-     * 用户角色（ADMIN/USER）
-     */
-    private String role;
-
-
 }
+

@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.inventory.channel.enums;
+package com.dongqh.luckyhub.domain.channel.inventory.enums;
 
 import org.springframework.http.HttpStatus;
 

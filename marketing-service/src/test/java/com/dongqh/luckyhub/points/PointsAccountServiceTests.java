@@ -2,20 +2,20 @@ package com.dongqh.luckyhub.points;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.points.dto.AdminPointsAdjustmentCommand;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.dto.PointsReversalCommand;
-import com.dongqh.luckyhub.points.entity.PointsAccount;
-import com.dongqh.luckyhub.points.entity.PointsLedger;
-import com.dongqh.luckyhub.points.enums.PointsBusinessType;
-import com.dongqh.luckyhub.points.enums.PointsDirection;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.mapper.PointsAccountMapper;
-import com.dongqh.luckyhub.points.mapper.PointsLedgerMapper;
-import com.dongqh.luckyhub.points.vo.PointsAccountView;
-import com.dongqh.luckyhub.points.vo.PointsLedgerView;
-import com.dongqh.luckyhub.rbac.entity.SysUser;
-import com.dongqh.luckyhub.rbac.mapper.SysUserMapper;
+import com.dongqh.luckyhub.domain.dto.points.AdminPointsAdjustmentCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsReversalCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsAccount;
+import com.dongqh.luckyhub.domain.po.points.PointsLedger;
+import com.dongqh.luckyhub.enums.points.PointsBusinessType;
+import com.dongqh.luckyhub.enums.points.PointsDirection;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.mapper.points.PointsAccountMapper;
+import com.dongqh.luckyhub.mapper.points.PointsLedgerMapper;
+import com.dongqh.luckyhub.domain.vo.points.PointsAccountView;
+import com.dongqh.luckyhub.domain.vo.points.PointsLedgerView;
+import com.dongqh.luckyhub.domain.po.rbac.SysUser;
+import com.dongqh.luckyhub.mapper.rbac.SysUserMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.fail;
 class PointsAccountServiceTests {
 
     private static final String SERVICE_CLASS =
-            "com.dongqh.luckyhub.points.service.PointsAccountService";
+            "com.dongqh.luckyhub.service.points.PointsAccountService";
 
     @Autowired
     private ApplicationContext applicationContext;

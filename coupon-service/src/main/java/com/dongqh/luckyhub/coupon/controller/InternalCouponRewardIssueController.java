@@ -1,7 +1,7 @@
-package com.dongqh.luckyhub.coupon.controller;
+package com.dongqh.luckyhub.controller.coupon;
 
 import com.dongqh.hmapi.dto.CouponRewardIssueRequest;
-import com.dongqh.luckyhub.coupon.service.CouponService;
+import com.dongqh.luckyhub.service.coupon.CouponService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;

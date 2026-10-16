@@ -1,14 +1,14 @@
-package com.dongqh.luckyhub.lottery.service;
+package com.dongqh.luckyhub.service.lottery;
 
-import com.dongqh.luckyhub.lottery.entity.LotteryDrawOrder;
-import com.dongqh.luckyhub.lottery.enums.DrawOrderStatus;
-import com.dongqh.luckyhub.lottery.lock.DrawLockService;
-import com.dongqh.luckyhub.lottery.mapper.LotteryDrawOrderMapper;
-import com.dongqh.luckyhub.lottery.model.NewDrawOrder;
-import com.dongqh.luckyhub.lottery.model.ReconciliationResult;
-import com.dongqh.luckyhub.lottery.quota.DrawQuotaKeys;
-import com.dongqh.luckyhub.lottery.quota.DrawQuotaService;
-import com.dongqh.luckyhub.lottery.quota.QuotaReservationRequest;
+import com.dongqh.luckyhub.domain.po.lottery.LotteryDrawOrder;
+import com.dongqh.luckyhub.enums.lottery.DrawOrderStatus;
+import com.dongqh.luckyhub.domain.lock.lottery.DrawLockService;
+import com.dongqh.luckyhub.mapper.lottery.LotteryDrawOrderMapper;
+import com.dongqh.luckyhub.domain.model.lottery.NewDrawOrder;
+import com.dongqh.luckyhub.domain.model.lottery.ReconciliationResult;
+import com.dongqh.luckyhub.domain.quota.lottery.DrawQuotaKeys;
+import com.dongqh.luckyhub.domain.quota.lottery.DrawQuotaService;
+import com.dongqh.luckyhub.domain.quota.lottery.QuotaReservationRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

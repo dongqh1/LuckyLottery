@@ -1,6 +1,6 @@
 package com.dongqh.lotteryservice.activitystatus;
 
-import com.dongqh.lotteryservice.activitystatus.mapper.ActivityStatusMapper;
+import com.dongqh.lotteryservice.mapper.activitystatus.ActivityStatusMapper;
 import org.apache.ibatis.annotations.Update;
 import org.junit.jupiter.api.Test;
 

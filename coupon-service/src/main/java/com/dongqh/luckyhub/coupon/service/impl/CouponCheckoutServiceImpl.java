@@ -1,24 +1,21 @@
-package com.dongqh.luckyhub.coupon.service.impl;
+package com.dongqh.luckyhub.service.coupon.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dongqh.luckyhub.coupon.dto.CouponCheckoutCommand;
-import com.dongqh.luckyhub.coupon.dto.CouponCheckoutItemCommand;
-import com.dongqh.luckyhub.coupon.dto.ReserveCouponCommand;
-import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
-import com.dongqh.luckyhub.coupon.entity.UserCoupon;
-import com.dongqh.luckyhub.coupon.enums.CouponErrorCode;
-import com.dongqh.luckyhub.coupon.enums.CouponScopeType;
-import com.dongqh.luckyhub.coupon.enums.UserCouponStatus;
-import com.dongqh.luckyhub.coupon.exception.CouponDomainException;
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
-import com.dongqh.luckyhub.coupon.mapper.UserCouponMapper;
-import com.dongqh.luckyhub.coupon.model.CouponLockSnapshot;
-import com.dongqh.luckyhub.coupon.service.CouponCheckoutService;
-import com.dongqh.luckyhub.coupon.service.port.CouponCatalogPort;
-import com.dongqh.luckyhub.coupon.service.port.CouponItemSnapshot;
-import com.dongqh.luckyhub.coupon.service.port.CouponMembershipBenefit;
-import com.dongqh.luckyhub.coupon.service.port.CouponMembershipBenefitPort;
-import com.dongqh.luckyhub.coupon.vo.ApplicableCouponView;
+import com.dongqh.luckyhub.domain.dto.coupon.CouponCheckoutCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.CouponCheckoutItemCommand;
+import com.dongqh.luckyhub.domain.dto.coupon.ReserveCouponCommand;
+import com.dongqh.luckyhub.domain.po.coupon.CouponTemplate;
+import com.dongqh.luckyhub.domain.po.coupon.UserCoupon;
+import com.dongqh.luckyhub.enums.coupon.CouponErrorCode;
+import com.dongqh.luckyhub.enums.coupon.CouponScopeType;
+import com.dongqh.luckyhub.enums.coupon.UserCouponStatus;
+import com.dongqh.luckyhub.coupon.domain.exception.CouponDomainException;
+import com.dongqh.luckyhub.coupon.integration.CouponIntegrationService;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
+import com.dongqh.luckyhub.mapper.coupon.UserCouponMapper;
+import com.dongqh.luckyhub.domain.model.coupon.CouponLockSnapshot;
+import com.dongqh.luckyhub.service.coupon.CouponCheckoutService;
+import com.dongqh.luckyhub.domain.vo.coupon.ApplicableCouponView;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,17 +32,14 @@ public class CouponCheckoutServiceImpl implements CouponCheckoutService {
 
     private final CouponTemplateMapper templates;
     private final UserCouponMapper coupons;
-    private final CouponCatalogPort catalog;
-    private final CouponMembershipBenefitPort memberships;
+    private final CouponIntegrationService integration;
 
     public CouponCheckoutServiceImpl(CouponTemplateMapper templates,
                                      UserCouponMapper coupons,
-                                     CouponCatalogPort catalog,
-                                     CouponMembershipBenefitPort memberships) {
+                                     CouponIntegrationService integration) {
         this.templates = templates;
         this.coupons = coupons;
-        this.catalog = catalog;
-        this.memberships = memberships;
+        this.integration = integration;
     }
 
     @Override
@@ -139,8 +133,8 @@ public class CouponCheckoutServiceImpl implements CouponCheckoutService {
         if (commands == null || commands.isEmpty()) {
             throw error(CouponErrorCode.COUPON_NOT_APPLICABLE);
         }
-        int basisPoints = memberships.activeBenefit(userId)
-                .map(CouponMembershipBenefit::discountBasisPoints)
+        int basisPoints = integration.activeMembershipBenefit(userId)
+                .map(CouponIntegrationService.MembershipBenefit::discountBasisPoints)
                 .filter(value -> value != null && value > 0 && value <= FULL_PRICE_BASIS_POINTS)
                 .orElse(FULL_PRICE_BASIS_POINTS);
         List<BasketLine> lines = new ArrayList<>();
@@ -149,7 +143,7 @@ public class CouponCheckoutServiceImpl implements CouponCheckoutService {
             if (command == null || command.itemId() <= 0 || command.quantity() <= 0) {
                 throw error(CouponErrorCode.COUPON_NOT_APPLICABLE);
             }
-            CouponItemSnapshot item = catalog.getItem(command.itemId());
+            CouponIntegrationService.ItemSnapshot item = integration.getItem(command.itemId());
             if (item == null || item.price() == null || item.price() <= 0
                     || item.stock() == null || item.stock() < command.quantity()
                     || !Integer.valueOf(1).equals(item.status())) {
@@ -234,7 +228,7 @@ public class CouponCheckoutServiceImpl implements CouponCheckoutService {
         return new CouponDomainException(code);
     }
 
-    private record BasketLine(CouponItemSnapshot item, long grossAmount) {
+    private record BasketLine(CouponIntegrationService.ItemSnapshot item, long grossAmount) {
     }
 
     private record Basket(List<BasketLine> lines, int membershipBasisPoints, long discountedTotal) {

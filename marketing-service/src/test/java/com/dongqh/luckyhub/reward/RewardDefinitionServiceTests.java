@@ -1,24 +1,24 @@
 package com.dongqh.luckyhub.reward;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dongqh.luckyhub.catalog.entity.Product;
-import com.dongqh.luckyhub.catalog.entity.ProductSku;
-import com.dongqh.luckyhub.catalog.enums.ProductType;
-import com.dongqh.luckyhub.catalog.mapper.ProductMapper;
-import com.dongqh.luckyhub.catalog.mapper.ProductSkuMapper;
+import com.dongqh.luckyhub.domain.po.catalog.Product;
+import com.dongqh.luckyhub.domain.po.catalog.ProductSku;
+import com.dongqh.luckyhub.enums.catalog.ProductType;
+import com.dongqh.luckyhub.mapper.catalog.ProductMapper;
+import com.dongqh.luckyhub.mapper.catalog.ProductSkuMapper;
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.integration.hmall.HmallCatalogClient;
-import com.dongqh.luckyhub.integration.hmall.HmallItemView;
-import com.dongqh.luckyhub.coupon.entity.CouponTemplate;
-import com.dongqh.luckyhub.coupon.mapper.CouponTemplateMapper;
-import com.dongqh.luckyhub.membership.entity.MembershipProduct;
-import com.dongqh.luckyhub.membership.mapper.MembershipProductMapper;
-import com.dongqh.luckyhub.reward.dto.CreateRewardDefinitionCommand;
-import com.dongqh.luckyhub.reward.entity.RewardDefinition;
-import com.dongqh.luckyhub.reward.enums.RewardErrorCode;
-import com.dongqh.luckyhub.reward.enums.RewardType;
-import com.dongqh.luckyhub.reward.mapper.RewardDefinitionMapper;
-import com.dongqh.luckyhub.reward.service.RewardDefinitionService;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallCatalogClient;
+import com.dongqh.luckyhub.domain.hmall.integration.HmallItemView;
+import com.dongqh.luckyhub.domain.po.coupon.CouponTemplate;
+import com.dongqh.luckyhub.mapper.coupon.CouponTemplateMapper;
+import com.dongqh.luckyhub.domain.po.membership.MembershipProduct;
+import com.dongqh.luckyhub.mapper.membership.MembershipProductMapper;
+import com.dongqh.luckyhub.domain.dto.reward.CreateRewardDefinitionCommand;
+import com.dongqh.luckyhub.domain.po.reward.RewardDefinition;
+import com.dongqh.luckyhub.enums.reward.RewardErrorCode;
+import com.dongqh.luckyhub.enums.reward.RewardType;
+import com.dongqh.luckyhub.mapper.reward.RewardDefinitionMapper;
+import com.dongqh.luckyhub.service.reward.RewardDefinitionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,8 +116,8 @@ class RewardDefinitionServiceTests {
         assertThat(points.quantity()).isEqualTo(100_000L);
     }
 
-    private long createCoupon(){CouponTemplate t=new CouponTemplate();t.setTemplateCode("C-"+System.nanoTime());t.setTemplateName("券");t.setCouponType(com.dongqh.luckyhub.coupon.enums.CouponType.NO_THRESHOLD);t.setThresholdCent(0L);t.setDiscountCent(10L);t.setValidFrom(LocalDateTime.now().minusDays(1));t.setValidUntil(LocalDateTime.now().plusDays(1));t.setPerUserLimit(10);t.setStackableWithMembership(true);t.setStatus(1);couponMapper.insert(t);return t.getId();}
-    private long createMembership(){MembershipProduct p=new MembershipProduct();p.setProductCode("M-"+System.nanoTime());p.setProductName("会员");p.setMembershipLevel("VIP");p.setCardType(com.dongqh.luckyhub.membership.enums.MembershipCardType.MONTH);p.setDurationDays(30);p.setPriceCent(0L);p.setDiscountBasisPoints(9000);p.setDailyDrawBonus(0);p.setPointsMultiplierBasisPoints(10000);p.setStatus(1);membershipMapper.insert(p);return p.getId();}
+    private long createCoupon(){CouponTemplate t=new CouponTemplate();t.setTemplateCode("C-"+System.nanoTime());t.setTemplateName("券");t.setCouponType(com.dongqh.luckyhub.enums.coupon.CouponType.NO_THRESHOLD);t.setThresholdCent(0L);t.setDiscountCent(10L);t.setValidFrom(LocalDateTime.now().minusDays(1));t.setValidUntil(LocalDateTime.now().plusDays(1));t.setPerUserLimit(10);t.setStackableWithMembership(true);t.setStatus(1);couponMapper.insert(t);return t.getId();}
+    private long createMembership(){MembershipProduct p=new MembershipProduct();p.setProductCode("M-"+System.nanoTime());p.setProductName("会员");p.setMembershipLevel("VIP");p.setCardType(com.dongqh.luckyhub.enums.membership.MembershipCardType.MONTH);p.setDurationDays(30);p.setPriceCent(0L);p.setDiscountBasisPoints(9000);p.setDailyDrawBonus(0);p.setPointsMultiplierBasisPoints(10000);p.setStatus(1);membershipMapper.insert(p);return p.getId();}
 
     @Test
     void translatesDuplicateCodeAndTrimsBusinessStrings() {

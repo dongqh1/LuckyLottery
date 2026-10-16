@@ -4,23 +4,21 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.dongqh.hmapi.client.FulfillmentClient;
 import com.dongqh.hmapi.dto.CreateFulfillmentShippingOrderRequest;
 import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOrder;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.enums.PointsProductType;
-import com.dongqh.luckyhub.points.enums.PointsRedemptionStatus;
-import com.dongqh.luckyhub.points.enums.PointsRedemptionStep;
-import com.dongqh.luckyhub.points.exception.PointsDomainException;
-import com.dongqh.luckyhub.points.mapper.PointsRedemptionOrderMapper;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionOfferService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionStateService;
-import com.dongqh.luckyhub.points.service.impl.PointsRedemptionServiceImpl;
-import com.dongqh.luckyhub.points.service.port.PointsInventoryPort;
-import com.dongqh.luckyhub.points.service.port.PointsRedeemableSkuPort;
-import com.dongqh.luckyhub.points.service.port.PointsRedeemableSkuSnapshot;
-import com.dongqh.luckyhub.points.service.port.PointsUserEligibilityPort;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOrder;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.enums.points.PointsProductType;
+import com.dongqh.luckyhub.enums.points.PointsRedemptionStatus;
+import com.dongqh.luckyhub.enums.points.PointsRedemptionStep;
+import com.dongqh.luckyhub.points.domain.exception.PointsDomainException;
+import com.dongqh.luckyhub.points.integration.PointsIntegrationService;
+import com.dongqh.luckyhub.mapper.points.PointsRedemptionOrderMapper;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionOfferService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionStateService;
+import com.dongqh.luckyhub.service.points.impl.PointsRedemptionServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,9 +45,7 @@ import static org.mockito.Mockito.doThrow;
 @ExtendWith(MockitoExtension.class)
 class PointsRedemptionSagaTests {
 
-    @Mock private PointsUserEligibilityPort userEligibility;
-    @Mock private PointsRedeemableSkuPort skuCatalog;
-    @Mock private PointsInventoryPort inventory;
+    @Mock private PointsIntegrationService integration;
     @Mock private PointsAccountService accounts;
     @Mock private PointsRedemptionOfferService offers;
     @Mock private PointsRedemptionOrderMapper orders;
@@ -62,7 +58,7 @@ class PointsRedemptionSagaTests {
     void setUp() {
         currentOrder.set(null);
         PointsRedemptionStateService state = new PointsRedemptionStateService(orders, offers);
-        service = new PointsRedemptionServiceImpl(userEligibility, skuCatalog, inventory, accounts,
+        service = new PointsRedemptionServiceImpl(integration, accounts,
                 offers, state, orders, fulfillment);
 
         lenient().when(orders.selectOne(any(Wrapper.class))).thenAnswer(invocation -> currentOrder.get());
@@ -129,8 +125,8 @@ class PointsRedemptionSagaTests {
             return 1;
         });
 
-        when(userEligibility.isEnabled(7L)).thenReturn(true);
-        when(skuCatalog.getRedeemableSku(33L)).thenReturn(Optional.of(physicalSku()));
+        when(integration.isEnabledUser(7L)).thenReturn(true);
+        when(integration.getRedeemableSku(33L)).thenReturn(Optional.of(physicalSku()));
     }
 
     @Test
@@ -147,9 +143,9 @@ class PointsRedemptionSagaTests {
         assertThat(result.addressSnapshot()).extracting("receiverMasked").isEqualTo("张*");
         assertThat(currentOrder.get().getProcessStep()).isEqualTo(PointsRedemptionStep.COMPLETED);
 
-        verify(inventory).reserve(33L, 1, "R-1");
+        verify(integration).reserve(33L, 1, "R-1");
         verify(accounts).debit(any(PointsMutationCommand.class));
-        verify(inventory).confirm("R-1");
+        verify(integration).confirm("R-1");
         ArgumentCaptor<CreateFulfillmentShippingOrderRequest> request =
                 ArgumentCaptor.forClass(CreateFulfillmentShippingOrderRequest.class);
         verify(fulfillment).createShippingOrder(org.mockito.ArgumentMatchers.eq("Bearer trusted-user"),
@@ -173,7 +169,7 @@ class PointsRedemptionSagaTests {
         verify(accounts).reverseDebit(org.mockito.ArgumentMatchers.argThat(reversal ->
                 reversal.originalBusinessId().equals("R-2")
                         && reversal.reversalBusinessId().equals("R-2:COMPENSATE")));
-        verify(inventory).compensate("R-2");
+        verify(integration).compensate("R-2");
         assertThatThrownBy(() -> service.get(7L, "R-2"))
                 .isInstanceOfSatisfying(PointsDomainException.class,
                         error -> assertThat(error.errorCode()).isEqualTo(PointsErrorCode.REDEMPTION_NOT_FOUND));
@@ -202,15 +198,15 @@ class PointsRedemptionSagaTests {
 
         assertThat(currentOrder.get().getStatus()).isEqualTo(PointsRedemptionStatus.COMPENSATED);
         verify(accounts, org.mockito.Mockito.times(2)).reverseDebit(any());
-        verify(inventory).compensate("R-3");
+        verify(integration).compensate("R-3");
     }
 
     private CreatePointsRedemptionCommand command(String redemptionNo) {
         return new CreatePointsRedemptionCommand(redemptionNo, 33L, null, 1, 55L);
     }
 
-    private PointsRedeemableSkuSnapshot physicalSku() {
-        return new PointsRedeemableSkuSnapshot(33L, "SKU-P-33", "蓝牙耳机", "S-33", "黑色",
+    private PointsIntegrationService.RedeemableSkuSnapshot physicalSku() {
+        return new PointsIntegrationService.RedeemableSkuSnapshot(33L, "SKU-P-33", "蓝牙耳机", "S-33", "黑色",
                 PointsProductType.PHYSICAL.name(), "/images/33.png", 120L);
     }
 

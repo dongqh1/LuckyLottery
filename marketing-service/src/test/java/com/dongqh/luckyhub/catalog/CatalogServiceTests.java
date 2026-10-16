@@ -1,15 +1,15 @@
 package com.dongqh.luckyhub.catalog;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dongqh.luckyhub.catalog.dto.CreateProductCommand;
-import com.dongqh.luckyhub.catalog.dto.ProductQuery;
-import com.dongqh.luckyhub.catalog.entity.Product;
-import com.dongqh.luckyhub.catalog.entity.ProductSku;
-import com.dongqh.luckyhub.catalog.enums.ProductErrorCode;
-import com.dongqh.luckyhub.catalog.enums.ProductType;
-import com.dongqh.luckyhub.catalog.mapper.ProductMapper;
-import com.dongqh.luckyhub.catalog.mapper.ProductSkuMapper;
-import com.dongqh.luckyhub.catalog.service.CatalogService;
+import com.dongqh.luckyhub.domain.dto.catalog.CreateProductCommand;
+import com.dongqh.luckyhub.domain.dto.catalog.ProductQuery;
+import com.dongqh.luckyhub.domain.po.catalog.Product;
+import com.dongqh.luckyhub.domain.po.catalog.ProductSku;
+import com.dongqh.luckyhub.enums.catalog.ProductErrorCode;
+import com.dongqh.luckyhub.enums.catalog.ProductType;
+import com.dongqh.luckyhub.mapper.catalog.ProductMapper;
+import com.dongqh.luckyhub.mapper.catalog.ProductSkuMapper;
+import com.dongqh.luckyhub.service.catalog.CatalogService;
 import com.dongqh.luckyhub.common.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

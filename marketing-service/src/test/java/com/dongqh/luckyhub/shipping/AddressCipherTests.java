@@ -1,11 +1,11 @@
 package com.dongqh.luckyhub.shipping;
 
 import com.dongqh.luckyhub.common.exception.BusinessException;
-import com.dongqh.luckyhub.shipping.config.ShippingProperties;
-import com.dongqh.luckyhub.shipping.crypto.AesGcmAddressCipher;
-import com.dongqh.luckyhub.shipping.crypto.AddressCipher;
-import com.dongqh.luckyhub.shipping.enums.ShippingErrorCode;
-import com.dongqh.luckyhub.shipping.support.AddressMasker;
+import com.dongqh.luckyhub.config.shipping.ShippingProperties;
+import com.dongqh.luckyhub.domain.crypto.shipping.AesGcmAddressCipher;
+import com.dongqh.luckyhub.domain.crypto.shipping.AddressCipher;
+import com.dongqh.luckyhub.enums.shipping.ShippingErrorCode;
+import com.dongqh.luckyhub.domain.support.shipping.AddressMasker;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

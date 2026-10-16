@@ -1,14 +1,14 @@
-package com.dongqh.luckyhub.activity.controller;
+package com.dongqh.luckyhub.controller.activity;
 
-import com.dongqh.luckyhub.activity.dto.AddActivityPrizeCommand;
-import com.dongqh.luckyhub.activity.dto.UpdateActivityPrizeCommand;
-import com.dongqh.luckyhub.activity.service.ActivityPrizeService;
-import com.dongqh.luckyhub.activity.vo.ActivityPrizeView;
+import com.dongqh.luckyhub.domain.dto.activity.AddActivityPrizeCommand;
+import com.dongqh.luckyhub.domain.dto.activity.UpdateActivityPrizeCommand;
+import com.dongqh.luckyhub.service.activity.ActivityPrizeService;
+import com.dongqh.luckyhub.domain.vo.activity.ActivityPrizeView;
 import com.dongqh.luckyhub.common.web.GlobalExceptionHandler;
-import com.dongqh.luckyhub.prize.enums.PrizeLevel;
-import com.dongqh.luckyhub.prize.enums.PrizeType;
-import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
+import com.dongqh.luckyhub.enums.prize.PrizeLevel;
+import com.dongqh.luckyhub.enums.prize.PrizeType;
+import com.dongqh.luckyhub.domain.annotation.rbac.RequirePermission;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;

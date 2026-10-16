@@ -28,7 +28,7 @@
         <div class="activity-list" v-if="activities.length">
           <article class="activity-row" v-for="activity in activities" :key="activity.id" :class="{active:selected&&selected.id===activity.id}" @click="selectActivity(activity)">
             <h3>{{activity.activityName}}</h3><p>{{activity.description||'商城会员活动'}}</p>
-            <span class="activity-meta">每日 {{activity.dailyLimit}} 次　活动截止：{{activity.endTime}}</span>
+            <span class="activity-meta">活动截止：{{activity.endTime}}</span>
           </article>
         </div>
         <div class="empty" v-else>当前暂无可参与活动，请稍后再来。</div>
@@ -74,3 +74,4 @@
 new Vue({el:'#app',data:{activities:[],selected:null,prizes:[],result:null,chances:{availableBalance:0,reservedBalance:0},loading:false,drawing:false,error:''},created(){if(!util.isLogin()){location.href='/login.html';return}this.loadChances();this.loadActivities()},methods:{loadChances(){axios.get('/marketing/lottery/chances').then(r=>this.chances=r.data||{availableBalance:0,reservedBalance:0}).catch(this.showError)},loadActivities(){this.loading=true;this.error='';axios.get('/marketing/lottery/activities').then(r=>{this.activities=r.data||[];if(this.activities.length)this.selectActivity(this.activities[0])}).catch(this.showError).finally(()=>this.loading=false)},selectActivity(activity){this.selected=activity;this.result=null;this.error='';axios.get('/marketing/lottery/activities/'+activity.id+'/prizes').then(r=>this.prizes=r.data||[]).catch(this.showError)},draw(drawCount){if(!this.selected||this.drawing)return;this.drawing=true;this.error='';const requestId=this.newRequestId();if(!requestId){this.error='当前浏览器不支持安全随机数，请升级浏览器后重试';this.drawing=false;return}axios.post('/marketing/lottery/draws',{requestId,activityId:this.selected.id,drawCount}).then(r=>{this.result=r.data;this.loadChances()}).catch(this.showError).finally(()=>this.drawing=false)},newRequestId(){if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();if(window.crypto&&crypto.getRandomValues){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20)}return null},showError(e){this.error=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg||e.response.data.detail))||'请求失败，请稍后重试'},mallItemId(item){return item.hmallItemId||item.itemId||null},typeName(type){return({PHYSICAL:'商城商品',COUPON:'商城优惠券',POINTS:'商城积分',MEMBERSHIP:'会员权益',DRAW_CHANCE:'抽奖次数',WIN:'中奖',NO_WIN:'未中奖'})[type]||type||'-'}}})
 </script>
 </body></html>
+

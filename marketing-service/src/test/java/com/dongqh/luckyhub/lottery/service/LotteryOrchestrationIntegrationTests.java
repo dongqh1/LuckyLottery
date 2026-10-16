@@ -1,15 +1,15 @@
-package com.dongqh.luckyhub.lottery.service;
+package com.dongqh.luckyhub.service.lottery;
 
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
-import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
-import com.dongqh.luckyhub.lottery.dto.DrawCommand;
-import com.dongqh.luckyhub.lottery.enums.DrawOrderStatus;
-import com.dongqh.luckyhub.lottery.enums.DrawResultType;
-import com.dongqh.luckyhub.lottery.quota.DrawQuotaKeys;
-import com.dongqh.luckyhub.lottery.quota.DrawQuotaService;
-import com.dongqh.luckyhub.lottery.quota.QuotaReservationRequest;
-import com.dongqh.luckyhub.lottery.vo.DrawOrderView;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
+import com.dongqh.luckyhub.service.drawchance.DrawChanceService;
+import com.dongqh.luckyhub.domain.dto.lottery.DrawCommand;
+import com.dongqh.luckyhub.enums.lottery.DrawOrderStatus;
+import com.dongqh.luckyhub.enums.lottery.DrawResultType;
+import com.dongqh.luckyhub.domain.quota.lottery.DrawQuotaKeys;
+import com.dongqh.luckyhub.domain.quota.lottery.DrawQuotaService;
+import com.dongqh.luckyhub.domain.quota.lottery.QuotaReservationRequest;
+import com.dongqh.luckyhub.domain.vo.lottery.DrawOrderView;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,7 +135,7 @@ class LotteryOrchestrationIntegrationTests {
         assertThatThrownBy(() -> result = lotteryService.draw(new DrawCommand(requestId, activityId, 10)))
                 .isInstanceOfSatisfying(com.dongqh.luckyhub.common.exception.BusinessException.class,
                         error -> assertThat(error.getErrorCode())
-                                .isEqualTo(com.dongqh.luckyhub.lottery.enums.LotteryErrorCode.DRAW_ORDER_FAILED));
+                                .isEqualTo(com.dongqh.luckyhub.enums.lottery.LotteryErrorCode.DRAW_ORDER_FAILED));
 
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM lottery_draw_order WHERE request_id = ?", Integer.class, requestId))

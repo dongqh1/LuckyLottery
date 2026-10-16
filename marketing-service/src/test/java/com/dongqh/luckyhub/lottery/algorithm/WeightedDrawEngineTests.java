@@ -1,11 +1,11 @@
-package com.dongqh.luckyhub.lottery.algorithm;
+package com.dongqh.luckyhub.domain.algorithm.lottery;
 
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static com.dongqh.luckyhub.lottery.algorithm.DrawCandidate.Type.NO_WIN;
-import static com.dongqh.luckyhub.lottery.algorithm.DrawCandidate.Type.PRIZE_CANDIDATE;
+import static com.dongqh.luckyhub.domain.algorithm.lottery.DrawCandidate.Type.NO_WIN;
+import static com.dongqh.luckyhub.domain.algorithm.lottery.DrawCandidate.Type.PRIZE_CANDIDATE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

@@ -1,4 +1,4 @@
-package com.dongqh.luckyhub.points.service.impl;
+package com.dongqh.luckyhub.service.points.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -6,31 +6,29 @@ import com.dongqh.hmapi.client.FulfillmentClient;
 import com.dongqh.hmapi.dto.CreateFulfillmentShippingOrderRequest;
 import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
 import com.dongqh.hmapi.dto.InternalServiceErrorDTO;
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.dto.PointsMutationCommand;
-import com.dongqh.luckyhub.points.dto.PointsRedemptionQuery;
-import com.dongqh.luckyhub.points.dto.PointsReversalCommand;
-import com.dongqh.luckyhub.points.dto.ReversePointsRedemptionCommand;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOffer;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOrder;
-import com.dongqh.luckyhub.points.enums.PointsBusinessType;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.enums.PointsProductType;
-import com.dongqh.luckyhub.points.enums.PointsRedemptionStatus;
-import com.dongqh.luckyhub.points.enums.PointsRedemptionStep;
-import com.dongqh.luckyhub.points.exception.PointsDomainException;
-import com.dongqh.luckyhub.points.mapper.PointsRedemptionOrderMapper;
-import com.dongqh.luckyhub.points.service.PointsAccountService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionOfferService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionService;
-import com.dongqh.luckyhub.points.service.PointsRedemptionStateService;
-import com.dongqh.luckyhub.points.service.port.PointsInventoryPort;
-import com.dongqh.luckyhub.points.service.port.PointsRedeemableSkuPort;
-import com.dongqh.luckyhub.points.service.port.PointsRedeemableSkuSnapshot;
-import com.dongqh.luckyhub.points.service.port.PointsUserEligibilityPort;
-import com.dongqh.luckyhub.points.vo.PointsPageResponse;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionView;
-import com.dongqh.luckyhub.points.vo.PointsShippingAddressView;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
+import com.dongqh.luckyhub.domain.dto.points.PointsRedemptionQuery;
+import com.dongqh.luckyhub.domain.dto.points.PointsReversalCommand;
+import com.dongqh.luckyhub.domain.dto.points.ReversePointsRedemptionCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOffer;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOrder;
+import com.dongqh.luckyhub.enums.points.PointsBusinessType;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.enums.points.PointsProductType;
+import com.dongqh.luckyhub.enums.points.PointsRedemptionStatus;
+import com.dongqh.luckyhub.enums.points.PointsRedemptionStep;
+import com.dongqh.luckyhub.points.domain.exception.PointsDomainException;
+import com.dongqh.luckyhub.points.integration.PointsIntegrationService;
+import com.dongqh.luckyhub.mapper.points.PointsRedemptionOrderMapper;
+import com.dongqh.luckyhub.service.points.PointsAccountService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionOfferService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionService;
+import com.dongqh.luckyhub.service.points.PointsRedemptionStateService;
+
+import com.dongqh.luckyhub.domain.vo.points.PointsPageResponse;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionView;
+import com.dongqh.luckyhub.domain.vo.points.PointsShippingAddressView;
 import feign.FeignException;
 import org.springframework.stereotype.Service;
 
@@ -48,9 +46,7 @@ import java.util.stream.Collectors;
 @Service
 public class PointsRedemptionServiceImpl implements PointsRedemptionService {
 
-    private final PointsUserEligibilityPort userEligibility;
-    private final PointsRedeemableSkuPort skuCatalog;
-    private final PointsInventoryPort inventory;
+    private final PointsIntegrationService integration;
     private final PointsAccountService accounts;
     private final PointsRedemptionOfferService offers;
     private final PointsRedemptionStateService state;
@@ -58,18 +54,14 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
     private final FulfillmentClient fulfillment;
 
     public PointsRedemptionServiceImpl(
-            PointsUserEligibilityPort userEligibility,
-            PointsRedeemableSkuPort skuCatalog,
-            PointsInventoryPort inventory,
+            PointsIntegrationService integration,
             PointsAccountService accounts,
             PointsRedemptionOfferService offers,
             PointsRedemptionStateService state,
             PointsRedemptionOrderMapper orders,
             FulfillmentClient fulfillment
     ) {
-        this.userEligibility = userEligibility;
-        this.skuCatalog = skuCatalog;
-        this.inventory = inventory;
+        this.integration = integration;
         this.accounts = accounts;
         this.offers = offers;
         this.state = state;
@@ -89,7 +81,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
         String fingerprint = fingerprint(userId, command);
         PointsRedemptionOrder order = find(redemptionNo);
         if (order == null) {
-            if (!userEligibility.isEnabled(userId)) {
+            if (!integration.isEnabledUser(userId)) {
                 throw error(PointsErrorCode.POINTS_USER_UNAVAILABLE);
             }
             order = newOrder(userId, command, redemptionNo, fingerprint);
@@ -213,7 +205,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
             }
             throw exception;
         }
-        inventory.reverseConfirmed(redemptionNo);
+        integration.reverseConfirmed(redemptionNo);
         if (orders.reverseCompleted(redemptionNo, reversalNo, bounded(reason)) != 1) {
             PointsRedemptionOrder winner = require(redemptionNo);
             if (winner.getStatus() != PointsRedemptionStatus.REVERSED
@@ -241,7 +233,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                         if (current.getSkuId() == null) {
                             state.reserveOfferStock(redemptionNo, current.getOfferId(), current.getQuantity());
                         } else {
-                            inventory.reserve(current.getSkuId(), current.getQuantity(), current.getRedemptionNo());
+                            integration.reserve(current.getSkuId(), current.getQuantity(), current.getRedemptionNo());
                             advanceLocked(current, PointsRedemptionStep.SKU_RESERVED);
                         }
                         return null;
@@ -265,7 +257,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                     withStepLock(redemptionNo, current -> {
                         if (!processingAt(current, PointsRedemptionStep.POINTS_DEBITED)) return null;
                         if (current.getSkuId() != null) {
-                            inventory.confirm(redemptionNo);
+                            integration.confirm(redemptionNo);
                         }
                         advanceLocked(current, PointsRedemptionStep.SKU_CONFIRMED);
                         return null;
@@ -389,7 +381,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                 case COMPENSATING_SKU -> {
                     state.withLockedOrder(redemptionNo, current -> {
                         if (!processingAt(current, PointsRedemptionStep.COMPENSATING_SKU)) return null;
-                        inventory.compensate(redemptionNo);
+                        integration.compensate(redemptionNo);
                         if (orders.compensate(redemptionNo, PointsRedemptionStep.COMPENSATING_SKU.name(),
                                 current.getOriginalErrorCode(), current.getFailureReason()) != 1) {
                             throw error(PointsErrorCode.REDEMPTION_STATE_CONFLICT);
@@ -487,7 +479,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
             order.setProductType(PointsProductType.PHYSICAL);
             order.setImageUrl(offer.getImageUrl());
         } else {
-            PointsRedeemableSkuSnapshot sku = skuCatalog.getRedeemableSku(command.skuId())
+            PointsIntegrationService.RedeemableSkuSnapshot sku = integration.getRedeemableSku(command.skuId())
                     .orElseThrow(() -> error(PointsErrorCode.REDEMPTION_SKU_UNAVAILABLE));
             order.setSkuId(sku.skuId());
             order.setUnitPoints(sku.pointsPrice());

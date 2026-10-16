@@ -1,5 +1,5 @@
-package com.dongqh.luckyhub.coupon.mapper;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.dongqh.luckyhub.coupon.entity.UserCoupon; import org.apache.ibatis.annotations.*;
+package com.dongqh.luckyhub.mapper.coupon;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.dongqh.luckyhub.domain.po.coupon.UserCoupon; import org.apache.ibatis.annotations.*;
 import java.time.LocalDateTime;
 public interface UserCouponMapper extends BaseMapper<UserCoupon> {
  @Insert("""

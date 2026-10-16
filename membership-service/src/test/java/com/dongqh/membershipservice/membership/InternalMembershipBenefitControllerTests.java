@@ -1,8 +1,8 @@
 package com.dongqh.membershipservice.membership;
 
-import com.dongqh.membershipservice.membership.controller.InternalMembershipBenefitController;
-import com.dongqh.membershipservice.membership.model.ActiveMembershipBenefit;
-import com.dongqh.membershipservice.membership.service.MembershipQueryService;
+import com.dongqh.membershipservice.controller.membership.InternalMembershipBenefitController;
+import com.dongqh.membershipservice.domain.model.membership.ActiveMembershipBenefit;
+import com.dongqh.membershipservice.service.membership.MembershipQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;

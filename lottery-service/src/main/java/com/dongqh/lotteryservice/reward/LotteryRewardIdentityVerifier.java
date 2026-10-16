@@ -1,10 +1,10 @@
 package com.dongqh.lotteryservice.reward;
 
-import com.dongqh.lotteryservice.draworder.entity.DrawOrderRow;
-import com.dongqh.lotteryservice.draworder.enums.DrawOrderStatus;
-import com.dongqh.lotteryservice.drawtransaction.entity.DrawRecordRow;
-import com.dongqh.lotteryservice.drawtransaction.entity.UserBenefitRow;
-import com.dongqh.lotteryservice.drawtransaction.model.RewardSnapshot;
+import com.dongqh.lotteryservice.domain.po.draworder.DrawOrderRow;
+import com.dongqh.lotteryservice.enums.draworder.DrawOrderStatus;
+import com.dongqh.lotteryservice.domain.po.drawtransaction.DrawRecordRow;
+import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
+import com.dongqh.lotteryservice.domain.model.drawtransaction.RewardSnapshot;
 import com.dongqh.lotteryservice.outbox.event.DrawEventEnvelope;
 import com.dongqh.lotteryservice.outbox.event.DrawEventType;
 import com.dongqh.lotteryservice.outbox.event.PrizeFulfillmentRequestedEvent;

@@ -1,6 +1,6 @@
-package com.dongqh.luckyhub.lottery.service;
+package com.dongqh.luckyhub.service.lottery;
 
-import com.dongqh.luckyhub.activity.mapper.MarketingActivityPrizeMapper;
+import com.dongqh.luckyhub.mapper.activity.MarketingActivityPrizeMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

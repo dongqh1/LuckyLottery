@@ -1,9 +1,9 @@
-package com.dongqh.luckyhub.inventory.channel.service;
+package com.dongqh.luckyhub.domain.channel.inventory.service;
 
-import com.dongqh.luckyhub.inventory.channel.dto.AllocateChannelStockCommand;
-import com.dongqh.luckyhub.inventory.channel.dto.InitializeSkuStockCommand;
-import com.dongqh.luckyhub.inventory.channel.dto.ReserveChannelStockCommand;
-import com.dongqh.luckyhub.inventory.channel.vo.ChannelInventoryView;
+import com.dongqh.luckyhub.domain.channel.inventory.dto.AllocateChannelStockCommand;
+import com.dongqh.luckyhub.domain.channel.inventory.dto.InitializeSkuStockCommand;
+import com.dongqh.luckyhub.domain.channel.inventory.dto.ReserveChannelStockCommand;
+import com.dongqh.luckyhub.domain.channel.inventory.vo.ChannelInventoryView;
 
 public interface ChannelInventoryService {
     ChannelInventoryView initialize(InitializeSkuStockCommand command);

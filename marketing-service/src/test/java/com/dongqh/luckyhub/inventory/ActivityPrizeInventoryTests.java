@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.inventory;
 
-import com.dongqh.luckyhub.activity.entity.MarketingActivityPrize;
-import com.dongqh.luckyhub.activity.mapper.MarketingActivityPrizeMapper;
-import com.dongqh.luckyhub.inventory.service.ActivityPrizeInventoryService;
+import com.dongqh.luckyhub.domain.po.activity.MarketingActivityPrize;
+import com.dongqh.luckyhub.mapper.activity.MarketingActivityPrizeMapper;
+import com.dongqh.luckyhub.service.inventory.ActivityPrizeInventoryService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

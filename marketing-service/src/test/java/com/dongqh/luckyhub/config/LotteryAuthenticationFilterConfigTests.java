@@ -1,8 +1,8 @@
 package com.dongqh.luckyhub.config;
 
-import com.dongqh.luckyhub.auth.filter.AuthenticationFilter;
-import com.dongqh.luckyhub.auth.security.JwtService;
-import com.dongqh.luckyhub.auth.security.SessionService;
+import com.dongqh.luckyhub.domain.filter.auth.AuthenticationFilter;
+import com.dongqh.luckyhub.security.auth.JwtService;
+import com.dongqh.luckyhub.security.auth.SessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import tools.jackson.databind.ObjectMapper;

@@ -1,9 +1,9 @@
 package com.dongqh.luckyhub.fulfillment;
 
-import com.dongqh.luckyhub.fulfillment.messaging.event.FulfillmentTaskReadyEvent;
-import com.dongqh.luckyhub.fulfillment.mapper.FulfillmentOutboxMapper;
-import com.dongqh.luckyhub.fulfillment.messaging.outbox.*;
-import com.dongqh.luckyhub.fulfillment.messaging.rabbit.FulfillmentEventPublisher;
+import com.dongqh.luckyhub.messaging.fulfillment.event.FulfillmentTaskReadyEvent;
+import com.dongqh.luckyhub.mapper.fulfillment.FulfillmentOutboxMapper;
+import com.dongqh.luckyhub.messaging.fulfillment.outbox.*;
+import com.dongqh.luckyhub.messaging.fulfillment.rabbit.FulfillmentEventPublisher;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 

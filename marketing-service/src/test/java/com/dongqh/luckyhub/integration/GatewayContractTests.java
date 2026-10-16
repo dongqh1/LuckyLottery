@@ -1,7 +1,7 @@
 package com.dongqh.luckyhub.integration;
 
-import com.dongqh.luckyhub.fulfillment.enums.GatewayOutcome;
-import com.dongqh.luckyhub.integration.gateway.*;
+import com.dongqh.luckyhub.enums.fulfillment.GatewayOutcome;
+import com.dongqh.luckyhub.domain.gateway.integration.*;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

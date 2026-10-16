@@ -2,7 +2,7 @@ package com.dongqh.fulfillmentservice.persistence;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskRecord;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskRecord;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;

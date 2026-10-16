@@ -3,7 +3,7 @@ package com.dongqh.fulfillmentservice.persistence;
 import com.dongqh.fulfillmentservice.enums.FailureCategory;
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.model.FulfillmentTaskQuery;
+import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;

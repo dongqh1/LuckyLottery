@@ -1,6 +1,6 @@
-package com.dongqh.luckyhub.auth.security;
+package com.dongqh.luckyhub.security.auth;
 
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
 import com.dongqh.luckyhub.common.exception.BusinessException;
 import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,7 +34,6 @@ class HmallJwtServiceTests {
         LoginPrincipal principal = service.parse(token);
 
         assertThat(principal.userId()).isEqualTo(9001L);
-        assertThat(principal.role()).isEqualTo("ADMIN");
     }
 
     @Test
@@ -78,3 +77,4 @@ class HmallJwtServiceTests {
                 .compact();
     }
 }
+

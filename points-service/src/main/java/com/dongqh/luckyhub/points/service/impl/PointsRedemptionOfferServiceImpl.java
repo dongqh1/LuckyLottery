@@ -1,15 +1,14 @@
-package com.dongqh.luckyhub.points.service.impl;
+package com.dongqh.luckyhub.service.points.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dongqh.luckyhub.points.dto.CreatePointsRedemptionOfferCommand;
-import com.dongqh.luckyhub.points.entity.PointsRedemptionOffer;
-import com.dongqh.luckyhub.points.enums.PointsErrorCode;
-import com.dongqh.luckyhub.points.exception.PointsDomainException;
-import com.dongqh.luckyhub.points.mapper.PointsRedemptionOfferMapper;
-import com.dongqh.luckyhub.points.service.PointsRedemptionOfferService;
-import com.dongqh.luckyhub.points.service.port.PointsItemCatalogPort;
-import com.dongqh.luckyhub.points.service.port.PointsItemSnapshot;
-import com.dongqh.luckyhub.points.vo.PointsRedemptionOfferView;
+import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionOfferCommand;
+import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOffer;
+import com.dongqh.luckyhub.enums.points.PointsErrorCode;
+import com.dongqh.luckyhub.points.domain.exception.PointsDomainException;
+import com.dongqh.luckyhub.points.integration.PointsIntegrationService;
+import com.dongqh.luckyhub.mapper.points.PointsRedemptionOfferMapper;
+import com.dongqh.luckyhub.service.points.PointsRedemptionOfferService;
+import com.dongqh.luckyhub.domain.vo.points.PointsRedemptionOfferView;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,20 +17,20 @@ import java.util.List;
 public class PointsRedemptionOfferServiceImpl implements PointsRedemptionOfferService {
     private static final int ENABLED = 1;
 
-    private final PointsItemCatalogPort itemCatalog;
+    private final PointsIntegrationService integration;
     private final PointsRedemptionOfferMapper mapper;
 
     public PointsRedemptionOfferServiceImpl(
-            PointsItemCatalogPort itemCatalog,
+            PointsIntegrationService integration,
             PointsRedemptionOfferMapper mapper
     ) {
-        this.itemCatalog = itemCatalog;
+        this.integration = integration;
         this.mapper = mapper;
     }
 
     @Override
     public PointsRedemptionOfferView create(CreatePointsRedemptionOfferCommand command) {
-        PointsItemSnapshot item = itemCatalog.getItem(command.hmallItemId())
+        PointsIntegrationService.ItemSnapshot item = integration.getItem(command.hmallItemId())
                 .filter(snapshot -> snapshot.id() != null && snapshot.id().equals(command.hmallItemId()))
                 .filter(snapshot -> Integer.valueOf(ENABLED).equals(snapshot.status()))
                 .filter(snapshot -> snapshot.stock() != null

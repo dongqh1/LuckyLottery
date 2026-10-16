@@ -1,8 +1,8 @@
-package com.dongqh.luckyhub.lottery.scheduler;
+package com.dongqh.luckyhub.scheduler.lottery;
 
-import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
-import com.dongqh.luckyhub.lottery.config.LotteryProperties;
-import com.dongqh.luckyhub.lottery.service.LotteryReconciliationService;
+import com.dongqh.luckyhub.service.drawchance.DrawChanceService;
+import com.dongqh.luckyhub.config.lottery.LotteryProperties;
+import com.dongqh.luckyhub.service.lottery.LotteryReconciliationService;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.ArgumentMatchers.any;

@@ -1,11 +1,11 @@
-package com.dongqh.luckyhub.drawchance.controller;
+package com.dongqh.luckyhub.controller.drawchance;
 
-import com.dongqh.luckyhub.auth.context.LoginContext;
-import com.dongqh.luckyhub.auth.model.LoginPrincipal;
-import com.dongqh.luckyhub.drawchance.service.DrawChanceService;
-import com.dongqh.luckyhub.drawchance.vo.DrawChanceAccountView;
-import com.dongqh.luckyhub.rbac.annotation.RequirePermission;
-import com.dongqh.luckyhub.rbac.constant.PermissionCodes;
+import com.dongqh.luckyhub.domain.context.auth.LoginContext;
+import com.dongqh.luckyhub.domain.model.auth.LoginPrincipal;
+import com.dongqh.luckyhub.service.drawchance.DrawChanceService;
+import com.dongqh.luckyhub.domain.vo.drawchance.DrawChanceAccountView;
+import com.dongqh.luckyhub.domain.annotation.rbac.RequirePermission;
+import com.dongqh.luckyhub.domain.constant.rbac.PermissionCodes;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;

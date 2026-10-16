@@ -99,7 +99,6 @@ luckyhub:
     reconcile-initial-delay: 60s
     reconcile-batch-size: 100
     reconciliation-enabled: true
-    reservation-retention: 72h
     outbox-interval: 5s
     outbox-initial-delay: 60s
     outbox-batch-size: 100
@@ -141,3 +140,4 @@ luckyhub:
     outbox-batch-size: 100
     projection-interval: 5s
     projection-initial-delay: 60s
+
