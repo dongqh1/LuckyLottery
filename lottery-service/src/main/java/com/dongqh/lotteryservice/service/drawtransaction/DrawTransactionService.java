@@ -63,8 +63,11 @@ public class DrawTransactionService {
         List<DrawResultItem> results = new ArrayList<>(context.drawCount());
 
         for (int sequence = 1; sequence <= context.drawCount(); sequence++) {
+
             DrawCandidate candidate = drawEngine.select(weights, context.noWinWeight());
+
             DrawPrizeSnapshot wonPrize = resolveFinalWin(candidate, context.prizes());
+
             results.add(persistResult(context, sequence, wonPrize));
         }
 
