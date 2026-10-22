@@ -1,6 +1,6 @@
 spring:
   application:
-    name: fulfillment-service
+    name: logistics-service
   cloud:
     nacos:
       server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:18848}
@@ -64,3 +64,5 @@ luckyhub:
       key-base64: ${FULFILLMENT_ADDRESS_CIPHER_KEY:}
     user-service:
       base-url: ${USER_SERVICE_BASE_URL:http://localhost:8083}
+  logistics:
+    admin-user-ids: ${LOGISTICS_ADMIN_USER_IDS:1}

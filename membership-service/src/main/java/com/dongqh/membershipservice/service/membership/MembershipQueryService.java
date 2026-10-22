@@ -31,11 +31,13 @@ public class MembershipQueryService {
     public List<MembershipProductView> listEnabledProducts() {
         return products.selectList(new LambdaQueryWrapper<MembershipProduct>()
                         .eq(MembershipProduct::getStatus, 1)
+                        .eq(MembershipProduct::getSalesEnabled, 1)
                         .orderByAsc(MembershipProduct::getPriceCent)
                         .orderByAsc(MembershipProduct::getId)
                         .last("LIMIT 100"))
                 .stream()
                 .filter(product -> Integer.valueOf(1).equals(product.getStatus()))
+                .filter(product -> Integer.valueOf(1).equals(product.getSalesEnabled()))
                 .sorted(Comparator.comparing(MembershipProduct::getPriceCent)
                         .thenComparing(MembershipProduct::getId))
                 .map(MembershipQueryService::view)

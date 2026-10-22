@@ -19,6 +19,7 @@ public enum LotteryErrorCode {
     DRAW_CHANCE_RESERVATION_NOT_FOUND(46004, "抽奖次数预留不存在", HttpStatus.NOT_FOUND),
     DRAW_CHANCE_TERMINAL_STATE_CONFLICT(46005, "抽奖次数预留终态冲突", HttpStatus.CONFLICT),
     DRAW_CHANCE_BALANCE_INVALID(46006, "抽奖次数账户余额异常", HttpStatus.CONFLICT),
+    DRAW_CHANCE_INSUFFICIENT_AVAILABLE(46007, "可用抽奖次数不足", HttpStatus.CONFLICT),
     BENEFIT_NOT_FOUND(43010, "用户权益不存在", HttpStatus.NOT_FOUND),
     BENEFIT_ACCESS_DENIED(43011, "无权访问该用户权益", HttpStatus.FORBIDDEN),
     BENEFIT_QUERY_INVALID(43012, "权益查询参数不合法", HttpStatus.BAD_REQUEST),

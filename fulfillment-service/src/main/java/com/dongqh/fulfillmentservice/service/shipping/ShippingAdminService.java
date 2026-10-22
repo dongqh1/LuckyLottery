@@ -11,6 +11,8 @@ import com.dongqh.fulfillmentservice.enums.shipping.ShippingStatus;
 import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingOrderAdminQuery;
 import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingOrderView;
 import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingTrackingView;
+import com.dongqh.fulfillmentservice.domain.model.shipping.AddShippingTrackingEventCommand;
+import com.dongqh.fulfillmentservice.domain.model.shipping.UpdateShippingLogisticsCommand;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrder;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrderRepository;
 import org.springframework.stereotype.Service;
@@ -48,17 +50,20 @@ public class ShippingAdminService {
     private final FulfillmentTaskReadService tasks;
     private final FulfillmentTaskOperationService taskOperations;
     private final ShippingOrderFulfillmentProjector projector;
+    private final ShippingAdminMutationService mutations;
 
     public ShippingAdminService(ShippingOrderRepository orders, ShippingOrderService shipping,
                                 ShippingTrackingQueryService tracking, FulfillmentTaskReadService tasks,
                                 FulfillmentTaskOperationService taskOperations,
-                                ShippingOrderFulfillmentProjector projector) {
+                                ShippingOrderFulfillmentProjector projector,
+                                ShippingAdminMutationService mutations) {
         this.orders = orders;
         this.shipping = shipping;
         this.tracking = tracking;
         this.tasks = tasks;
         this.taskOperations = taskOperations;
         this.projector = projector;
+        this.mutations = mutations;
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +93,22 @@ public class ShippingAdminService {
     public ShippingTrackingView tracking(String shippingNo) {
         ShippingOrder order = require(shippingNo);
         return tracking.getForUser(order.targetUserId(), order.shippingNo());
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ShippingOrderView updateLogistics(String shippingNo, long operatorId,
+                                             UpdateShippingLogisticsCommand command) {
+        operator(operatorId);
+        mutations.updateLogistics(shippingNo, command);
+        return get(shippingNo);
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ShippingOrderView addTrackingEvent(String shippingNo, long operatorId,
+                                              AddShippingTrackingEventCommand command) {
+        operator(operatorId);
+        mutations.addTrackingEvent(shippingNo, command);
+        return get(shippingNo);
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)

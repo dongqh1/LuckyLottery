@@ -9,7 +9,9 @@ import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
 import com.dongqh.fulfillmentservice.enums.shipping.ShippingStatus;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrder;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrderRepository;
+import com.dongqh.hmapi.client.TradeClient;
 import com.dongqh.hmapi.dto.FulfillmentStatusChangedEventV1;
+import com.dongqh.hmapi.dto.UpdateTradeOrderShippingInfoRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,17 +28,20 @@ public class ShippingOrderFulfillmentProjector {
     private final ShippingOrderRepository orders;
     private final FulfillmentTaskReadService tasks;
     private final FulfillmentStatusChangedOutbox statusOutbox;
+    private final TradeClient trade;
     private final Clock clock;
 
     public ShippingOrderFulfillmentProjector(
             ShippingOrderRepository orders,
             FulfillmentTaskReadService tasks,
             FulfillmentStatusChangedOutbox statusOutbox,
+            TradeClient trade,
             Clock fulfillmentClock
     ) {
         this.orders = orders;
         this.tasks = tasks;
         this.statusOutbox = statusOutbox;
+        this.trade = trade;
         this.clock = fulfillmentClock;
     }
 
@@ -55,6 +60,13 @@ public class ShippingOrderFulfillmentProjector {
         ShippingOrder projected = project(order, task, now);
         if (projected == null || !orders.updateProjection(order, projected)) {
             return;
+        }
+
+        if (order.sourceType() == ShippingSourceType.CASH_ORDER
+                && projected.carrierName() != null && projected.waybillNo() != null) {
+            long orderId = positiveOrderId(order.sourceId());
+            trade.updateShippingInfo(orderId, new UpdateTradeOrderShippingInfoRequest(
+                    projected.carrierName(), projected.waybillNo()));
         }
 
         if (order.sourceType() == ShippingSourceType.LOTTERY_BENEFIT) {
@@ -149,5 +161,15 @@ public class ShippingOrderFulfillmentProjector {
     private String defaulted(String value, String fallback, int max) {
         String normalized = bounded(value, max);
         return normalized == null ? fallback : normalized;
+    }
+
+    private long positiveOrderId(String sourceId) {
+        try {
+            long orderId = Long.parseLong(sourceId);
+            if (orderId > 0) return orderId;
+        } catch (RuntimeException ignored) {
+            // Invalid source IDs must not be sent to the trade service.
+        }
+        throw new IllegalStateException("现金订单物流来源 ID 无效");
     }
 }

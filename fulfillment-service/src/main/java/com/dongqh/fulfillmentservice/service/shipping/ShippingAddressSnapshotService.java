@@ -50,6 +50,20 @@ public class ShippingAddressSnapshotService {
                 .orElseGet(() -> insertOrRequireWinner(candidate));
     }
 
+    public ShippingAddressSnapshot createFromFrozenDetails(long userId, ShippingSourceType sourceType,
+                                                            String sourceId, ShippingAddressDetails address) {
+        if (userId <= 0 || sourceType == null || sourceId == null || sourceId.isBlank()
+                || sourceId.trim().length() > 100 || address == null
+                || !Objects.equals(address.userId(), userId)
+                || address.id() != null && address.id() <= 0) {
+            throw error(ShippingErrorCode.ADDRESS_INVALID);
+        }
+        ShippingAddressSnapshot candidate = copy(userId, address.id(), sourceType, sourceId.trim(), address);
+        return repository.findBySource(sourceType, candidate.sourceId())
+                .map(existing -> requireEqual(existing, candidate))
+                .orElseGet(() -> insertOrRequireWinner(candidate));
+    }
+
     public ShippingAddressSnapshot require(long snapshotId) {
         if (snapshotId <= 0) {
             throw error(ShippingErrorCode.SHIPPING_NOT_FOUND);
@@ -80,7 +94,7 @@ public class ShippingAddressSnapshotService {
 
     private ShippingAddressSnapshot copy(
             long userId,
-            long addressId,
+            Long addressId,
             ShippingSourceType sourceType,
             String sourceId,
             ShippingAddressDetails address

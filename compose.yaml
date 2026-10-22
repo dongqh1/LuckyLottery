@@ -137,6 +137,7 @@ services:
           < /migrations/seata-tc.sql
 
   marketing-extraction-schema-init:
+    profiles: ["marketing-extraction"]
     image: mysql:8.4
     restart: "no"
     depends_on:
@@ -414,6 +415,7 @@ services:
         condition: service_healthy
 
   coupon-service:
+    profiles: ["marketing-extraction"]
     build:
       context: .
       dockerfile: coupon-service/Dockerfile
@@ -447,6 +449,7 @@ services:
         condition: service_healthy
 
   points-service:
+    profiles: ["marketing-extraction"]
     build:
       context: .
       dockerfile: points-service/Dockerfile
@@ -462,7 +465,7 @@ services:
       NACOS_DISCOVERY_REGISTER_ENABLED: "true"
       ITEM_SERVICE_BASE_URL: http://item-service:8081
       USER_SERVICE_BASE_URL: http://user-service:8083
-      FULFILLMENT_SERVICE_BASE_URL: http://fulfillment-service:8080
+      LOGISTICS_SERVICE_BASE_URL: http://logistics-service:8080
       TZ: Asia/Shanghai
     healthcheck:
       <<: *java-healthcheck
@@ -472,10 +475,11 @@ services:
         condition: service_completed_successfully
       nacos:
         condition: service_healthy
-      fulfillment-service:
+      logistics-service:
         condition: service_healthy
 
   membership-service:
+    profiles: ["marketing-extraction"]
     build:
       context: .
       dockerfile: membership-service/Dockerfile
@@ -508,6 +512,7 @@ services:
         condition: service_healthy
 
   lottery-service:
+    profiles: ["marketing-extraction"]
     build:
       context: .
       dockerfile: lottery-service/Dockerfile
@@ -516,6 +521,7 @@ services:
       LOTTERY_DATABASE_URL: "jdbc:mysql://mysql:3306/hm_lottery?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai"
       LOTTERY_DATABASE_USERNAME: hm_lottery_app
       LOTTERY_DATABASE_PASSWORD: ${LOTTERY_DB_PASSWORD:-}
+      LOTTERY_ADMIN_USER_IDS: ${LOTTERY_ADMIN_USER_IDS:-1}
       LOTTERY_FLYWAY_ENABLED: "true"
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
@@ -536,6 +542,8 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
       OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
       TZ: Asia/Shanghai
+    volumes:
+      - lottery-image-data:/app/uploads
     healthcheck:
       <<: *java-healthcheck
       test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
@@ -547,7 +555,8 @@ services:
       nacos:
         condition: service_healthy
 
-  fulfillment-service:
+  logistics-service:
+    profiles: ["marketing-extraction"]
     build:
       context: .
       dockerfile: fulfillment-service/Dockerfile
@@ -557,7 +566,8 @@ services:
       FULFILLMENT_DATABASE_USERNAME: hm_fulfillment_app
       FULFILLMENT_DATABASE_PASSWORD: ${FULFILLMENT_DB_PASSWORD:-}
       FULFILLMENT_FLYWAY_ENABLED: "true"
-      FULFILLMENT_MESSAGING_ENABLED: "false"
+      FULFILLMENT_MESSAGING_ENABLED: "true"
+      LOGISTICS_ADMIN_USER_IDS: ${LOGISTICS_ADMIN_USER_IDS:-1}
       NACOS_SERVER_ADDR: nacos:8848
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
@@ -581,6 +591,7 @@ services:
         condition: service_healthy
 
   marketing-data-migration:
+    profiles: ["marketing-extraction"]
     image: mysql:8.4
     restart: "no"
     depends_on:
@@ -592,7 +603,7 @@ services:
         condition: service_healthy
       lottery-service:
         condition: service_healthy
-      fulfillment-service:
+      logistics-service:
         condition: service_healthy
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
@@ -617,7 +628,7 @@ services:
       COUPON_SERVICE_URI: ${COUPON_SERVICE_URI:-http://coupon-service:8080}
       MEMBERSHIP_SERVICE_URI: ${MEMBERSHIP_SERVICE_URI:-http://membership-service:8080}
       LOTTERY_SERVICE_URI: ${LOTTERY_SERVICE_URI:-http://lottery-service:8080}
-      FULFILLMENT_SERVICE_URI: ${FULFILLMENT_SERVICE_URI:-http://fulfillment-service:8080}
+      LOGISTICS_SERVICE_URI: ${LOGISTICS_SERVICE_URI:-http://logistics-service:8080}
       TZ: Asia/Shanghai
     healthcheck:
       <<: *java-healthcheck
@@ -635,18 +646,6 @@ services:
         condition: service_healthy
       pay-service:
         condition: service_healthy
-      coupon-service:
-        condition: service_healthy
-      points-service:
-        condition: service_healthy
-      membership-service:
-        condition: service_healthy
-      lottery-service:
-        condition: service_healthy
-      fulfillment-service:
-        condition: service_healthy
-      marketing-data-migration:
-        condition: service_completed_successfully
 
   marketing-service:
     profiles: ["legacy-marketing"]
@@ -712,6 +711,7 @@ services:
       - "${ADMIN_PORT:-18081}:18081"
     volumes:
       - ./nginx/snippets/marketing-auth-login.conf:/etc/nginx/snippets/marketing-auth-login.conf:ro
+      - lottery-image-data:/usr/share/nginx/html/uploads:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:18080/ && wget -q -O /dev/null http://127.0.0.1:18081/items.html"]
       interval: 10s
@@ -727,3 +727,4 @@ volumes:
   redis-data:
   rabbitmq-data:
   nacos-logs:
+  lottery-image-data:

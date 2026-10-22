@@ -6,6 +6,7 @@ import com.dongqh.hmapi.client.MembershipClient;
 import com.dongqh.hmapi.dto.CouponRewardTemplateDTO;
 import com.dongqh.hmapi.dto.ItemDTO;
 import com.dongqh.hmapi.dto.MembershipRewardProductDTO;
+import com.dongqh.hmapi.dto.CreateMembershipRewardProductRequest;
 import com.dongqh.lotteryservice.enums.prizecatalog.RewardDefinitionErrorCode;
 import com.dongqh.lotteryservice.exception.prizecatalog.RewardDefinitionException;
 import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
@@ -16,9 +17,6 @@ import com.dongqh.lotteryservice.domain.vo.prizecatalog.RewardDefinitionView;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -29,15 +27,13 @@ public class RewardDefinitionAdminService {
     private final ItemClient items;
     private final CouponClient coupons;
     private final MembershipClient memberships;
-    private final ObjectMapper json;
 
     public RewardDefinitionAdminService(RewardDefinitionMapper rewards, ItemClient items, CouponClient coupons,
-                                       MembershipClient memberships, ObjectMapper json) {
+                                       MembershipClient memberships) {
         this.rewards = rewards;
         this.items = items;
         this.coupons = coupons;
         this.memberships = memberships;
-        this.json = json;
     }
 
     @Transactional
@@ -54,7 +50,6 @@ public class RewardDefinitionAdminService {
         row.setRewardType(command.rewardType());
         row.setTargetId(command.targetId());
         row.setQuantity(command.quantity());
-        row.setConfigSnapshot(normalizeJson(command.configSnapshot()));
         row.setStatus(ENABLED);
         try {
             rewards.insert(row);
@@ -70,11 +65,30 @@ public class RewardDefinitionAdminService {
         return view(row);
     }
 
+    public MembershipRewardProductDTO createRewardProduct(String productCode, String productName,
+                                                           String membershipLevel, Integer durationDays) {
+        if (productCode == null || productCode.isBlank() || productName == null || productName.isBlank()
+                || membershipLevel == null || membershipLevel.isBlank()
+                || durationDays == null || durationDays <= 0) {
+            throw error(RewardDefinitionErrorCode.REWARD_TARGET_INVALID);
+        }
+        MembershipRewardProductDTO product = memberships.createRewardProduct(
+                new CreateMembershipRewardProductRequest(productCode, productName, membershipLevel, durationDays));
+        if (product == null || product.id() == null || product.id() <= 0
+                || !Integer.valueOf(ENABLED).equals(product.status())
+                || !membershipLevel.trim().equals(product.membershipLevel())
+                || !durationDays.equals(product.durationDays())) {
+            throw error(RewardDefinitionErrorCode.REWARD_TARGET_INVALID);
+        }
+        return product;
+    }
+
     private void validateTarget(RewardType type, Long targetId) {
         boolean required = type == RewardType.PRODUCT || type == RewardType.COUPON || type == RewardType.MEMBERSHIP;
         if (required != (targetId != null) || targetId != null && targetId <= 0) {
             throw error(RewardDefinitionErrorCode.REWARD_TARGET_INVALID);
         }
+
         if (type == RewardType.PRODUCT) {
             List<ItemDTO> found = items.queryItemByIds(List.of(targetId));
             ItemDTO item = found == null ? null : found.stream()
@@ -96,18 +110,9 @@ public class RewardDefinitionAdminService {
         }
     }
 
-    private String normalizeJson(String value) {
-        if (!StringUtils.hasText(value)) return null;
-        try {
-            return json.writeValueAsString(json.readTree(value));
-        } catch (JacksonException exception) {
-            throw error(RewardDefinitionErrorCode.REWARD_CONFIG_INVALID);
-        }
-    }
-
     private RewardDefinitionView view(RewardDefinitionRow row) {
         return new RewardDefinitionView(row.getId(), row.getRewardCode(), row.getRewardName(), row.getRewardType(),
-                row.getTargetId(), row.getQuantity(), normalizeJson(row.getConfigSnapshot()), row.getStatus(),
+                row.getTargetId(), row.getQuantity(), row.getStatus(),
                 row.getCreatedAt(), row.getUpdatedAt());
     }
 

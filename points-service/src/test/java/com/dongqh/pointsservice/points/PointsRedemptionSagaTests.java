@@ -1,9 +1,9 @@
 package com.dongqh.pointsservice.points;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
-import com.dongqh.hmapi.client.FulfillmentClient;
-import com.dongqh.hmapi.dto.CreateFulfillmentShippingOrderRequest;
-import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
+import com.dongqh.hmapi.client.LogisticsClient;
+import com.dongqh.hmapi.dto.CreateShippingOrderRequest;
+import com.dongqh.hmapi.dto.ShippingOrderDTO;
 import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
 import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
 import com.dongqh.luckyhub.domain.po.points.PointsRedemptionOrder;
@@ -49,7 +49,7 @@ class PointsRedemptionSagaTests {
     @Mock private PointsAccountService accounts;
     @Mock private PointsRedemptionOfferService offers;
     @Mock private PointsRedemptionOrderMapper orders;
-    @Mock private FulfillmentClient fulfillment;
+    @Mock private LogisticsClient fulfillment;
 
     private final AtomicReference<PointsRedemptionOrder> currentOrder = new AtomicReference<>();
     private PointsRedemptionServiceImpl service;
@@ -131,8 +131,8 @@ class PointsRedemptionSagaTests {
 
     @Test
     void completesPhysicalRedemptionAfterFulfillmentPersistsShippingOrder() {
-        FulfillmentShippingOrderDTO accepted = acceptedShippingOrder();
-        when(fulfillment.createShippingOrder(anyString(), any(CreateFulfillmentShippingOrderRequest.class)))
+        ShippingOrderDTO accepted = acceptedShippingOrder();
+        when(fulfillment.createShippingOrder(anyString(), any(CreateShippingOrderRequest.class)))
                 .thenReturn(accepted);
         when(fulfillment.getShippingOrdersByIds(List.of(701L))).thenReturn(List.of(accepted));
 
@@ -146,8 +146,8 @@ class PointsRedemptionSagaTests {
         verify(integration).reserve(33L, 1, "R-1");
         verify(accounts).debit(any(PointsMutationCommand.class));
         verify(integration).confirm("R-1");
-        ArgumentCaptor<CreateFulfillmentShippingOrderRequest> request =
-                ArgumentCaptor.forClass(CreateFulfillmentShippingOrderRequest.class);
+        ArgumentCaptor<CreateShippingOrderRequest> request =
+                ArgumentCaptor.forClass(CreateShippingOrderRequest.class);
         verify(fulfillment).createShippingOrder(org.mockito.ArgumentMatchers.eq("Bearer trusted-user"),
                 request.capture());
         assertThat(request.getValue().sourceType()).isEqualTo("POINTS_REDEMPTION");
@@ -158,7 +158,7 @@ class PointsRedemptionSagaTests {
 
     @Test
     void compensatesAndHidesRedemptionWhenFulfillmentRejectsAfterPointsDebit() {
-        when(fulfillment.createShippingOrder(anyString(), any(CreateFulfillmentShippingOrderRequest.class)))
+        when(fulfillment.createShippingOrder(anyString(), any(CreateShippingOrderRequest.class)))
                 .thenThrow(new PointsDomainException(PointsErrorCode.REDEMPTION_ADDRESS_INVALID));
 
         assertThatThrownBy(() -> service.create(7L, "Bearer trusted-user", command("R-2")))
@@ -180,7 +180,7 @@ class PointsRedemptionSagaTests {
 
     @Test
     void keepsProcessingAndResumesCompensationAfterTemporaryPointsReversalFailure() {
-        when(fulfillment.createShippingOrder(anyString(), any(CreateFulfillmentShippingOrderRequest.class)))
+        when(fulfillment.createShippingOrder(anyString(), any(CreateShippingOrderRequest.class)))
                 .thenThrow(new PointsDomainException(PointsErrorCode.REDEMPTION_ADDRESS_INVALID));
         doThrow(new IllegalStateException("points ledger temporarily unavailable"))
                 .doReturn(null)
@@ -210,8 +210,8 @@ class PointsRedemptionSagaTests {
                 PointsProductType.PHYSICAL.name(), "/images/33.png", 120L);
     }
 
-    private FulfillmentShippingOrderDTO acceptedShippingOrder() {
-        return new FulfillmentShippingOrderDTO(701L, "SH-701", "FUL-701", "CREATED", 801L, "ADDR-801",
+    private ShippingOrderDTO acceptedShippingOrder() {
+        return new ShippingOrderDTO(701L, "SH-701", "FUL-701", "CREATED", 801L, "ADDR-801",
                 null, null, null, null, null, null, null, null, null, "张*", "138****", "上海***");
     }
 }

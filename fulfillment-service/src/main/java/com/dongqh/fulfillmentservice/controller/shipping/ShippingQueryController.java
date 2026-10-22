@@ -3,6 +3,7 @@ package com.dongqh.fulfillmentservice.controller.shipping;
 import com.dongqh.fulfillmentservice.domain.shipping.ShippingDomainException;
 import com.dongqh.fulfillmentservice.domain.shipping.ShippingErrorCode;
 import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingTrackingView;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
 import com.dongqh.fulfillmentservice.service.shipping.ShippingTrackingQueryService;
 import com.hmall.common.domain.R;
 import com.hmall.common.utils.UserContext;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -31,6 +33,13 @@ public class ShippingQueryController {
     @GetMapping("/{shippingNo}")
     public R<ShippingTrackingView> get(@PathVariable("shippingNo") String shippingNo) {
         return R.ok(tracking.getForUser(requireUserId(), shippingNo));
+    }
+
+    @GetMapping("/by-source")
+    public R<ShippingTrackingView> getBySource(
+            @RequestParam("sourceType") ShippingSourceType sourceType,
+            @RequestParam("sourceId") String sourceId) {
+        return R.ok(tracking.getForUserBySource(requireUserId(), sourceType, sourceId));
     }
 
     @GetMapping("/{shippingNo}/tracking")

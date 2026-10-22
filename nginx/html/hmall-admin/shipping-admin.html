@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>物流管理 - 黑马商城</title>
+  <link rel="stylesheet" href="css/element.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <link rel="stylesheet" href="css/shipping-admin.css">
+</head>
+<body>
+<div id="app" v-cloak>
+  <div v-if="!token" class="login-shell">
+    <div class="login-card">
+      <p class="eyebrow">HMALL / LOGISTICS</p>
+      <h1>物流管理</h1>
+      <p class="subtle">管理员登录后可维护商城订单和抽奖实物的运单与模拟轨迹。</p>
+      <el-input v-model.trim="loginForm.username" placeholder="用户名" autocomplete="username"></el-input>
+      <el-input v-model="loginForm.password" type="password" placeholder="密码" autocomplete="current-password" @keyup.enter.native="login"></el-input>
+      <el-button type="primary" class="full-button" :loading="loginBusy" @click="login">登录</el-button>
+    </div>
+  </div>
+
+  <main v-else class="admin-shell logistics-shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">HMALL / LOGISTICS DESK</p>
+        <h1>物流管理</h1>
+        <p class="subtle">统一处理已付款商城订单、抽奖实物和积分兑换商品的运单与模拟物流节点。</p>
+      </div>
+      <nav aria-label="管理页面">
+        <a href="items.html">商品管理</a>
+        <a href="users.html">用户管理</a>
+        <a href="marketing.html">抽奖活动</a>
+        <a href="benefits-admin.html">权益管理</a>
+        <a href="shipping-admin.html" aria-current="page">物流管理</a>
+        <el-button size="small" @click="logout">退出</el-button>
+      </nav>
+    </header>
+
+    <section class="route-strip" aria-label="物流处理流程">
+      <div class="route-stop"><span class="route-dot">收</span><div><strong>待发货</strong><small>订单进入物流</small></div></div>
+      <span class="route-line"></span>
+      <div class="route-stop"><span class="route-dot">运</span><div><strong>录入运单</strong><small>快递公司与运单号</small></div></div>
+      <span class="route-line"></span>
+      <div class="route-stop"><span class="route-dot">达</span><div><strong>更新轨迹</strong><small>模拟揽收、运输和签收</small></div></div>
+      <div class="route-note">实物订单 · 管理员维护</div>
+    </section>
+
+    <section class="panel filter-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">SHIPMENT QUEUE</p><h2>发货单</h2></div>
+        <div class="claim-actions"><el-button size="small" type="warning" :loading="replayBusy" @click="replayPaidEvents">重试失败的付款物流消息</el-button><el-button size="small" icon="el-icon-refresh" :loading="loading" @click="loadOrders">刷新</el-button></div>
+      </div>
+      <el-form :inline="true" :model="filters" size="small" class="filter-form" @submit.native.prevent="search">
+        <el-form-item label="发货来源">
+          <el-select v-model="filters.sourceType" clearable placeholder="全部来源">
+            <el-option label="商城订单" value="CASH_ORDER"></el-option>
+            <el-option label="抽奖实物" value="LOTTERY_BENEFIT"></el-option>
+            <el-option label="积分兑换" value="POINTS_REDEMPTION"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filters.status" clearable placeholder="全部状态">
+            <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="来源单号"><el-input v-model.trim="filters.sourceId" clearable placeholder="订单或权益 ID"></el-input></el-form-item>
+        <el-form-item label="用户 ID"><el-input v-model.trim="filters.targetUserId" clearable placeholder="用户 ID"></el-input></el-form-item>
+        <el-form-item label="运单号"><el-input v-model.trim="filters.waybillNo" clearable placeholder="快递运单号"></el-input></el-form-item>
+        <el-form-item class="filter-actions">
+          <el-button type="primary" @click="search">查询</el-button>
+          <el-button @click="resetFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+      <el-alert v-if="loadError" :title="loadError" type="error" :closable="false" show-icon></el-alert>
+      <div class="table-meta"><span>共 {{ total }} 张发货单</span><span>收货人、电话和地区只展示脱敏信息</span></div>
+      <el-table :data="orders" border stripe v-loading="loading" empty-text="没有匹配的发货单">
+        <el-table-column prop="shippingNo" label="发货单号" min-width="170"></el-table-column>
+        <el-table-column label="来源" width="112"><template slot-scope="scope">{{ sourceLabel(scope.row.sourceType) }}</template></el-table-column>
+        <el-table-column prop="sourceId" label="来源单号" width="120"></el-table-column>
+        <el-table-column label="商品" min-width="160"><template slot-scope="scope"><div class="product-cell"><strong>{{ scope.row.productName || '实物商品' }}</strong><small>数量 {{ scope.row.quantity || 1 }}</small></div></template></el-table-column>
+        <el-table-column label="收件信息" min-width="150"><template slot-scope="scope"><div>{{ scope.row.receiverMasked || '—' }}</div><small class="muted">{{ scope.row.phoneMasked || '—' }}</small></template></el-table-column>
+        <el-table-column label="快递 / 运单" min-width="170"><template slot-scope="scope"><div>{{ scope.row.carrierName || '待录入' }}</div><small class="muted">{{ scope.row.waybillNo || '—' }}</small></template></el-table-column>
+        <el-table-column label="状态" width="105"><template slot-scope="scope"><el-tag size="mini" :type="statusTone(scope.row.status)">{{ statusLabel(scope.row.status) }}</el-tag></template></el-table-column>
+        <el-table-column prop="createdAt" label="创建时间" min-width="160"></el-table-column>
+        <el-table-column label="操作" width="190" fixed="right"><template slot-scope="scope"><el-button type="text" @click="openDetails(scope.row)">查看轨迹</el-button><el-button type="text" :disabled="isTerminal(scope.row.status)" @click="openLogistics(scope.row)">编辑运单</el-button></template></el-table-column>
+      </el-table>
+      <div class="pagination-row">
+        <span>第 {{ page }} 页</span>
+        <el-pagination background layout="prev, pager, next" :current-page="page" :page-size="size" :total="total" @current-change="changePage"></el-pagination>
+      </div>
+    </section>
+
+    <el-dialog title="物流详情" :visible.sync="detailsVisible" width="760px" @closed="clearSelected">
+      <div v-if="selectedOrder" class="detail-layout" v-loading="detailsBusy">
+        <section class="detail-summary">
+          <div class="detail-title"><div><p class="eyebrow">{{ sourceLabel(selectedOrder.sourceType) }} · {{ selectedOrder.shippingNo }}</p><h3>{{ selectedOrder.productName || '实物商品' }}</h3></div><el-tag :type="statusTone(selectedOrder.status)">{{ statusLabel(selectedOrder.status) }}</el-tag></div>
+          <div class="detail-grid">
+            <div><small>来源单号</small><strong>{{ selectedOrder.sourceId }}</strong></div>
+            <div><small>收件人</small><strong>{{ selectedOrder.receiverMasked || '—' }}</strong></div>
+            <div><small>联系电话</small><strong>{{ selectedOrder.phoneMasked || '—' }}</strong></div>
+            <div><small>收货地区</small><strong>{{ selectedOrder.regionMasked || '—' }}</strong></div>
+            <div><small>快递公司</small><strong>{{ selectedOrder.carrierName || '待录入' }}</strong></div>
+            <div><small>运单号</small><strong>{{ selectedOrder.waybillNo || '待录入' }}</strong></div>
+          </div>
+          <el-button size="small" type="primary" plain :disabled="isTerminal(selectedOrder.status)" @click="openLogistics(selectedOrder)">编辑快递信息</el-button>
+        </section>
+        <section class="tracking-section">
+          <div class="section-heading"><div><p class="eyebrow">TRACKING RECORD</p><h3>模拟物流轨迹</h3></div></div>
+          <el-timeline v-if="tracking.length">
+            <el-timeline-item v-for="(event, index) in tracking" :key="event.eventTime + '-' + index" :timestamp="event.eventTime" :type="event.eventType === 'DELIVERED' ? 'success' : 'primary'">
+              <strong>{{ eventTypeLabel(event.eventType) }}</strong><p class="tracking-description">{{ event.description }}</p><small class="muted">{{ event.locationSummary || '未填写地点' }}</small>
+            </el-timeline-item>
+          </el-timeline>
+          <div v-else class="empty-tracking">还没有物流节点。录入运单后，可以在下方添加模拟轨迹。</div>
+          <el-form :model="trackingForm" label-position="top" size="small" class="tracking-form" @submit.native.prevent="addTrackingEvent">
+            <h4>添加物流节点</h4>
+            <el-form-item label="节点类型"><el-select v-model="trackingForm.eventType"><el-option v-for="item in trackingOptions" :key="item.value" :label="item.label" :value="item.value"></el-option></el-select></el-form-item>
+            <div class="tracking-fields">
+              <el-form-item label="地点"><el-input v-model.trim="trackingForm.locationSummary" maxlength="200" placeholder="例如：杭州转运中心"></el-input></el-form-item>
+              <el-form-item label="发生时间"><el-date-picker v-model="trackingForm.eventTime" type="datetime" value-format="yyyy-MM-ddTHH:mm:ss" placeholder="留空则使用当前时间"></el-date-picker></el-form-item>
+            </div>
+            <el-form-item label="说明"><el-input v-model.trim="trackingForm.description" maxlength="500" placeholder="例如：包裹已到达杭州转运中心"></el-input></el-form-item>
+            <el-button type="primary" :loading="trackingBusy" :disabled="!selectedOrder || !selectedOrder.waybillNo || isTerminal(selectedOrder.status)" @click="addTrackingEvent">添加节点</el-button>
+            <small class="field-hint">先录入快递公司和运单号，再添加节点。签收后发货单会锁定。</small>
+          </el-form>
+        </section>
+      </div>
+    </el-dialog>
+
+    <el-dialog title="编辑快递信息" :visible.sync="logisticsVisible" width="520px">
+      <div class="edit-context" v-if="selectedOrder"><span>{{ selectedOrder.shippingNo }}</span><span>{{ sourceLabel(selectedOrder.sourceType) }} · {{ selectedOrder.productName || '实物商品' }}</span></div>
+      <el-form :model="logisticsForm" label-width="100px" size="small" @submit.native.prevent="saveLogistics">
+        <el-form-item label="快递编码"><el-input v-model.trim="logisticsForm.carrierCode" maxlength="32" placeholder="例如 YTO"></el-input></el-form-item>
+        <el-form-item label="快递公司"><el-input v-model.trim="logisticsForm.carrierName" maxlength="64" placeholder="例如 圆通速递"></el-input></el-form-item>
+        <el-form-item label="运单号"><el-input v-model.trim="logisticsForm.waybillNo" maxlength="100" placeholder="输入快递单号"></el-input></el-form-item>
+      </el-form>
+      <span slot="footer"><el-button @click="logisticsVisible = false">取消</el-button><el-button type="primary" :loading="logisticsBusy" @click="saveLogistics">保存运单</el-button></span>
+    </el-dialog>
+  </main>
+</div>
+<script src="js/vue.js"></script>
+<script src="js/axios.min.js"></script>
+<script src="js/element.js"></script>
+<script src="js/shipping-admin.js"></script>
+</body>
+</html>

@@ -39,7 +39,7 @@ class ActivityCatalogQueryServiceTests {
     }
 
     @Test
-    void listActivitiesPassesCurrentTimeAndProjectsLegacyFields() {
+    void listActivitiesPassesCurrentTimeAndProjectsActivityFieldsWithoutDailyLimit() {
         ActivityCatalogRow row = activity();
         when(mapper.listActivities(any(LocalDateTime.class))).thenReturn(List.of(row));
         LocalDateTime before = LocalDateTime.now().minusSeconds(1);
@@ -52,7 +52,7 @@ class ActivityCatalogQueryServiceTests {
         assertThat(now.getValue()).isBetween(before, after);
         assertThat(views).containsExactly(new ActivityCatalogView(23L, "Summer Draw", "Seasonal",
                 ActivityStatus.RUNNING, LocalDateTime.of(2026, 9, 1, 0, 0),
-                LocalDateTime.of(2026, 10, 1, 0, 0), 5));
+                LocalDateTime.of(2026, 10, 1, 0, 0)));
     }
 
     @Test
@@ -63,7 +63,7 @@ class ActivityCatalogQueryServiceTests {
 
         assertThat(service.getActivity(23L)).isEqualTo(new ActivityCatalogView(23L, "Summer Draw", "Seasonal",
                 ActivityStatus.ENDED, LocalDateTime.of(2026, 9, 1, 0, 0),
-                LocalDateTime.of(2026, 10, 1, 0, 0), 5));
+                LocalDateTime.of(2026, 10, 1, 0, 0)));
         verify(mapper).findActivityById(23L);
     }
 
@@ -120,7 +120,6 @@ class ActivityCatalogQueryServiceTests {
         row.setStatus(ActivityStatus.RUNNING);
         row.setStartTime(LocalDateTime.of(2026, 9, 1, 0, 0));
         row.setEndTime(LocalDateTime.of(2026, 10, 1, 0, 0));
-        row.setDailyLimit(5);
         return row;
     }
 

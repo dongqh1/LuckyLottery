@@ -20,11 +20,13 @@
 mvn -B -ntp clean test-compile -DskipTests
 ```
 
-先根据 `.env.example` 准备被 Git 忽略的 `.env`，并为数据库、Redis、JWT 和地址加密配置真实的本地开发值。默认启动命令会运行商品、购物车、用户、交易和支付五个拆分服务，以及商城网关、Marketing、Nacos、MySQL、Redis 和 Nginx。Nginx 将商城 API 转发到网关，由网关校验登录令牌并向业务服务传递用户身份。Nginx rewrites `/api/marketing/**` to the existing backend `/api/**` path and forwards Marketing APIs to `hm-gateway`; the Gateway temporarily routes unmigrated APIs to `marketing-service`. The exact `/api/marketing/auth/login` path remains on Marketing until `user-service` provides the compatible RS256 login response. As each domain is extracted, its explicit Nacos route takes precedence over the Gateway fallback.
+先根据 `.env.example` 准备被 Git 忽略的 `.env`，并为数据库、Redis、JWT、地址加密和物流管理员账号配置本地开发值。抽奖、积分、优惠券、会员及物流服务位于 `marketing-extraction` profile；默认启动命令不会启动这些服务。前后端完整联调请使用：
 
 ```powershell
-docker compose --env-file .env up --build -d
+docker compose --env-file .env --profile marketing-extraction up --build -d
 ```
+
+该 profile 会启动商品、购物车、用户、交易、支付、抽奖、积分、优惠券、会员和物流服务，以及商城网关、Nacos、MySQL、Redis、RabbitMQ 和 Nginx。Nginx 将商城 API 转发到网关，由网关校验登录令牌并向业务服务传递用户身份。`LOGISTICS_ADMIN_USER_IDS` 可在 `.env` 中配置物流管理员用户 ID，默认是 `1`。
 
 容器启动并健康后，通过 Portal/Admin 静态页、登录以及各服务边界执行冒烟验证：
 

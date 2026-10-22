@@ -617,9 +617,9 @@ class NginxRoutingContractTest(unittest.TestCase):
             4,
             len(re.findall(r"proxy_pass\s+http://\$gateway_backend;", self.conf)),
         )
-        self.assertGreaterEqual(
-            len(re.findall(r"rewrite\s+\^/api/\(\.\*\)\$\s+/\$1\s+break;", self.conf)),
+        self.assertEqual(
             2,
+            self.conf.count("rewrite ^/api/(?!admin/shipping/|shipping/)(.*)$ /$1 break;"),
         )
         self.assertNotIn("proxy_pass http://mall-service:8080", self.conf)
         for upstream in (
@@ -666,7 +666,7 @@ class NginxRoutingContractTest(unittest.TestCase):
         gateway_location = (
             r"location\s+\^~\s+/api/\s*\{\s*"
             r"set\s+\$gateway_backend\s+hm-gateway:8080;\s*"
-            r"rewrite\s+\^/api/\(\.\*\)\$\s+/\$1\s+break;\s*"
+            r"rewrite\s+\^/api/\(\?!admin/shipping/\|shipping/\)\(\.\*\)\$\s+/\$1\s+break;\s*"
             r"proxy_pass\s+http://\$gateway_backend;"
         )
         login_location = (
@@ -680,38 +680,13 @@ class NginxRoutingContractTest(unittest.TestCase):
         snippet = read("nginx/snippets/marketing-auth-login.conf")
         self.assertEqual(1, len(re.findall(login_location, snippet)))
 
-    def test_gateway_keeps_marketing_compatibility_and_callback_rewrite(self):
+    def test_gateway_routes_logistics_and_excludes_signed_shipping_callback(self):
         application = read("hm-gateway/src/main/resources/application.yaml")
-        self.assertRegex(
-            application,
-            r"(?ms)^\s+- id: marketing-payment-callback-compat\s+"
-            r"uri: lb://marketing-service\s+predicates:\s+"
-            r"- Path=/api/callbacks/payments,/api/callbacks/payments/\*\*\s+"
-            r"filters:\s+- StripPrefix=1\s*$",
-        )
+        self.assertIn("- id: logistics-service", application)
+        self.assertIn("Path=/api/shipping/**,/api/admin/shipping/**", application)
         self.assertIn("- POST /api/shipping/callbacks/logistics", application)
-        self.assertNotIn("POST /api/auth/login", application)
-        self.assertNotIn("POST /api/callbacks/payments", application)
-        self.assertNotIn("POST /callbacks/payments", application)
-        self.assertIn("- id: marketing-payment-callback-native", application)
-        self.assertIn("Path=/callbacks/payments,/callbacks/payments/**", application)
-        legacy = re.search(r"(?ms)^\s+- id: marketing-legacy\s+.*?(?=^\s+- id:|\Z)", application)
-        self.assertIsNotNone(legacy)
-        self.assertIn("uri: lb://marketing-service", legacy.group(0))
-        self.assertIn("Path=/api/**", legacy.group(0))
-        for route_id in (
-            "item-service",
-            "cart-service",
-            "user-service",
-            "trade-service",
-            "pay-service",
-            "marketing-payment-callback-native",
-        ):
-            self.assertLess(application.index(f"id: {route_id}"), legacy.start())
-        self.assertLess(
-            application.index("id: marketing-payment-callback-compat"),
-            application.index("id: marketing-legacy"),
-        )
+        self.assertNotIn("marketing-payment-callback-compat", application)
+        self.assertNotIn("marketing-legacy", application)
 
 
 class MarketingHmallAdapterContractTest(unittest.TestCase):

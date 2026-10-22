@@ -1,7 +1,7 @@
 package com.dongqh.lotteryservice.drawtransaction;
 
 import com.dongqh.lotteryservice.algorithm.DrawCandidate;
-import com.dongqh.lotteryservice.algorithm.PrizeWeightSnapshot;
+import com.dongqh.lotteryservice.algorithm.WeightedPrize;
 import com.dongqh.lotteryservice.algorithm.WeightedDrawEngine;
 import com.dongqh.lotteryservice.enums.draworder.DrawOrderStatus;
 import com.dongqh.lotteryservice.mapper.draworder.DrawOrderMapper;
@@ -14,9 +14,8 @@ import com.dongqh.lotteryservice.mapper.drawtransaction.DrawRecordMapper;
 import com.dongqh.lotteryservice.mapper.drawtransaction.UserBenefitMapper;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawExecutionContext;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawExecutionResult;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawPrizeSnapshot;
+import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawPrizeCandidate;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawResultItem;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.RewardSnapshot;
 import com.dongqh.lotteryservice.service.drawtransaction.DrawTransactionService;
 import com.dongqh.lotteryservice.exception.LotteryDomainException;
 import com.dongqh.lotteryservice.enums.LotteryErrorCode;
@@ -95,9 +94,8 @@ class DrawTransactionServiceTests {
     }
 
     @Test
-    void winningDrawCopiesSnapshotsPersistsBenefitMarksOrderAndEmitsContractEvents() {
-        RewardSnapshot reward = reward();
-        DrawExecutionContext context = context(1, 5, prize(reward));
+    void winningDrawPersistsStablePrizeIdsAndEmitsContractEvents() {
+        DrawExecutionContext context = context(1, 5, prize());
         when(engine.select(anyList(), anyInt())).thenReturn(DrawCandidate.prize(51L, 61L));
         when(inventory.decrementIfAvailable(51L)).thenReturn(1);
         when(orders.markSuccessIfProcessing(5L, context.drawTime())).thenReturn(1);
@@ -109,16 +107,16 @@ class DrawTransactionServiceTests {
         assertThat(result.status()).isEqualTo(DrawOrderStatus.SUCCESS);
         assertThat(result.completedAt()).isEqualTo(context.drawTime());
         assertThat(result.items()).containsExactly(new DrawResultItem(101L, 1, DrawResultType.WIN,
-                61L, "Task Prize", PrizeType.COUPON, "https://img/prize.png", 102L, reward));
+                61L, "Task Prize", PrizeType.COUPON, "https://img/prize.png", 102L, null));
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<PrizeWeightSnapshot>> weights = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<WeightedPrize>> weights = ArgumentCaptor.forClass(List.class);
         verify(engine).select(weights.capture(), org.mockito.ArgumentMatchers.eq(3));
-        assertThat(weights.getValue()).containsExactly(new PrizeWeightSnapshot(51L, 61L, 20L, 4, true));
+        assertThat(weights.getValue()).containsExactly(new WeightedPrize(51L, 61L, 20L, 4, true));
 
         ArgumentCaptor<DrawRecordRow> record = ArgumentCaptor.forClass(DrawRecordRow.class);
         verify(records).insert(record.capture());
-        assertRecordCopiesReward(record.getValue(), reward);
+        assertRecordDoesNotCopyCatalogOrReward(record.getValue());
         assertThat(record.getValue().getOrderId()).isEqualTo(5L);
         assertThat(record.getValue().getRequestId()).isEqualTo(context.requestId());
         assertThat(record.getValue().getUserId()).isEqualTo(context.userId());
@@ -132,12 +130,12 @@ class DrawTransactionServiceTests {
         assertThat(benefit.getValue().getDrawRecordId()).isEqualTo(101L);
         assertThat(benefit.getValue().getUserId()).isEqualTo(7L);
         assertThat(benefit.getValue().getPrizeId()).isEqualTo(61L);
-        assertThat(benefit.getValue().getPrizeType()).isEqualTo(PrizeType.COUPON);
+        assertThat(benefit.getValue().getPrizeType()).isNull();
         assertThat(benefit.getValue().getQuantity()).isOne();
         assertThat(benefit.getValue().getStatus()).isEqualTo(BenefitStatus.PENDING);
         assertThat(benefit.getValue().getObtainedAt()).isEqualTo(context.drawTime());
         assertThat(benefit.getValue().getDrawRecordId()).isEqualTo(record.getValue().getId());
-        assertBenefitCopiesReward(benefit.getValue(), reward);
+        assertBenefitDoesNotCopyReward(benefit.getValue());
 
         verify(inventory).decrementIfAvailable(51L);
         verify(orders).markSuccessIfProcessing(5L, context.drawTime());
@@ -146,7 +144,7 @@ class DrawTransactionServiceTests {
 
     @Test
     void noWinPersistsOnlyRecordAndConfirmationEvent() {
-        DrawExecutionContext context = context(1, 6, prize(null));
+        DrawExecutionContext context = context(1, 6, prize());
         when(engine.select(anyList(), anyInt())).thenReturn(DrawCandidate.noWin());
         when(orders.markSuccessIfProcessing(6L, context.drawTime())).thenReturn(1);
 
@@ -156,7 +154,7 @@ class DrawTransactionServiceTests {
             assertThat(item.resultType()).isEqualTo(DrawResultType.NO_WIN);
             assertThat(item.prizeId()).isNull();
             assertThat(item.benefitId()).isNull();
-            assertThat(item.rewardSnapshot()).isNull();
+            assertThat(item.itemId()).isNull();
         });
         ArgumentCaptor<DrawRecordRow> inserted = ArgumentCaptor.forClass(DrawRecordRow.class);
         verify(records).insert(inserted.capture());
@@ -174,7 +172,7 @@ class DrawTransactionServiceTests {
 
     @Test
     void stockRaceTurnsCandidateIntoNoWinWithoutRerollingTenOutcomes() {
-        DrawExecutionContext context = context(10, 7, prize(null));
+        DrawExecutionContext context = context(10, 7, prize());
         when(engine.select(anyList(), anyInt())).thenReturn(DrawCandidate.prize(51L, 61L));
         when(inventory.decrementIfAvailable(51L)).thenReturn(1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         when(orders.markSuccessIfProcessing(7L, context.drawTime())).thenReturn(1);
@@ -196,7 +194,7 @@ class DrawTransactionServiceTests {
 
     @Test
     void unmatchedWinningCandidateFailsBeforeAnyBusinessWrite() {
-        DrawExecutionContext context = context(1, 8, prize(null));
+        DrawExecutionContext context = context(1, 8, prize());
         when(engine.select(anyList(), anyInt())).thenReturn(DrawCandidate.prize(999L, 998L));
 
         assertThatThrownBy(() -> service.execute(context))
@@ -211,7 +209,7 @@ class DrawTransactionServiceTests {
 
     @Test
     void lostProcessingStatusTransitionRejectsCompletionAndEmitsNoEvents() {
-        DrawExecutionContext context = context(1, 9, prize(null));
+        DrawExecutionContext context = context(1, 9, prize());
         when(engine.select(anyList(), anyInt())).thenReturn(DrawCandidate.noWin());
         when(orders.markSuccessIfProcessing(9L, context.drawTime())).thenReturn(0);
 
@@ -230,7 +228,7 @@ class DrawTransactionServiceTests {
         assertThat(transactional.propagation()).isEqualTo(Propagation.REQUIRED);
         assertThat(OutboxService.class.getMethod("append", DrawEventEnvelope.class)
                 .getAnnotation(Transactional.class).propagation()).isEqualTo(Propagation.MANDATORY);
-        assertThat(LotteryErrorCode.DRAW_TRANSACTION_FAILED.code()).isEqualTo(53004);
+        assertThat(LotteryErrorCode.DRAW_TRANSACTION_FAILED.code()).isEqualTo(53003);
         assertThat(LotteryErrorCode.DRAW_TRANSACTION_FAILED.message()).isEqualTo("抽奖事务处理失败");
         assertThat(LotteryErrorCode.DRAW_TRANSACTION_FAILED.httpStatus())
                 .isEqualTo(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR);
@@ -242,7 +240,7 @@ class DrawTransactionServiceTests {
 
     @Test
     void runtimeFailureAfterEarlierWritesRollsBackRequiredTransaction() {
-        DrawExecutionContext context = context(10, 10, prize(reward()));
+        DrawExecutionContext context = context(10, 10, prize());
         when(engine.select(anyList(), anyInt()))
                 .thenReturn(DrawCandidate.prize(51L, 61L))
                 .thenThrow(new IllegalStateException("second outcome failed"));
@@ -290,41 +288,35 @@ class DrawTransactionServiceTests {
         assertThat(events.get(0).payloadAs(DrawConfirmedEvent.class, json))
                 .isEqualTo(new DrawConfirmedEvent(context.drawCount(), context.drawDate()));
         assertThat(events.get(1).payloadAs(PrizeFulfillmentRequestedEvent.class, json))
-                .isEqualTo(new PrizeFulfillmentRequestedEvent(102L, results.get(0).recordId(), 61L,
-                        PrizeType.COUPON, 71L, RewardType.COUPON, "a".repeat(64)));
+                .isEqualTo(new PrizeFulfillmentRequestedEvent(102L, results.get(0).recordId(), 61L));
     }
 
-    private void assertRecordCopiesReward(DrawRecordRow row, RewardSnapshot reward) {
-        assertThat(row.getRewardDefinitionId()).isEqualTo(reward.rewardDefinitionId());
-        assertThat(row.getRewardType()).isEqualTo(reward.rewardType());
-        assertThat(row.getRewardTargetId()).isEqualTo(reward.targetId());
-        assertThat(row.getRewardQuantity()).isEqualTo(reward.quantity());
-        assertThat(row.getRewardPayload()).isEqualTo(reward.payloadJson());
-        assertThat(row.getRewardFingerprint()).isEqualTo(reward.fingerprint());
+    private void assertRecordDoesNotCopyCatalogOrReward(DrawRecordRow row) {
+        assertThat(row.getPrizeName()).isNull();
+        assertThat(row.getPrizeType()).isNull();
+        assertThat(row.getPrizeImageUrl()).isNull();
+        assertThat(row.getRewardDefinitionId()).isNull();
+        assertThat(row.getRewardType()).isNull();
+        assertThat(row.getRewardTargetId()).isNull();
+        assertThat(row.getRewardQuantity()).isNull();
     }
 
-    private void assertBenefitCopiesReward(UserBenefitRow row, RewardSnapshot reward) {
-        assertThat(row.getRewardDefinitionId()).isEqualTo(reward.rewardDefinitionId());
-        assertThat(row.getRewardType()).isEqualTo(reward.rewardType());
-        assertThat(row.getRewardTargetId()).isEqualTo(reward.targetId());
-        assertThat(row.getRewardQuantity()).isEqualTo(reward.quantity());
-        assertThat(row.getRewardPayload()).isEqualTo(reward.payloadJson());
-        assertThat(row.getRewardFingerprint()).isEqualTo(reward.fingerprint());
+    private void assertBenefitDoesNotCopyReward(UserBenefitRow row) {
+        assertThat(row.getPrizeType()).isNull();
+        assertThat(row.getRewardDefinitionId()).isNull();
+        assertThat(row.getRewardType()).isNull();
+        assertThat(row.getRewardTargetId()).isNull();
+        assertThat(row.getRewardQuantity()).isNull();
     }
 
-    private DrawExecutionContext context(int drawCount, long orderId, DrawPrizeSnapshot prize) {
+    private DrawExecutionContext context(int drawCount, long orderId, DrawPrizeCandidate prize) {
         return new DrawExecutionContext(orderId, "draw-tx-" + orderId, 7L, 11L, drawCount,
                 LocalDate.of(2026, 9, 28), 3, List.of(prize),
                 LocalDateTime.of(2026, 9, 28, 16, 10, 30));
     }
 
-    private DrawPrizeSnapshot prize(RewardSnapshot reward) {
-        return new DrawPrizeSnapshot(51L, 61L, "Task Prize", PrizeType.COUPON,
-                "https://img/prize.png", 20L, 4, true, reward);
-    }
-
-    private RewardSnapshot reward() {
-        return new RewardSnapshot(71L, "WELCOME-2", RewardType.COUPON, 72L, 2L,
-                "{\"templateId\":72,\"quantity\":2}", "a".repeat(64));
+    private DrawPrizeCandidate prize() {
+        return new DrawPrizeCandidate(51L, 61L, "Task Prize", PrizeType.COUPON,
+                "https://img/prize.png", 20L, 4, true, 71L, RewardType.COUPON, 72L, 2L);
     }
 }

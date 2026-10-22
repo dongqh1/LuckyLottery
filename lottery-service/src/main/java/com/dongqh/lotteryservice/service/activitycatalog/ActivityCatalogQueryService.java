@@ -40,7 +40,7 @@ public class ActivityCatalogQueryService {
 
     private static ActivityCatalogView toActivityView(ActivityCatalogRow activity) {
         return new ActivityCatalogView(activity.getId(), activity.getActivityName(), activity.getDescription(),
-                activity.getStatus(), activity.getStartTime(), activity.getEndTime(), activity.getDailyLimit());
+                activity.getStatus(), activity.getStartTime(), activity.getEndTime());
     }
 
     private static ActivityPrizeCatalogView toPrizeView(ActivityPrizeCatalogRow prize) {

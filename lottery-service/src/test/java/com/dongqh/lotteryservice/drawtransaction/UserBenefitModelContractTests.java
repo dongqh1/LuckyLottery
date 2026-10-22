@@ -6,8 +6,6 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
 import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
-import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
-import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -39,14 +37,6 @@ class UserBenefitModelContractTests {
                 new Column("drawRecordId", "draw_record_id", Long.class),
                 new Column("userId", "user_id", Long.class),
                 new Column("prizeId", "prize_id", Long.class),
-                new Column("prizeType", "prize_type", PrizeType.class),
-                new Column("rewardDefinitionId", "reward_definition_id", Long.class),
-                new Column("rewardType", "reward_type", RewardType.class),
-                new Column("rewardTargetId", "reward_target_id", Long.class),
-                new Column("rewardQuantity", "reward_quantity", Long.class),
-                new Column("rewardPayload", "reward_payload", String.class),
-                new Column("rewardFingerprint", "reward_fingerprint", String.class),
-                new Column("fulfillmentNo", "fulfillment_no", String.class),
                 new Column("quantity", "quantity", Integer.class),
                 new Column("status", "status", BenefitStatus.class),
                 new Column("grantError", "grant_error", String.class),
@@ -59,8 +49,7 @@ class UserBenefitModelContractTests {
                 new Column("updatedAt", "updated_at", LocalDateTime.class));
 
         assertThat(UserBenefitRow.class.getAnnotation(TableName.class).value()).isEqualTo("user_benefit");
-        assertThat(Arrays.stream(UserBenefitRow.class.getDeclaredFields()).map(Field::getName))
-                .containsExactlyInAnyOrderElementsOf(columns.stream().map(Column::field).toList());
+        assertThat(mappedColumns()).containsExactlyInAnyOrderElementsOf(columns.stream().map(Column::sql).toList());
         assertThat(schemaColumns()).containsExactlyInAnyOrderElementsOf(columns.stream().map(Column::sql).toList());
 
         for (Column column : columns) {
@@ -76,6 +65,22 @@ class UserBenefitModelContractTests {
         }
     }
 
+    private Set<String> mappedColumns() {
+        Set<String> result = new java.util.HashSet<>();
+        for (Field field : UserBenefitRow.class.getDeclaredFields()) {
+            TableId id = field.getAnnotation(TableId.class);
+            if (id != null) {
+                result.add(field.getName());
+                continue;
+            }
+            TableField column = field.getAnnotation(TableField.class);
+            if (column != null && column.exist()) {
+                result.add(column.value());
+            }
+        }
+        return result;
+    }
+
     private Set<String> schemaColumns() throws IOException {
         try (InputStream input = getClass().getClassLoader().getResourceAsStream(
                 "db/migration/V1__create_lottery_schema.sql")) {
@@ -88,6 +93,24 @@ class UserBenefitModelContractTests {
             Set<String> result = new java.util.HashSet<>();
             while (matcher.find()) {
                 result.add(matcher.group(1));
+            }
+            try (InputStream migrationInput = getClass().getClassLoader().getResourceAsStream(
+                    "db/migration/V4__remove_lottery_reward_snapshots.sql")) {
+                assertThat(migrationInput).isNotNull();
+                String migrationV4 = new String(migrationInput.readAllBytes(), StandardCharsets.UTF_8);
+                var dropped = Pattern.compile("(?m)^\\s+DROP COLUMN ([a-z_]+)\\s*,?;?$").matcher(migrationV4);
+                while (dropped.find()) {
+                    result.remove(dropped.group(1));
+                }
+            }
+            try (InputStream migrationInput = getClass().getClassLoader().getResourceAsStream(
+                    "db/migration/V5__remove_legacy_reward_fulfillment_reference.sql")) {
+                assertThat(migrationInput).isNotNull();
+                String migrationV5 = new String(migrationInput.readAllBytes(), StandardCharsets.UTF_8);
+                var dropped = Pattern.compile("(?m)^\\s+DROP COLUMN ([a-z_]+)\\s*,?;?$").matcher(migrationV5);
+                while (dropped.find()) {
+                    result.remove(dropped.group(1));
+                }
             }
             return result;
         }

@@ -55,11 +55,11 @@ spring:
             - id: lottery-service
               uri: ${LOTTERY_SERVICE_URI:lb://lottery-service}
               predicates:
-                - Path=/api/lottery/**,/api/benefits/**,/api/admin/activities/**,/api/admin/prizes/**,/api/admin/prize-images/**,/api/admin/reward-definitions/**
-            - id: fulfillment-service
-              uri: ${FULFILLMENT_SERVICE_URI:lb://fulfillment-service}
+                - Path=/api/lottery/**,/api/benefits/**,/api/admin/activities/**,/api/admin/prizes/**,/api/admin/prize-images/**,/api/admin/draw-chances/**
+            - id: logistics-service
+              uri: ${LOGISTICS_SERVICE_URI:lb://logistics-service}
               predicates:
-                - Path=/api/shipping/**,/api/admin/shipping/**,/api/admin/fulfillment/**
+                - Path=/api/shipping/**,/api/admin/shipping/**
 hm:
   jwt:
     public-key-location: classpath:hmall-public.pem

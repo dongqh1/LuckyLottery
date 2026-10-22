@@ -8,16 +8,12 @@ import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
 import com.dongqh.lotteryservice.mapper.drawtransaction.ActivityPrizeInventoryMapper;
 import com.dongqh.lotteryservice.mapper.drawtransaction.DrawRecordMapper;
 import com.dongqh.lotteryservice.mapper.drawtransaction.UserBenefitMapper;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.ProductRewardPayload;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
 import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -28,16 +24,14 @@ public class BenefitClaimExpiryWorker {
     private final DrawRecordMapper records;
     private final ActivityPrizeMapper activityPrizes;
     private final ActivityPrizeInventoryMapper inventory;
-    private final ObjectMapper json;
 
     public BenefitClaimExpiryWorker(UserBenefitMapper benefits, DrawRecordMapper records,
                                     ActivityPrizeMapper activityPrizes,
-                                    ActivityPrizeInventoryMapper inventory, ObjectMapper json) {
+                                    ActivityPrizeInventoryMapper inventory) {
         this.benefits = benefits;
         this.records = records;
         this.activityPrizes = activityPrizes;
         this.inventory = inventory;
-        this.json = json;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
@@ -50,7 +44,7 @@ public class BenefitClaimExpiryWorker {
 
         DrawRecordRow draw = benefit.getDrawRecordId() == null
                 ? null : records.selectById(benefit.getDrawRecordId());
-        ProductRewardPayload product = requireFrozenIdentity(benefit, draw);
+        requireCurrentProduct(benefit, draw);
         ActivityPrizeRow activityPrize = activityPrizes.lockByActivityAndPrize(
                 draw.getActivityId(), draw.getPrizeId());
         if (activityPrize == null || activityPrize.getId() == null) {
@@ -65,30 +59,12 @@ public class BenefitClaimExpiryWorker {
         return true;
     }
 
-    private ProductRewardPayload requireFrozenIdentity(UserBenefitRow benefit, DrawRecordRow draw) {
-        if (draw == null || benefit.getPrizeType() != PrizeType.PHYSICAL
-                || benefit.getRewardType() != RewardType.PRODUCT
-                || !Objects.equals(draw.getUserId(), benefit.getUserId())
+    private void requireCurrentProduct(UserBenefitRow benefit, DrawRecordRow draw) {
+        if (draw == null || !Objects.equals(draw.getUserId(), benefit.getUserId())
                 || !Objects.equals(draw.getPrizeId(), benefit.getPrizeId())
-                || draw.getPrizeType() != benefit.getPrizeType()
-                || !Objects.equals(draw.getRewardDefinitionId(), benefit.getRewardDefinitionId())
-                || draw.getRewardType() != benefit.getRewardType()
-                || !Objects.equals(draw.getRewardTargetId(), benefit.getRewardTargetId())
-                || !Objects.equals(draw.getRewardQuantity(), benefit.getRewardQuantity())
-                || !Objects.equals(draw.getRewardPayload(), benefit.getRewardPayload())
-                || !Objects.equals(draw.getRewardFingerprint(), benefit.getRewardFingerprint())) {
-            throw new IllegalStateException("冻结奖励身份不一致");
-        }
-        try {
-            ProductRewardPayload product = json.readValue(benefit.getRewardPayload(), ProductRewardPayload.class);
-            if (!Objects.equals(benefit.getRewardTargetId(), product.itemId())
-                    || !Objects.equals(benefit.getRewardQuantity(), product.quantity())
-                    || !Objects.equals(benefit.getQuantity(), product.quantity())) {
-                throw new IllegalStateException("冻结商品奖励不一致");
-            }
-            return product;
-        } catch (JacksonException | IllegalArgumentException exception) {
-            throw new IllegalStateException("冻结商品奖励不可解析", exception);
+                || benefit.getPrizeType() != PrizeType.PHYSICAL
+                || benefit.getRewardType() != RewardType.PRODUCT) {
+            throw new IllegalStateException("抽奖记录与权益身份不一致");
         }
     }
 }

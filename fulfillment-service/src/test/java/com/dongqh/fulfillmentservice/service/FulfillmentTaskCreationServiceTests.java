@@ -2,9 +2,9 @@ package com.dongqh.fulfillmentservice.service;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
 import com.dongqh.fulfillmentservice.domain.model.CreateFulfillmentTaskCommand;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskRecord;
+import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
 import com.dongqh.fulfillmentservice.persistence.DuplicateFulfillmentTaskException;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskRepository;
 import com.dongqh.fulfillmentservice.service.port.FulfillmentTaskReadyOutbox;
@@ -68,14 +68,27 @@ class FulfillmentTaskCreationServiceTests {
         assertThat(outbox.fulfillmentNumbers).containsExactly("TASK-3");
     }
 
+    @Test
+    void virtualRewardTaskIsRejectedByTheLogisticsService() {
+        assertThatThrownBy(() -> new CreateFulfillmentTaskCommand(
+                "TASK-4", "LOTTERY_BENEFIT", "DRAW-4", FulfillmentType.COUPON, 11L,
+                new LogisticsFulfillmentPayload(8, "SKU-4", 1, "王*", "138****8000",
+                        LogisticsFulfillmentPayload.REDACTED_REGION), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("物流服务只接受实物发货任务");
+        assertThat(repository.tasks).isEmpty();
+        assertThat(outbox.fulfillmentNumbers).isEmpty();
+    }
+
     private CreateFulfillmentTaskCommand command(String fulfillmentNo, String templateCode) {
         return new CreateFulfillmentTaskCommand(
                 fulfillmentNo,
-                "LOTTERY_REWARD",
+                "LOTTERY_BENEFIT",
                 "DRAW-1",
-                FulfillmentType.COUPON,
+                FulfillmentType.LOGISTICS,
                 11L,
-                new CouponFulfillmentPayload(templateCode, 1),
+                new LogisticsFulfillmentPayload(8, templateCode, 1, "王*", "138****8000",
+                        LogisticsFulfillmentPayload.REDACTED_REGION),
                 null
         );
     }

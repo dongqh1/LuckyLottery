@@ -6,12 +6,13 @@
   <link href="./css/main.css" rel="stylesheet">
   <!-- 引入样式 -->
   <link rel="stylesheet" href="./css/element.css">
+  <link rel="stylesheet" href="./css/user-draw-chances.css">
 
 
 </head>
 <body>
 <div id="app">
-  <h1>用户数据管理 <small style="font-size:14px"><a href="items.html">商品管理</a> · <a href="marketing.html">营销活动</a></small></h1>
+  <h1>用户数据管理 <small style="font-size:14px"><a href="items.html">商品管理</a> · <a href="marketing.html">营销活动</a> · <a href="benefits-admin.html">优惠券、会员与积分</a> · <a href="shipping-admin.html">物流管理</a></small></h1>
   <div class="add-btn" >
     <el-button type="primary" size="small" @click="beginAdd">新增用户</el-button>
     <el-pagination
@@ -68,6 +69,11 @@
       </template>
 
     </el-table-column>
+    <el-table-column align="center" label="抽奖机会" width="120">
+      <template slot-scope="scope">
+        <el-button type="primary" size="mini" plain @click="openDrawChanceDialog(scope.row)">管理机会</el-button>
+      </template>
+    </el-table-column>
     <el-table-column align="center" label="操作" :width="160">
       <template slot-scope="scope">
         <el-button type="primary" plain icon="el-icon-edit" circle size="mini"
@@ -101,11 +107,72 @@
       <el-button type="primary" @click="confirmEdit">确 定</el-button>
     </div>
   </el-dialog>
+
+  <el-dialog
+      :title="selectedChanceUser ? '抽奖机会 · ' + selectedChanceUser.username + '（用户 #' + selectedChanceUser.id + '）' : '抽奖机会'"
+      :visible.sync="drawChanceDialogVisible"
+      width="960px"
+      :close-on-click-modal="false">
+    <div v-loading="drawChanceBusy" class="draw-chance-dialog">
+      <div v-if="drawChanceAccount" class="draw-chance-balances">
+        <div><span>可用机会</span><strong>{{ drawChanceAccount.availableBalance }}</strong></div>
+        <div><span>预留机会</span><strong>{{ drawChanceAccount.reservedBalance }}</strong></div>
+      </div>
+      <el-form :model="chanceAdjustmentForm" inline label-position="top" class="draw-chance-adjustment">
+        <el-form-item label="操作">
+          <el-radio-group v-model="chanceAdjustmentForm.direction">
+            <el-radio-button label="CREDIT">增加</el-radio-button>
+            <el-radio-button label="DEBIT">扣除</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="数量">
+          <el-input-number v-model="chanceAdjustmentForm.amount" :min="1" :precision="0"></el-input-number>
+        </el-form-item>
+        <el-form-item label="原因">
+          <el-input v-model.trim="chanceAdjustmentForm.reason" maxlength="255" placeholder="填写调整原因"></el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="drawChanceBusy" @click="adjustDrawChances">确认调整</el-button>
+        </el-form-item>
+      </el-form>
+      <div class="draw-chance-ledger-heading">
+        <strong>抽奖机会流水</strong>
+        <span v-if="drawChanceAccount">共 {{ drawChanceLedgerTotal }} 条</span>
+      </div>
+      <el-table :data="drawChanceLedger" border empty-text="没有抽奖机会流水">
+        <el-table-column prop="createdAt" label="时间" min-width="155"></el-table-column>
+        <el-table-column label="业务类型" min-width="130">
+          <template slot-scope="scope">{{ businessTypeLabel(scope.row.businessType) }}</template>
+        </el-table-column>
+        <el-table-column prop="businessId" label="业务编号" min-width="155"></el-table-column>
+        <el-table-column label="变动" width="100">
+          <template slot-scope="scope">{{ directionLabel(scope.row.direction) }} {{ scope.row.amount }}</template>
+        </el-table-column>
+        <el-table-column prop="availableAfter" label="变动后可用" width="105"></el-table-column>
+        <el-table-column prop="reservedAfter" label="变动后预留" width="105"></el-table-column>
+        <el-table-column prop="operatorUserId" label="操作人" width="85"></el-table-column>
+        <el-table-column prop="reason" label="原因" min-width="150"></el-table-column>
+      </el-table>
+      <div class="draw-chance-ledger-pagination">
+        <el-pagination
+            v-show="drawChanceLedgerTotal > 20"
+            background
+            layout="prev, pager, next, total"
+            :current-page="drawChanceLedgerPage"
+            :page-size="20"
+            :total="drawChanceLedgerTotal"
+            @current-change="loadDrawChanceLedger">
+        </el-pagination>
+      </div>
+    </div>
+    <span slot="footer"><el-button @click="drawChanceDialogVisible = false">关闭</el-button></span>
+  </el-dialog>
 </div>
 <script src="./js/vue.js"></script>
 <script src="./js/axios.min.js"></script>
 <!-- 引入组件库 -->
 <script src="./js/element.js"></script>
+<script src="./js/user-draw-chances.js"></script>
 <script>
   // 设置后台服务地址
   axios.defaults.baseURL = "/api";
@@ -123,6 +190,7 @@
   )
 
   const app = new Vue({
+    mixins: [window.userDrawChanceMixin],
     el: "#app",
     data: {
       pageSize: 5,

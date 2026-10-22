@@ -24,6 +24,8 @@ public class MembershipProduct {
     private Integer dailyDrawBonus;
     private Integer pointsMultiplierBasisPoints;
     private Integer status;
+    @TableField("sales_enabled")
+    private Integer salesEnabled;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     @TableField(fill = FieldFill.INSERT_UPDATE)
@@ -51,6 +53,8 @@ public class MembershipProduct {
     public void setPointsMultiplierBasisPoints(Integer pointsMultiplierBasisPoints) { this.pointsMultiplierBasisPoints = pointsMultiplierBasisPoints; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
+    public Integer getSalesEnabled() { return salesEnabled; }
+    public void setSalesEnabled(Integer salesEnabled) { this.salesEnabled = salesEnabled; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

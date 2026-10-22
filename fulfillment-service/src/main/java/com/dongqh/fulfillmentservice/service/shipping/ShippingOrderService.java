@@ -9,6 +9,8 @@ import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
 import com.dongqh.fulfillmentservice.enums.shipping.ShippingStatus;
 import com.dongqh.fulfillmentservice.domain.model.shipping.CreateShippingOrderCommand;
 import com.dongqh.fulfillmentservice.domain.model.shipping.CreateShippingOrderFromAddressCommand;
+import com.dongqh.fulfillmentservice.domain.model.shipping.CreateShippingOrderFromSnapshotCommand;
+import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingAddressDetails;
 import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingOrderView;
 import com.dongqh.fulfillmentservice.persistence.shipping.DuplicateShippingOrderException;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingAddressSnapshot;
@@ -105,6 +107,21 @@ public class ShippingOrderService {
                 command.productName(), command.imageUrl(), command.quantity(), command.claimRequestId()));
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ShippingOrderView createFromFrozenAddress(CreateShippingOrderFromSnapshotCommand command,
+                                                     ShippingAddressDetails address) {
+        if (command == null || command.targetUserId() <= 0 || command.sourceId() == null
+                || command.sourceId().isBlank() || command.sourceId().trim().length() > 100) {
+            throw error(ShippingErrorCode.SHIPPING_REQUEST_INVALID);
+        }
+        String sourceId = command.sourceId().trim();
+        ShippingAddressSnapshot snapshot = snapshots.createFromFrozenDetails(command.targetUserId(),
+                ShippingSourceType.CASH_ORDER, sourceId, address);
+        return create(new CreateShippingOrderCommand(ShippingSourceType.CASH_ORDER, sourceId,
+                command.targetUserId(), snapshot.id(), null, command.skuCode(), command.productName(),
+                command.imageUrl(), command.quantity(), null));
+    }
+
     @Transactional(readOnly = true)
     public List<ShippingOrderView> getByIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -141,6 +158,31 @@ public class ShippingOrderService {
         ShippingAddressSnapshot snapshot = snapshots.require(order.addressSnapshotId());
         if (!Objects.equals(snapshot.userId(), userId)) {
             throw error(ShippingErrorCode.SHIPPING_NOT_FOUND);
+        }
+        return view(order, snapshot);
+    }
+
+    @Transactional(readOnly = true)
+    public ShippingOrderView getForUserBySource(long userId, ShippingSourceType sourceType, String sourceId) {
+        String requiredSourceId = sourceId == null ? "" : sourceId.trim();
+        if (userId <= 0 || sourceType == null || requiredSourceId.isEmpty() || requiredSourceId.length() > 100) {
+            throw error(ShippingErrorCode.SHIPPING_REQUEST_INVALID);
+        }
+        ShippingOrder order = orders.findBySource(sourceType, requiredSourceId).orElse(null);
+        if (order == null || !Objects.equals(order.targetUserId(), userId)) {
+            throw error(ShippingErrorCode.SHIPPING_NOT_FOUND);
+        }
+        ShippingAddressSnapshot snapshot;
+        try {
+            snapshot = snapshots.require(order.addressSnapshotId());
+        } catch (ShippingDomainException missingSnapshot) {
+            if (missingSnapshot.errorCode() == ShippingErrorCode.SHIPPING_NOT_FOUND) {
+                throw error(ShippingErrorCode.SHIPPING_STATE_CONFLICT);
+            }
+            throw missingSnapshot;
+        }
+        if (!Objects.equals(snapshot.userId(), userId)) {
+            throw error(ShippingErrorCode.SHIPPING_STATE_CONFLICT);
         }
         return view(order, snapshot);
     }

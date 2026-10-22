@@ -172,7 +172,7 @@ class DrawOrderLifecycleServiceTests {
         assertRequiresNew("createProcessing", NewDrawOrder.class);
         assertRequiresNew("markFailed", long.class, String.class);
         assertRequiresNew("markFailedAndRequestRelease", DrawOrderRow.class, String.class, LocalDateTime.class);
-        assertThat(LotteryErrorCode.IDEMPOTENCY_CONFLICT.code()).isEqualTo(43006);
+        assertThat(LotteryErrorCode.IDEMPOTENCY_CONFLICT.code()).isEqualTo(43004);
         assertThat(LotteryErrorCode.IDEMPOTENCY_CONFLICT.message()).isEqualTo("重复请求的参数不一致");
         assertThat(LotteryErrorCode.IDEMPOTENCY_CONFLICT.httpStatus()).isEqualTo(HttpStatus.CONFLICT);
     }

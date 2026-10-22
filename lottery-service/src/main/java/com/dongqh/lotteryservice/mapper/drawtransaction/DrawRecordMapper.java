@@ -14,22 +14,41 @@ import java.util.List;
 public interface DrawRecordMapper extends BaseMapper<DrawRecordRow> {
 
     @Select("""
-            SELECT r.*, b.id AS benefit_id
+            SELECT r.*, b.id AS benefit_id,
+                   p.prize_name AS current_prize_name, p.prize_type AS current_prize_type,
+                   p.image_url AS current_prize_image_url,
+                   rd.id AS current_reward_definition_id, rd.reward_type AS current_reward_type,
+                   rd.target_id AS current_reward_target_id, rd.quantity AS current_reward_quantity
             FROM lottery_draw_record r
             LEFT JOIN user_benefit b ON b.draw_record_id = r.id
+            LEFT JOIN marketing_prize p ON p.id = r.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
             WHERE r.order_id = #{orderId}
             ORDER BY r.sequence_no ASC, r.id ASC
             """)
     @Results(id = "drawRecordWithBenefit", value = {
-            @Result(property = "benefitId", column = "benefit_id")
+            @Result(property = "benefitId", column = "benefit_id"),
+            @Result(property = "prizeName", column = "current_prize_name"),
+            @Result(property = "prizeType", column = "current_prize_type"),
+            @Result(property = "prizeImageUrl", column = "current_prize_image_url"),
+            @Result(property = "rewardDefinitionId", column = "current_reward_definition_id"),
+            @Result(property = "rewardType", column = "current_reward_type"),
+            @Result(property = "rewardTargetId", column = "current_reward_target_id"),
+            @Result(property = "rewardQuantity", column = "current_reward_quantity")
     })
     List<DrawRecordRow> selectByOrderId(@Param("orderId") long orderId);
 
     @Select("""
             <script>
-            SELECT r.*, b.id AS benefit_id
+            SELECT r.*, b.id AS benefit_id,
+                   p.prize_name AS current_prize_name, p.prize_type AS current_prize_type,
+                   p.image_url AS current_prize_image_url,
+                   rd.id AS current_reward_definition_id, rd.reward_type AS current_reward_type,
+                   rd.target_id AS current_reward_target_id, rd.quantity AS current_reward_quantity
             FROM lottery_draw_record r
             LEFT JOIN user_benefit b ON b.draw_record_id = r.id
+            LEFT JOIN marketing_prize p ON p.id = r.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
             WHERE r.user_id = #{userId}
             <if test="activityId != null">AND r.activity_id = #{activityId}</if>
             <if test="resultType != null">AND r.result_type = #{resultType}</if>
@@ -62,9 +81,15 @@ public interface DrawRecordMapper extends BaseMapper<DrawRecordRow> {
 
     @Select("""
             <script>
-            SELECT r.*, b.id AS benefit_id
+            SELECT r.*, b.id AS benefit_id,
+                   p.prize_name AS current_prize_name, p.prize_type AS current_prize_type,
+                   p.image_url AS current_prize_image_url,
+                   rd.id AS current_reward_definition_id, rd.reward_type AS current_reward_type,
+                   rd.target_id AS current_reward_target_id, rd.quantity AS current_reward_quantity
             FROM lottery_draw_record r
             LEFT JOIN user_benefit b ON b.draw_record_id = r.id
+            LEFT JOIN marketing_prize p ON p.id = r.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
             WHERE 1=1
             <if test="userId != null">AND r.user_id = #{userId}</if>
             <if test="activityId != null">AND r.activity_id = #{activityId}</if>
@@ -99,9 +124,15 @@ public interface DrawRecordMapper extends BaseMapper<DrawRecordRow> {
 
     @Select("""
             <script>
-            SELECT r.*, b.id AS benefit_id
+            SELECT r.*, b.id AS benefit_id,
+                   p.prize_name AS current_prize_name, p.prize_type AS current_prize_type,
+                   p.image_url AS current_prize_image_url,
+                   rd.id AS current_reward_definition_id, rd.reward_type AS current_reward_type,
+                   rd.target_id AS current_reward_target_id, rd.quantity AS current_reward_quantity
             FROM lottery_draw_record r
             LEFT JOIN user_benefit b ON b.draw_record_id = r.id
+            LEFT JOIN marketing_prize p ON p.id = r.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
             WHERE r.order_id IN
             <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
                 #{orderId}

@@ -18,7 +18,6 @@ import java.util.Set;
 @Service
 public class LotteryFulfillmentStatusProjectionService {
     private static final String LOTTERY_SOURCE = "LOTTERY_BENEFIT";
-    private static final String SAFE_GRANT_FAILURE = "权益履约失败";
     private static final Set<BenefitStatus> SHIPPING_STATUSES = EnumSet.of(
             BenefitStatus.CLAIM_PENDING, BenefitStatus.FULFILLING, BenefitStatus.SHIPPED,
             BenefitStatus.FULFILLMENT_FAILED);
@@ -57,41 +56,25 @@ public class LotteryFulfillmentStatusProjectionService {
 
         Long benefitId = positiveId(event.sourceId());
         UserBenefitRow benefit = benefitId == null ? null : benefits.selectByIdForUpdate(benefitId);
-        if (benefit == null || !matches(event, benefit, benefitId)) {
+        if (benefit == null) {
             quarantine(event, benefit, benefitId, RewardQuarantineReason.FULFILLMENT_TASK_IDENTITY_MISMATCH);
             consumeRecords.insertIfAbsent(event.eventId(), consumerName);
             return;
         }
-
-        boolean projected = benefit.getRewardType() == RewardType.PRODUCT
-                && benefit.getPrizeType() == PrizeType.PHYSICAL
-                ? projectPhysical(event, benefit)
-                : projectAsset(event, benefit);
+        if (benefit.getRewardType() != RewardType.PRODUCT || benefit.getPrizeType() != PrizeType.PHYSICAL) {
+            consumeRecords.insertIfAbsent(event.eventId(), consumerName);
+            return;
+        }
+        if (!matches(event, benefit, benefitId)) {
+            quarantine(event, benefit, benefitId, RewardQuarantineReason.FULFILLMENT_TASK_IDENTITY_MISMATCH);
+            consumeRecords.insertIfAbsent(event.eventId(), consumerName);
+            return;
+        }
+        boolean projected = projectPhysical(event, benefit);
         if (!projected) {
             quarantine(event, benefit, benefitId, RewardQuarantineReason.FULFILLMENT_STATUS_UNSUPPORTED);
         }
         consumeRecords.insertIfAbsent(event.eventId(), consumerName);
-    }
-
-    private boolean projectAsset(FulfillmentStatusChangedEventV1 event, UserBenefitRow benefit) {
-        if (benefit.getRewardType() != RewardType.COUPON
-                && benefit.getRewardType() != RewardType.POINTS
-                && benefit.getRewardType() != RewardType.MEMBERSHIP) {
-            return false;
-        }
-        if (benefit.getStatus() == BenefitStatus.AVAILABLE) {
-            return true;
-        }
-        if (benefit.getStatus() != BenefitStatus.PENDING && benefit.getStatus() != BenefitStatus.GRANT_FAILED) {
-            return false;
-        }
-        if ("SUCCEEDED".equals(event.status())) {
-            return benefits.markAvailableAfterFulfillment(benefit.getId()) == 1;
-        }
-        if ("QUARANTINED".equals(event.status()) || "TERMINATED".equals(event.status())) {
-            return benefits.markGrantFailedAfterFulfillment(benefit.getId(), SAFE_GRANT_FAILURE) == 1;
-        }
-        return false;
     }
 
     private boolean projectPhysical(FulfillmentStatusChangedEventV1 event, UserBenefitRow benefit) {
@@ -130,11 +113,7 @@ public class LotteryFulfillmentStatusProjectionService {
             return benefit.getShippingOrderId() != null
                     && ("LOGISTICS-" + benefit.getShippingOrderId()).equals(event.fulfillmentNo());
         }
-        return (benefit.getRewardType() == RewardType.COUPON
-                || benefit.getRewardType() == RewardType.POINTS
-                || benefit.getRewardType() == RewardType.MEMBERSHIP)
-                && ("LOTTERY-BENEFIT-" + benefitId).equals(event.fulfillmentNo())
-                && event.fulfillmentNo().equals(benefit.getFulfillmentNo());
+        return false;
     }
 
     private void quarantine(FulfillmentStatusChangedEventV1 event, UserBenefitRow benefit, Long benefitId,

@@ -4,7 +4,6 @@ import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskOperationRepository;
 import com.dongqh.fulfillmentservice.service.port.FulfillmentTaskReadyOutbox;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,25 +13,15 @@ public class FulfillmentTaskOperationService {
     private final FulfillmentTaskOperationRepository repository;
     private final FulfillmentTaskReadService tasks;
     private final FulfillmentTaskReadyOutbox outbox;
-    private final FulfillmentStatusChangedRecorder statusChangedRecorder;
 
-    @Autowired
     public FulfillmentTaskOperationService(
             FulfillmentTaskOperationRepository repository,
             FulfillmentTaskReadService tasks,
-            FulfillmentTaskReadyOutbox outbox,
-            FulfillmentStatusChangedRecorder statusChangedRecorder
+            FulfillmentTaskReadyOutbox outbox
     ) {
         this.repository = repository;
         this.tasks = tasks;
         this.outbox = outbox;
-        this.statusChangedRecorder = statusChangedRecorder;
-    }
-
-    public FulfillmentTaskOperationService(FulfillmentTaskOperationRepository repository,
-                                           FulfillmentTaskReadService tasks,
-                                           FulfillmentTaskReadyOutbox outbox) {
-        this(repository, tasks, outbox, null);
     }
 
     @Transactional
@@ -68,11 +57,7 @@ public class FulfillmentTaskOperationService {
             throw new FulfillmentTaskOperationConflictException(task.id());
         }
         repository.resolveQuarantine(task.id(), "TERMINATED", operatorId, safeNote(note));
-        FulfillmentTaskView terminated = tasks.get(normalized);
-        if (statusChangedRecorder != null) {
-            statusChangedRecorder.recordLotteryAssetTask(terminated);
-        }
-        return terminated;
+        return tasks.get(normalized);
     }
 
     private String requiredFulfillmentNo(String value) {

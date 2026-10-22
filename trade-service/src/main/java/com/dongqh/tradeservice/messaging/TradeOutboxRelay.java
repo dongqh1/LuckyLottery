@@ -1,6 +1,7 @@
 package com.dongqh.tradeservice.messaging;
 
 import com.dongqh.hmapi.dto.OrderCreatedMessage;
+import com.dongqh.hmapi.dto.OrderPaidMessage;
 import com.dongqh.tradeservice.mapper.TradeMessageOutboxMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -40,7 +41,13 @@ public class TradeOutboxRelay {
             String token = UUID.randomUUID().toString();
             if (mapper.claim(row.getId(), token, now, now.plus(lease)) != 1) continue;
             try {
-                publisher.publish(objectMapper.readValue(row.getPayload(), OrderCreatedMessage.class));
+                switch (row.getEventType()) {
+                    case "ORDER_CREATED" -> publisher.publish(
+                            objectMapper.readValue(row.getPayload(), OrderCreatedMessage.class));
+                    case "ORDER_PAID" -> publisher.publish(
+                            objectMapper.readValue(row.getPayload(), OrderPaidMessage.class));
+                    default -> throw new IllegalArgumentException("Unsupported trade outbox event type");
+                }
                 mapper.markSent(row.getId(), token, LocalDateTime.now());
             } catch (Exception failure) {
                 int retry = row.getRetryCount() == null ? 1 : row.getRetryCount() + 1;

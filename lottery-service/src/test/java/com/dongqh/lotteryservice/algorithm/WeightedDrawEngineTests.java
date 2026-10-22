@@ -39,9 +39,9 @@ class WeightedDrawEngineTests {
 
     @Test
     void disabledAndSoldOutIntervalsBecomeNoWinWithoutRedistribution() {
-        List<PrizeWeightSnapshot> prizes = List.of(
-                new PrizeWeightSnapshot(11, 101, 10, 5, false),
-                new PrizeWeightSnapshot(12, 102, 30, 0, true),
+        List<WeightedPrize> prizes = List.of(
+                new WeightedPrize(11, 101, 10, 5, false),
+                new WeightedPrize(12, 102, 30, 0, true),
                 active(13, 103, 20)
         );
 
@@ -61,7 +61,7 @@ class WeightedDrawEngineTests {
         assertThatThrownBy(() -> engine.select(List.of(active(11, 101, 10)), -1))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> engine.select(
-                List.of(new PrizeWeightSnapshot(11, 101, 0, 1, true)), 1))
+                List.of(new WeightedPrize(11, 101, 0, 1, true)), 1))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -82,13 +82,13 @@ class WeightedDrawEngineTests {
         ), 0)).isInstanceOf(IllegalArgumentException.class);
     }
 
-    private DrawCandidate selectAt(long value, PrizeWeightSnapshot... prizes) {
+    private DrawCandidate selectAt(long value, WeightedPrize... prizes) {
         return new WeightedDrawEngine(new FixedRandomSource(value))
                 .select(List.of(prizes), 60);
     }
 
-    private PrizeWeightSnapshot active(long activityPrizeId, long prizeId, long weight) {
-        return new PrizeWeightSnapshot(activityPrizeId, prizeId, weight, 1, true);
+    private WeightedPrize active(long activityPrizeId, long prizeId, long weight) {
+        return new WeightedPrize(activityPrizeId, prizeId, weight, 1, true);
     }
 
     private void assertCandidate(DrawCandidate candidate, long activityPrizeId, long prizeId) {

@@ -40,4 +40,25 @@ class LotterySchemaBoundaryTests {
                     "ALTER TABLE");
         }
     }
+
+    @Test
+    void v4RemovesPersistedRewardCopiesAndCleansOldFulfillmentEvents() throws IOException {
+        try (InputStream input = getClass().getResourceAsStream(
+                "/db/migration/V4__remove_lottery_reward_snapshots.sql")) {
+            assertThat(input).isNotNull();
+            String sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+
+            assertThat(sql).contains(
+                    "ALTER TABLE reward_definition",
+                    "DROP COLUMN config_snapshot",
+                    "DROP COLUMN prize_name",
+                    "DROP COLUMN prize_image_url",
+                    "DROP COLUMN reward_payload",
+                    "DROP COLUMN reward_fingerprint",
+                    "DROP COLUMN prize_type",
+                    "JSON_REMOVE",
+                    "PRIZE_FULFILLMENT_REQUESTED");
+            assertThat(sql).doesNotContain("ALTER TABLE marketing_prize DROP COLUMN reward_definition_id");
+        }
+    }
 }

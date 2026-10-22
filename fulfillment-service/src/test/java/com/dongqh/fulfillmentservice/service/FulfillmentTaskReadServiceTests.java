@@ -2,9 +2,9 @@ package com.dongqh.fulfillmentservice.service;
 
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskDetails;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskQueryRepository;
 import org.junit.jupiter.api.Test;
@@ -22,28 +22,28 @@ class FulfillmentTaskReadServiceTests {
     @Test
     void getMapsStoredSnapshotToTypedPayload() {
         FakeRepository repository = new FakeRepository();
-        repository.byNo = Optional.of(details("TASK-1", "{\"couponTemplateCode\":\"WELCOME\",\"quantity\":2}"));
+        repository.byNo = Optional.of(details("TASK-1", payloadJson(2)));
 
         FulfillmentTaskView view = service(repository).get(" TASK-1 ");
 
         assertThat(view.fulfillmentNo()).isEqualTo("TASK-1");
-        assertThat(view.payload()).isEqualTo(new CouponFulfillmentPayload("WELCOME", 2));
+        assertThat(view.payload()).isEqualTo(payload(2));
         assertThat(view.status()).isEqualTo(FulfillmentStatus.RETRY_WAITING);
     }
 
     @Test
     void pageReturnsTypedRecordsAndPaginationMetadata() {
         FakeRepository repository = new FakeRepository();
-        repository.page = List.of(details("TASK-2", "{\"couponTemplateCode\":\"WELCOME\",\"quantity\":1}"));
+        repository.page = List.of(details("TASK-2", payloadJson(1)));
         repository.total = 41;
         FulfillmentTaskQuery query = new FulfillmentTaskQuery(
-                3, 20, FulfillmentType.COUPON, FulfillmentStatus.RETRY_WAITING, 17L, "LOTTERY", "DRAW-7");
+                3, 20, FulfillmentType.LOGISTICS, FulfillmentStatus.RETRY_WAITING, 17L, "LOTTERY_BENEFIT", "DRAW-7");
 
         var result = service(repository).page(query);
 
         assertThat(repository.lastQuery).isEqualTo(query);
         assertThat(result.records()).hasSize(1);
-        assertThat(result.records().get(0).payload()).isEqualTo(new CouponFulfillmentPayload("WELCOME", 1));
+        assertThat(result.records().get(0).payload()).isEqualTo(payload(1));
         assertThat(result.total()).isEqualTo(41);
         assertThat(result.current()).isEqualTo(3);
         assertThat(result.size()).isEqualTo(20);
@@ -82,10 +82,21 @@ class FulfillmentTaskReadServiceTests {
 
     private static FulfillmentTaskDetails details(String no, String payload) {
         return new FulfillmentTaskDetails(
-                1L, no, "LOTTERY_REWARD", "DRAW-1", FulfillmentType.COUPON, 17L, payload,
+                1L, no, "LOTTERY_BENEFIT", "DRAW-1", FulfillmentType.LOGISTICS, 17L, payload,
                 "0".repeat(64), FulfillmentStatus.RETRY_WAITING, 2, 5, null, "EXT-1", null,
                 "TEMP", "retry later", null,
                 LocalDateTime.of(2026, 9, 27, 4, 0), LocalDateTime.of(2026, 9, 27, 4, 1));
+    }
+
+    private static LogisticsFulfillmentPayload payload(int quantity) {
+        return new LogisticsFulfillmentPayload(8, "SKU-1", quantity, "王*", "138****8000",
+                LogisticsFulfillmentPayload.REDACTED_REGION);
+    }
+
+    private static String payloadJson(int quantity) {
+        return "{\"shippingOrderId\":8,\"skuCode\":\"SKU-1\",\"quantity\":" + quantity
+                + ",\"receiverMasked\":\"王*\",\"phoneMasked\":\"138****8000\",\"regionMasked\":\""
+                + LogisticsFulfillmentPayload.REDACTED_REGION + "\"}";
     }
 
     private static final class FakeRepository implements FulfillmentTaskQueryRepository {
@@ -97,12 +108,6 @@ class FulfillmentTaskReadServiceTests {
         @Override
         public Optional<FulfillmentTaskDetails> findByFulfillmentNo(String fulfillmentNo) {
             return byNo;
-        }
-
-        @Override
-        public List<com.dongqh.fulfillmentservice.persistence.FulfillmentTaskStatus> findLotteryStatusByFulfillmentNos(
-                java.util.Collection<String> fulfillmentNos) {
-            return List.of();
         }
 
         @Override

@@ -11,6 +11,7 @@ import com.dongqh.hmapi.dto.AddressDTO;
 import com.dongqh.hmapi.dto.ItemDTO;
 import com.dongqh.hmapi.dto.OrderDetailDTO;
 import com.dongqh.hmapi.dto.OrderCreatedMessage;
+import com.dongqh.hmapi.dto.OrderPaidMessage;
 import com.dongqh.hmapi.dto.OrderPaymentDTO;
 import com.dongqh.tradeservice.domain.dto.OrderFormDTO;
 import com.dongqh.tradeservice.domain.po.Order;
@@ -210,6 +211,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (baseMapper.updateById(order) != 1) {
             throw new BadRequestException("订单状态或金额已发生变化");
         }
+        tradeOutboxService.append(new OrderPaidMessage(UUID.randomUUID(), orderId, userId, paidAt));
     }
 
     @Override

@@ -6,8 +6,8 @@ import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
 import com.dongqh.fulfillmentservice.domain.model.shipping.CreateShippingOrderFromAddressCommand;
 import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingOrderView;
 import com.dongqh.fulfillmentservice.service.shipping.ShippingOrderService;
-import com.dongqh.hmapi.dto.CreateFulfillmentShippingOrderRequest;
-import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
+import com.dongqh.hmapi.dto.CreateShippingOrderRequest;
+import com.dongqh.hmapi.dto.ShippingOrderDTO;
 import com.dongqh.hmapi.dto.InternalServiceErrorDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +33,7 @@ public class InternalShippingOrderController {
     }
 
     @PostMapping
-    public FulfillmentShippingOrderDTO create(@RequestBody CreateFulfillmentShippingOrderRequest request) {
+    public ShippingOrderDTO create(@RequestBody CreateShippingOrderRequest request) {
         if (request == null || (!ShippingSourceType.POINTS_REDEMPTION.name().equals(request.sourceType())
                 && !ShippingSourceType.LOTTERY_BENEFIT.name().equals(request.sourceType()))) {
             throw error(ShippingErrorCode.SHIPPING_REQUEST_INVALID);
@@ -51,7 +51,7 @@ public class InternalShippingOrderController {
     }
 
     @GetMapping
-    public List<FulfillmentShippingOrderDTO> getByIds(@RequestParam("ids") Collection<Long> ids) {
+    public List<ShippingOrderDTO> getByIds(@RequestParam("ids") Collection<Long> ids) {
         return shippingOrders.getByIds(ids).stream()
                 .filter(order -> order.sourceType() == ShippingSourceType.POINTS_REDEMPTION
                         || order.sourceType() == ShippingSourceType.LOTTERY_BENEFIT)
@@ -70,8 +70,8 @@ public class InternalShippingOrderController {
                 .body(new InternalServiceErrorDTO(exception.errorCode().name(), exception.errorCode().name()));
     }
 
-    private static FulfillmentShippingOrderDTO view(ShippingOrderView order) {
-        return new FulfillmentShippingOrderDTO(order.id(), order.shippingNo(), order.fulfillmentNo(),
+    private static ShippingOrderDTO view(ShippingOrderView order) {
+        return new ShippingOrderDTO(order.id(), order.shippingNo(), order.fulfillmentNo(),
                 order.status() == null ? null : order.status().name(), order.addressSnapshotId(),
                 order.addressSnapshotNo(), order.carrierCode(), order.carrierName(),
                 order.waybillNo(), order.lastErrorCode(), order.lastErrorMessage(), order.shippedAt(),

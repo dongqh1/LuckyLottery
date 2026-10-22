@@ -19,19 +19,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LotteryRewardIdentityVerifierTests {
-    private static final String FINGERPRINT = "a".repeat(64);
     private final LotteryRewardIdentityVerifier verifier = new LotteryRewardIdentityVerifier();
 
     @Test
-    void validFrozenSnapshotReturnsImmutableLotteryContext() {
+    void validEventReturnsOnlyStableLotteryIdentity() {
         var rows = rows();
         var result = verifier.validate(rows.envelope, rows.payload, rows.order, rows.record, rows.benefit);
 
         assertThat(result).isEqualTo(new ValidatedLotteryReward(41L, 31L, 11L, "request-11",
-                7L, 9L, 51L, PrizeType.COUPON, BenefitStatus.PENDING,
-                new com.dongqh.lotteryservice.domain.model.drawtransaction.RewardSnapshot(61L, "FROZEN-61",
-                        RewardType.COUPON, 71L, 2L, "{\"target\":71}", FINGERPRINT)));
+                7L, 9L, 51L, BenefitStatus.PENDING));
         assertThat(ValidatedLotteryReward.class.isRecord()).isTrue();
+        assertThat(ValidatedLotteryReward.class.getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .containsExactly("benefitId", "drawRecordId", "orderId", "requestId", "userId",
+                        "activityId", "prizeId", "benefitStatus");
     }
 
     @Test
@@ -80,77 +81,26 @@ class LotteryRewardIdentityVerifierTests {
         rows.benefit.setUserId(8L);
         mismatch(RewardQuarantineReason.BENEFIT_IDENTITY_MISMATCH, rows);
         rows.benefit.setUserId(7L);
-        rows.benefit.setPrizeType(PrizeType.POINTS);
+        rows.benefit.setPrizeId(52L);
         mismatch(RewardQuarantineReason.BENEFIT_IDENTITY_MISMATCH, rows);
     }
 
     @Test
-    void rewardDefinitionMustMatchBothFrozenRows() {
+    void currentCatalogProjectionIsNotPartOfStoredDrawIdentity() {
         var rows = rows();
-        rows.benefit.setRewardDefinitionId(62L);
-        mismatch(RewardQuarantineReason.REWARD_DEFINITION_MISMATCH, rows);
-    }
+        rows.record.setPrizeType(PrizeType.PHYSICAL);
+        rows.record.setRewardDefinitionId(101L);
+        rows.record.setRewardType(RewardType.PRODUCT);
+        rows.record.setRewardTargetId(201L);
+        rows.record.setRewardQuantity(4L);
+        rows.benefit.setPrizeType(PrizeType.COUPON);
+        rows.benefit.setRewardDefinitionId(102L);
+        rows.benefit.setRewardType(RewardType.COUPON);
+        rows.benefit.setRewardTargetId(202L);
+        rows.benefit.setRewardQuantity(5L);
 
-    @Test
-    void rewardTypeMustMatchBothFrozenRows() {
-        var rows = rows();
-        rows.record.setRewardType(RewardType.POINTS);
-        mismatch(RewardQuarantineReason.REWARD_TYPE_MISMATCH, rows);
-    }
-
-    @Test
-    void rewardFingerprintMustMatchBothFrozenRows() {
-        var rows = rows();
-        rows.benefit.setRewardFingerprint("b".repeat(64));
-        mismatch(RewardQuarantineReason.REWARD_FINGERPRINT_MISMATCH, rows);
-    }
-
-    @Test
-    void rewardTargetQuantityAndRawJsonMustMatch() {
-        var rows = rows();
-        rows.benefit.setRewardTargetId(72L);
-        mismatch(RewardQuarantineReason.BENEFIT_IDENTITY_MISMATCH, rows);
-        rows.benefit.setRewardTargetId(71L);
-        rows.benefit.setRewardQuantity(3L);
-        mismatch(RewardQuarantineReason.BENEFIT_IDENTITY_MISMATCH, rows);
-        rows.benefit.setRewardQuantity(2L);
-        rows.benefit.setRewardPayload("{\"target\": 71}");
-        mismatch(RewardQuarantineReason.BENEFIT_IDENTITY_MISMATCH, rows);
-    }
-
-    @Test
-    void missingRewardPayloadOrQuantityIsTypedMismatch() {
-        var rows = rows();
-        rows.record.setRewardPayload(null);
-        rows.benefit.setRewardPayload(null);
-        mismatch(RewardQuarantineReason.BENEFIT_IDENTITY_MISMATCH, rows);
-        rows = rows();
-        rows.record.setRewardQuantity(null);
-        rows.benefit.setRewardQuantity(null);
-        mismatch(RewardQuarantineReason.BENEFIT_IDENTITY_MISMATCH, rows);
-    }
-
-    @Test
-    void noRewardSnapshotIgnoresTargetQuantityAndPayloadButRejectsMetadata() {
-        var rows = rows();
-        rows.record.setRewardDefinitionId(null);
-        rows.benefit.setRewardDefinitionId(null);
-        rows.record.setRewardType(null);
-        rows.benefit.setRewardType(null);
-        rows.record.setRewardFingerprint(null);
-        rows.benefit.setRewardFingerprint(null);
-        var noReward = new PrizeFulfillmentRequestedEvent(41L, 31L, 51L, PrizeType.COUPON);
-
-        assertThat(verifier.validate(rows.envelope, noReward, rows.order, rows.record, rows.benefit)
-                .rewardSnapshot()).isNull();
-        rows.benefit.setRewardTargetId(72L);
-        rows.benefit.setRewardQuantity(3L);
-        rows.benefit.setRewardPayload("{\"target\":72}");
-        assertThat(verifier.validate(rows.envelope, noReward, rows.order, rows.record, rows.benefit)
-                .rewardSnapshot()).isNull();
-        rows.benefit.setRewardDefinitionId(61L);
-        mismatch(RewardQuarantineReason.REWARD_DEFINITION_MISMATCH, rows.envelope, noReward,
-                rows.order, rows.record, rows.benefit);
+        assertThat(verifier.validate(rows.envelope, rows.payload, rows.order, rows.record, rows.benefit)
+                .prizeId()).isEqualTo(51L);
     }
 
     private void mismatch(RewardQuarantineReason expected, Rows rows) {
@@ -166,8 +116,7 @@ class LotteryRewardIdentityVerifierTests {
     }
 
     private Rows rows() {
-        var payload = new PrizeFulfillmentRequestedEvent(41L, 31L, 51L, PrizeType.COUPON,
-                61L, RewardType.COUPON, FINGERPRINT);
+        var payload = new PrizeFulfillmentRequestedEvent(41L, 31L, 51L);
         var envelope = DrawEventEnvelope.create(DrawEventType.PRIZE_FULFILLMENT_REQUESTED,
                 "request-11", 7L, 9L, 11L, LocalDateTime.of(2026, 9, 28, 12, 0),
                 payload, JsonMapper.builder().build());
@@ -189,8 +138,6 @@ class LotteryRewardIdentityVerifierTests {
         record.setRewardType(RewardType.COUPON);
         record.setRewardTargetId(71L);
         record.setRewardQuantity(2L);
-        record.setRewardPayload("{\"target\":71}");
-        record.setRewardFingerprint(FINGERPRINT);
         var benefit = new UserBenefitRow();
         benefit.setId(41L);
         benefit.setDrawRecordId(31L);
@@ -202,8 +149,6 @@ class LotteryRewardIdentityVerifierTests {
         benefit.setRewardType(RewardType.COUPON);
         benefit.setRewardTargetId(71L);
         benefit.setRewardQuantity(2L);
-        benefit.setRewardPayload("{\"target\":71}");
-        benefit.setRewardFingerprint(FINGERPRINT);
         return new Rows(envelope, payload, order, record, benefit);
     }
 

@@ -3,6 +3,7 @@ package com.dongqh.fulfillmentservice.service;
 import com.dongqh.fulfillmentservice.enums.FulfillmentStatus;
 import com.dongqh.fulfillmentservice.enums.FulfillmentType;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskDetails;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskOperationRepository;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskOperationSnapshot;
@@ -132,8 +133,8 @@ class FulfillmentTaskOperationServiceTests {
 
     private static FulfillmentTaskDetails details(FulfillmentStatus status) {
         return new FulfillmentTaskDetails(
-                42L, "TASK-1", "LOTTERY_REWARD", "DRAW-1", FulfillmentType.COUPON, 17L,
-                "{\"couponTemplateCode\":\"WELCOME\",\"quantity\":1}", "0".repeat(64), status,
+                42L, "TASK-1", "LOTTERY_BENEFIT", "DRAW-1", FulfillmentType.LOGISTICS, 17L,
+                "{\"shippingOrderId\":8,\"skuCode\":\"SKU-1\",\"quantity\":1,\"receiverMasked\":\"王*\",\"phoneMasked\":\"138****8000\",\"regionMasked\":\"区域***\"}", "0".repeat(64), status,
                 2, 5, null, null, null, null, null, null, null, null);
     }
 
@@ -147,12 +148,6 @@ class FulfillmentTaskOperationServiceTests {
         @Override
         public Optional<FulfillmentTaskDetails> findByFulfillmentNo(String fulfillmentNo) {
             return details == null ? Optional.empty() : Optional.of(details);
-        }
-
-        @Override
-        public java.util.List<com.dongqh.fulfillmentservice.persistence.FulfillmentTaskStatus> findLotteryStatusByFulfillmentNos(
-                java.util.Collection<String> fulfillmentNos) {
-            return java.util.List.of();
         }
 
         @Override

@@ -29,24 +29,20 @@ public class DrawRecordRow {
     private DrawResultType resultType;
     @TableField("prize_id")
     private Long prizeId;
-    @TableField("prize_name")
+    @TableField(exist = false)
     private String prizeName;
-    @TableField("prize_type")
+    @TableField(exist = false)
     private PrizeType prizeType;
-    @TableField("prize_image_url")
+    @TableField(exist = false)
     private String prizeImageUrl;
-    @TableField("reward_definition_id")
+    @TableField(exist = false)
     private Long rewardDefinitionId;
-    @TableField("reward_type")
+    @TableField(exist = false)
     private RewardType rewardType;
-    @TableField("reward_target_id")
+    @TableField(exist = false)
     private Long rewardTargetId;
-    @TableField("reward_quantity")
+    @TableField(exist = false)
     private Long rewardQuantity;
-    @TableField("reward_payload")
-    private String rewardPayload;
-    @TableField("reward_fingerprint")
-    private String rewardFingerprint;
     @TableField("draw_time")
     private LocalDateTime drawTime;
     @TableField(exist = false)
@@ -84,10 +80,6 @@ public class DrawRecordRow {
     public void setRewardTargetId(Long rewardTargetId) { this.rewardTargetId = rewardTargetId; }
     public Long getRewardQuantity() { return rewardQuantity; }
     public void setRewardQuantity(Long rewardQuantity) { this.rewardQuantity = rewardQuantity; }
-    public String getRewardPayload() { return rewardPayload; }
-    public void setRewardPayload(String rewardPayload) { this.rewardPayload = rewardPayload; }
-    public String getRewardFingerprint() { return rewardFingerprint; }
-    public void setRewardFingerprint(String rewardFingerprint) { this.rewardFingerprint = rewardFingerprint; }
     public LocalDateTime getDrawTime() { return drawTime; }
     public void setDrawTime(LocalDateTime drawTime) { this.drawTime = drawTime; }
     public Long getBenefitId() { return benefitId; }

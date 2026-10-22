@@ -1,6 +1,6 @@
 package com.dongqh.lotteryservice.controller;
 
-import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
+import com.dongqh.hmapi.dto.ShippingOrderDTO;
 import com.dongqh.lotteryservice.domain.dto.benefit.ClaimPhysicalBenefitCommand;
 import com.dongqh.lotteryservice.service.benefit.LotteryBenefitQueryService;
 import com.dongqh.lotteryservice.service.benefit.LotteryPhysicalBenefitClaimService;
@@ -60,7 +60,7 @@ public class LotteryBenefitController {
     }
 
     @PostMapping("/{benefitId}/claim")
-    public R<FulfillmentShippingOrderDTO> claim(
+    public R<ShippingOrderDTO> claim(
             @PathVariable("benefitId") @Positive long benefitId,
             @Valid @RequestBody ClaimPhysicalBenefitCommand command,
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {

@@ -80,6 +80,27 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<CouponTemplateView> searchTemplates(String keyword, int size) {
+        //设置每页数量
+        int pageSize = Math.max(1, Math.min(size, 50));
+        //搜索关键词
+        String search = keyword == null ? "" : keyword.trim();
+        //获取状态为1的所有优惠券
+        LambdaQueryWrapper<CouponTemplate> query = new LambdaQueryWrapper<CouponTemplate>()
+                .eq(CouponTemplate::getStatus, 1);
+        //如果有关键词就搜索关键词
+        if (!search.isEmpty()) {
+            query.and(wrapper -> wrapper.like(CouponTemplate::getTemplateName, search)
+                    .or().like(CouponTemplate::getTemplateCode, search));
+        }
+        query.orderByDesc(CouponTemplate::getCreatedAt).orderByDesc(CouponTemplate::getId);
+
+        Page<CouponTemplate> page = templates.selectPage(new Page<>(1, pageSize), query);
+        return page.getRecords().stream().map(this::view).toList();
+    }
+
+    @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public UserCouponView issue(IssueCouponCommand command) {
         String businessNo = command.businessNo().trim();

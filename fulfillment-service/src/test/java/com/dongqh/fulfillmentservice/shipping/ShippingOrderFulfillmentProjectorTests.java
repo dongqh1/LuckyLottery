@@ -10,7 +10,9 @@ import com.dongqh.fulfillmentservice.enums.shipping.ShippingStatus;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrder;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingOrderRepository;
 import com.dongqh.fulfillmentservice.service.shipping.ShippingOrderFulfillmentProjector;
+import com.dongqh.hmapi.client.TradeClient;
 import com.dongqh.hmapi.dto.FulfillmentStatusChangedEventV1;
+import com.dongqh.hmapi.dto.UpdateTradeOrderShippingInfoRequest;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -150,15 +152,17 @@ class ShippingOrderFulfillmentProjectorTests {
         ShippingOrderRepository orders = mock(ShippingOrderRepository.class);
         FulfillmentTaskReadService tasks = mock(FulfillmentTaskReadService.class);
         FulfillmentStatusChangedOutbox outbox = mock(FulfillmentStatusChangedOutbox.class);
+        TradeClient trade = mock(TradeClient.class);
         ShippingOrder before = order(ShippingSourceType.CASH_ORDER, ShippingStatus.FULFILLING);
         when(orders.findByFulfillmentNo("LOGISTICS-12")).thenReturn(Optional.of(before));
         when(tasks.get("LOGISTICS-12")).thenReturn(task(
                 FulfillmentStatus.SUCCEEDED, "WB-900", null, null, "CASH_ORDER"));
         when(orders.updateProjection(eq(before), any(ShippingOrder.class))).thenReturn(true);
 
-        projector(orders, tasks, outbox).projectFulfillmentState("LOGISTICS-12");
+        projector(orders, tasks, outbox, trade).projectFulfillmentState("LOGISTICS-12");
 
         verify(outbox, never()).append(any(FulfillmentStatusChangedEventV1.class));
+        verify(trade).updateShippingInfo(44L, new UpdateTradeOrderShippingInfoRequest("模拟物流", "WB-900"));
     }
 
     @Test
@@ -181,7 +185,16 @@ class ShippingOrderFulfillmentProjectorTests {
             FulfillmentTaskReadService tasks,
             FulfillmentStatusChangedOutbox outbox
     ) {
-        return new ShippingOrderFulfillmentProjector(orders, tasks, outbox, CLOCK);
+        return projector(orders, tasks, outbox, mock(TradeClient.class));
+    }
+
+    private static ShippingOrderFulfillmentProjector projector(
+            ShippingOrderRepository orders,
+            FulfillmentTaskReadService tasks,
+            FulfillmentStatusChangedOutbox outbox,
+            TradeClient trade
+    ) {
+        return new ShippingOrderFulfillmentProjector(orders, tasks, outbox, trade, CLOCK);
     }
 
     private static ShippingOrder order(ShippingSourceType source, ShippingStatus status) {

@@ -41,7 +41,7 @@ public class LotteryDrawController {
         this.draws = draws;
         this.queries = queries;
     }
-
+    //抽奖
     @PostMapping("/draws")
     public R<DrawOrderView> draw(@Valid @RequestBody DrawCommand command) {
         return R.ok(draws.draw(command));

@@ -16,8 +16,9 @@ public record CreateFulfillmentTaskCommand(
         fulfillmentNo = required(fulfillmentNo, "fulfillmentNo");
         sourceType = required(sourceType, "sourceType");
         sourceId = required(sourceId, "sourceId");
-        if (fulfillmentType == null || payload == null || payload.fulfillmentType() != fulfillmentType) {
-            throw new IllegalArgumentException("履约类型与payload不匹配");
+        if (fulfillmentType != FulfillmentType.LOGISTICS || payload == null
+                || payload.fulfillmentType() != fulfillmentType) {
+            throw new IllegalArgumentException("物流服务只接受实物发货任务");
         }
         if (targetUserId == null || targetUserId <= 0) {
             throw new IllegalArgumentException("targetUserId必须大于0");

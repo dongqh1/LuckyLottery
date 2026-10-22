@@ -106,6 +106,39 @@ class ShippingOrderServiceTests {
                 .hasFieldOrPropertyWithValue("errorCode", ShippingErrorCode.SHIPPING_NOT_FOUND);
     }
 
+    @Test
+    void userCanFindTheirShipmentBySourceOrderId() {
+        ShippingOrderRepository orders = mock(ShippingOrderRepository.class);
+        ShippingAddressSnapshotService snapshots = mock(ShippingAddressSnapshotService.class);
+        when(orders.findBySource(ShippingSourceType.CASH_ORDER, "order-1"))
+                .thenReturn(Optional.of(order(44L, "LOGISTICS-44")));
+        when(snapshots.require(3L)).thenReturn(snapshot());
+        ShippingOrderService service = new ShippingOrderService(
+                orders, snapshots, mock(FulfillmentTaskCreationService.class));
+
+        var result = service.getForUserBySource(7L, ShippingSourceType.CASH_ORDER, " order-1 ");
+
+        assertThat(result.shippingNo()).isEqualTo("SHIPPING-44");
+        assertThatThrownBy(() -> service.getForUserBySource(8L, ShippingSourceType.CASH_ORDER, "order-1"))
+                .isInstanceOf(ShippingDomainException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ShippingErrorCode.SHIPPING_NOT_FOUND);
+    }
+
+    @Test
+    void existingShipmentWithMissingAddressSnapshotIsNotReportedAsAbsent() {
+        ShippingOrderRepository orders = mock(ShippingOrderRepository.class);
+        ShippingAddressSnapshotService snapshots = mock(ShippingAddressSnapshotService.class);
+        when(orders.findBySource(ShippingSourceType.CASH_ORDER, "order-1"))
+                .thenReturn(Optional.of(order(44L, "LOGISTICS-44")));
+        when(snapshots.require(3L)).thenThrow(new ShippingDomainException(ShippingErrorCode.SHIPPING_NOT_FOUND));
+        ShippingOrderService service = new ShippingOrderService(
+                orders, snapshots, mock(FulfillmentTaskCreationService.class));
+
+        assertThatThrownBy(() -> service.getForUserBySource(7L, ShippingSourceType.CASH_ORDER, "order-1"))
+                .isInstanceOf(ShippingDomainException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ShippingErrorCode.SHIPPING_STATE_CONFLICT);
+    }
+
     private static CreateShippingOrderCommand command() {
         return new CreateShippingOrderCommand(ShippingSourceType.CASH_ORDER, "order-1", 7L, 3L,
                 null, "SKU-1", "商品", null, 2, null);

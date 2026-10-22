@@ -2,9 +2,9 @@ package com.dongqh.luckyhub.service.points.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dongqh.hmapi.client.FulfillmentClient;
-import com.dongqh.hmapi.dto.CreateFulfillmentShippingOrderRequest;
-import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
+import com.dongqh.hmapi.client.LogisticsClient;
+import com.dongqh.hmapi.dto.CreateShippingOrderRequest;
+import com.dongqh.hmapi.dto.ShippingOrderDTO;
 import com.dongqh.hmapi.dto.InternalServiceErrorDTO;
 import com.dongqh.luckyhub.domain.dto.points.CreatePointsRedemptionCommand;
 import com.dongqh.luckyhub.domain.dto.points.PointsMutationCommand;
@@ -51,7 +51,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
     private final PointsRedemptionOfferService offers;
     private final PointsRedemptionStateService state;
     private final PointsRedemptionOrderMapper orders;
-    private final FulfillmentClient fulfillment;
+    private final LogisticsClient logistics;
 
     public PointsRedemptionServiceImpl(
             PointsIntegrationService integration,
@@ -59,14 +59,14 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
             PointsRedemptionOfferService offers,
             PointsRedemptionStateService state,
             PointsRedemptionOrderMapper orders,
-            FulfillmentClient fulfillment
+            LogisticsClient logistics
     ) {
         this.integration = integration;
         this.accounts = accounts;
         this.offers = offers;
         this.state = state;
         this.orders = orders;
-        this.fulfillment = fulfillment;
+        this.logistics = logistics;
     }
 
     @Override
@@ -140,7 +140,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                 .orderByDesc(PointsRedemptionOrder::getId);
         Page<PointsRedemptionOrder> result = orders.selectPage(
                 new Page<>(query.getPage(), query.getSize()), wrapper);
-        Map<Long, FulfillmentShippingOrderDTO> shipping = shippingByIds(result.getRecords());
+        Map<Long, ShippingOrderDTO> shipping = shippingByIds(result.getRecords());
         List<PointsRedemptionView> records = result.getRecords().stream()
                 .map(order -> view(order, shipping.get(order.getShippingOrderId()))).toList();
         return new PointsPageResponse<>(records, result.getTotal(), result.getCurrent(),
@@ -273,8 +273,8 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                         if (authorization == null || authorization.isBlank()) {
                             throw error(PointsErrorCode.REDEMPTION_ADDRESS_INVALID);
                         }
-                        FulfillmentShippingOrderDTO accepted = fulfillment.createShippingOrder(authorization,
-                                new CreateFulfillmentShippingOrderRequest("POINTS_REDEMPTION",
+                        ShippingOrderDTO accepted = logistics.createShippingOrder(authorization,
+                                new CreateShippingOrderRequest("POINTS_REDEMPTION",
                                         String.valueOf(current.getId()), current.getUserId(), current.getAddressId(),
                                         current.getHmallItemId(), current.getSkuCode(), current.getProductName(),
                                         current.getImageUrl(), current.getQuantity()));
@@ -531,7 +531,7 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
         return view(order, shippingByIds(List.of(order)).get(order.getShippingOrderId()));
     }
 
-    private PointsRedemptionView view(PointsRedemptionOrder order, FulfillmentShippingOrderDTO shipping) {
+    private PointsRedemptionView view(PointsRedemptionOrder order, ShippingOrderDTO shipping) {
         PointsShippingAddressView address = shipping == null || shipping.addressSnapshotId() == null
                 ? null : new PointsShippingAddressView(shipping.addressSnapshotId(), shipping.addressSnapshotNo(),
                 shipping.receiverMasked(), shipping.phoneMasked(), shipping.regionMasked());
@@ -544,16 +544,16 @@ public class PointsRedemptionServiceImpl implements PointsRedemptionService {
                 shipping == null ? null : shipping.status(), order.getCreatedAt(), order.getUpdatedAt());
     }
 
-    private Map<Long, FulfillmentShippingOrderDTO> shippingByIds(List<PointsRedemptionOrder> records) {
+    private Map<Long, ShippingOrderDTO> shippingByIds(List<PointsRedemptionOrder> records) {
         List<Long> ids = records.stream().map(PointsRedemptionOrder::getShippingOrderId)
                 .filter(Objects::nonNull).distinct().toList();
         if (ids.isEmpty()) {
             return Map.of();
         }
         try {
-            return fulfillment.getShippingOrdersByIds(ids).stream()
+            return logistics.getShippingOrdersByIds(ids).stream()
                     .filter(dto -> dto != null && dto.id() != null)
-                    .collect(Collectors.toMap(FulfillmentShippingOrderDTO::id, dto -> dto, (left, right) -> left));
+                    .collect(Collectors.toMap(ShippingOrderDTO::id, dto -> dto, (left, right) -> left));
         } catch (RuntimeException unavailable) {
             return Map.of();
         }

@@ -1,14 +1,11 @@
 package com.dongqh.lotteryservice.service.benefit;
 
-import com.dongqh.hmapi.client.FulfillmentClient;
-import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
-import com.dongqh.hmapi.dto.FulfillmentTaskStatusDTO;
+import com.dongqh.hmapi.client.LogisticsClient;
+import com.dongqh.hmapi.dto.ShippingOrderDTO;
 import com.dongqh.lotteryservice.domain.vo.benefit.BenefitView;
 import com.dongqh.lotteryservice.exception.LotteryDomainException;
-import com.dongqh.lotteryservice.domain.po.drawtransaction.DrawRecordRow;
 import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
 import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
-import com.dongqh.lotteryservice.mapper.drawtransaction.DrawRecordMapper;
 import com.dongqh.lotteryservice.mapper.drawtransaction.UserBenefitMapper;
 import com.dongqh.lotteryservice.enums.LotteryErrorCode;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
@@ -30,14 +27,11 @@ public class LotteryBenefitQueryService {
     private static final LocalDate MAX_SAFE_END_DATE = LocalDate.of(9999, 12, 30);
 
     private final UserBenefitMapper benefits;
-    private final DrawRecordMapper records;
-    private final FulfillmentClient fulfillment;
+    private final LogisticsClient logistics;
 
-    public LotteryBenefitQueryService(UserBenefitMapper benefits, DrawRecordMapper records,
-                                     FulfillmentClient fulfillment) {
+    public LotteryBenefitQueryService(UserBenefitMapper benefits, LogisticsClient logistics) {
         this.benefits = benefits;
-        this.records = records;
-        this.fulfillment = fulfillment;
+        this.logistics = logistics;
     }
 
     public PageResponse<BenefitView> pageMine(long userId, long page, long size, BenefitStatus status,
@@ -57,7 +51,7 @@ public class LotteryBenefitQueryService {
         if (userId <= 0 || benefitId <= 0) {
             throw error(LotteryErrorCode.BENEFIT_QUERY_INVALID);
         }
-        UserBenefitRow benefit = benefits.selectById(benefitId);
+        UserBenefitRow benefit = benefits.selectByIdWithCurrentPrize(benefitId);
         if (benefit == null) {
             throw error(LotteryErrorCode.BENEFIT_NOT_FOUND);
         }
@@ -71,40 +65,22 @@ public class LotteryBenefitQueryService {
         if (rows.isEmpty()) {
             return List.of();
         }
-        List<Long> recordIds = rows.stream().map(UserBenefitRow::getDrawRecordId)
-                .filter(Objects::nonNull).distinct().toList();
-        Map<Long, DrawRecordRow> recordById = recordIds.isEmpty() ? Map.of()
-                : records.selectBatchIds(recordIds).stream()
-                .collect(Collectors.toMap(DrawRecordRow::getId, Function.identity()));
-
-        List<String> fulfillmentNos = rows.stream().map(UserBenefitRow::getFulfillmentNo)
-                .filter(value -> value != null && !value.isBlank()).distinct().toList();
-        Map<String, String> taskStatusByNo = fulfillmentNos.isEmpty() ? Map.of()
-                : fulfillment.getLotteryTaskStatuses(fulfillmentNos).stream()
-                .collect(Collectors.toMap(FulfillmentTaskStatusDTO::fulfillmentNo,
-                        FulfillmentTaskStatusDTO::status, (first, ignored) -> first));
-
         List<Long> shippingIds = rows.stream().map(UserBenefitRow::getShippingOrderId)
                 .filter(Objects::nonNull).distinct().toList();
-        Map<Long, FulfillmentShippingOrderDTO> shippingById = shippingIds.isEmpty() ? Map.of()
-                : fulfillment.getShippingOrdersByIds(shippingIds).stream()
+        Map<Long, ShippingOrderDTO> shippingById = shippingIds.isEmpty() ? Map.of()
+                : logistics.getShippingOrdersByIds(shippingIds).stream()
                 .filter(order -> order.id() != null)
-                .collect(Collectors.toMap(FulfillmentShippingOrderDTO::id, Function.identity(),
+                .collect(Collectors.toMap(ShippingOrderDTO::id, Function.identity(),
                         (first, ignored) -> first));
 
         return rows.stream().map(benefit -> {
-            DrawRecordRow record = benefit.getDrawRecordId() == null
-                    ? null : recordById.get(benefit.getDrawRecordId());
-            FulfillmentShippingOrderDTO shipping = benefit.getShippingOrderId() == null
+            ShippingOrderDTO shipping = benefit.getShippingOrderId() == null
                     ? null : shippingById.get(benefit.getShippingOrderId());
-            String taskStatus = benefit.getFulfillmentNo() == null
-                    ? null : taskStatusByNo.get(benefit.getFulfillmentNo());
             return new BenefitView(benefit.getId(), benefit.getDrawRecordId(), benefit.getUserId(),
-                    benefit.getPrizeId(), benefit.getPrizeType(), record == null ? null : record.getPrizeName(),
-                    record == null ? null : record.getPrizeImageUrl(), benefit.getQuantity(), benefit.getStatus(),
+                    benefit.getPrizeId(), benefit.getPrizeType(), benefit.getPrizeName(),
+                    benefit.getPrizeImageUrl(), benefit.getQuantity(), benefit.getStatus(),
                     benefit.getObtainedAt(), benefit.getExpireAt(), benefit.getRewardDefinitionId(),
-                    benefit.getRewardType(), benefit.getRewardQuantity(), benefit.getFulfillmentNo(),
-                    taskStatus,
+                    benefit.getRewardType(), benefit.getRewardQuantity(),
                     shipping == null ? null : shipping.shippingNo(),
                     shipping == null ? null : shipping.status());
         }).toList();

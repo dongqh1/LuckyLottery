@@ -12,6 +12,7 @@ NEW_SERVICES = {
     "membership-service": ("membershipservice", "MembershipServiceApplication"),
     "fulfillment-service": ("fulfillmentservice", "FulfillmentServiceApplication"),
 }
+RUNTIME_NAMES = {"fulfillment-service": "logistics-service"}
 
 
 class MarketingServiceModuleScaffoldingTests(unittest.TestCase):
@@ -63,7 +64,7 @@ class MarketingServiceModuleScaffoldingTests(unittest.TestCase):
                 self.assertIn(f"class {application_class}", source)
 
                 application_config = application_path.read_text(encoding="utf-8")
-                self.assertIn(f"name: {module}", application_config)
+                self.assertIn(f"name: {RUNTIME_NAMES.get(module, module)}", application_config)
                 self.assertNotRegex(
                     application_config,
                     r"(?im)^\s*(password|secret|token)\s*:\s*(?!\$\{)[^\s#]+",

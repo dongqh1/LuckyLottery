@@ -34,6 +34,9 @@ public class PrizeImageService {
         String objectKey = "prizes/%s/%s.%s".formatted(
                 LocalDate.now(ZoneOffset.UTC).format(PATH_DATE), UUID.randomUUID(), image.extension());
         gateway.put(objectKey, image.content(), image.contentType());
-        return new ImageUploadView(properties.normalizedPublicBaseUrl() + "/" + objectKey, objectKey);
+        String url = properties.enabled() && properties.isComplete()
+                ? properties.normalizedPublicBaseUrl() + "/" + objectKey
+                : "/uploads/" + objectKey;
+        return new ImageUploadView(url, objectKey);
     }
 }

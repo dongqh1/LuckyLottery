@@ -12,6 +12,7 @@
     .delivery-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:24px}.delivery-box{padding:18px;border:1px solid #eee;background:#fff}
     .delivery-box h3{margin:0 0 14px;font-size:17px}.delivery-box p{margin:8px 0;color:#555;line-height:1.7}
     .tracking-number{font-family:Consolas,monospace;color:#e1251b!important}
+    .shipping-heading{margin-top:26px!important}
     .progress{position:relative;margin:8px 0 0;padding-left:28px}.progress:before{content:"";position:absolute;left:8px;top:9px;bottom:16px;width:2px;background:#e7e7e7}
     .progress-step{position:relative;padding:0 0 24px 14px}.progress-step:last-child{padding-bottom:0}.progress-step:before{content:"";position:absolute;left:-25px;top:5px;width:10px;height:10px;border-radius:50%;background:#e1251b;box-shadow:0 0 0 4px #fde9e7}
     .progress-step strong{display:block;margin-bottom:5px}.progress-step time{color:#999}.status-tag{display:inline-block;padding:4px 11px;border-radius:12px;background:#fde9e7;color:#c81623}
@@ -42,8 +43,8 @@
 
       <section class="panel">
         <div class="panel-title"><h2>配送信息</h2><button class="secondary" @click="load">刷新</button></div>
-        <div class="panel-body delivery-grid" v-if="order.delivery">
-          <div class="delivery-box">
+        <div class="panel-body delivery-grid" v-if="order.delivery || shipping || shippingLoading || shippingError">
+          <div class="delivery-box" v-if="order.delivery">
             <h3>承运与收货信息</h3>
             <p>承运商：<strong>{{order.delivery.carrier||'商家备货中'}}</strong></p>
             <p class="tracking-number">运单号：{{order.delivery.trackingNumber||'发货后生成'}}</p>
@@ -53,13 +54,24 @@
             </template>
           </div>
           <div class="delivery-box">
-            <h3>物流进度</h3>
+            <h3>订单进度</h3>
             <div class="progress" v-if="progressSteps.length">
               <div class="progress-step" v-for="step in progressSteps" :key="step.code">
                 <strong>{{step.title}}</strong><time>{{formatTime(step.time)}}</time>
               </div>
             </div>
-            <p v-else>暂无物流节点</p>
+            <p v-else>暂无订单进度</p>
+            <h3 class="shipping-heading">物流轨迹 <span v-if="shipping">{{shippingStatusName(shipping.status)}}</span></h3>
+            <p v-if="shippingLoading">物流信息加载中...</p>
+            <p v-else-if="shippingError" class="page-error">{{shippingError}}</p>
+            <div class="progress" v-else-if="shipping && shipping.tracking && shipping.tracking.length">
+              <div class="progress-step" v-for="(event,index) in shipping.tracking" :key="event.eventTime+'-'+index">
+                <strong>{{trackingTypeName(event.eventType)}}</strong><time>{{formatTime(event.eventTime)}}</time>
+                <p>{{event.description}}<span v-if="event.locationSummary"> · {{event.locationSummary}}</span></p>
+              </div>
+            </div>
+            <p v-else-if="shipping">物流单已创建，管理员录入运单后会显示轨迹。</p>
+            <p v-else>物流发货单正在生成，稍后刷新查看。</p>
           </div>
         </div>
         <div class="panel-body empty" v-else>配送信息正在生成，请稍后刷新。</div>
@@ -69,7 +81,41 @@
 </div>
 <script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
 <script>
-new Vue({el:'#app',data:{order:{},error:''},created(){if(!util.isLogin()){util.store.set('return-url',location.href);location.href='/login.html';return}this.load()},computed:{progressSteps(){return[{code:'CREATED',title:'订单已创建',time:this.order.createTime},{code:'PAID',title:'支付完成',time:this.order.payTime},{code:'SHIPPED',title:'商品已发货',time:this.order.consignTime},{code:'DELIVERED',title:'订单已签收',time:this.order.endTime}].filter(step=>step.time)}},methods:{load(){const orderId=util.getUrlParam('orderId');if(!orderId){this.error='缺少订单号，无法查询订单';return}this.error='';axios.get("/orders/"+orderId).then(resp=>{this.order=resp}).catch(error=>{this.error=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||'订单详情加载失败'})},money(cent){return((cent||0)/100).toFixed(2)},formatTime(value){return value?value.replace('T',' ').slice(0,19):'-'},statusName(status){return({1:'待付款',2:'已付款，等待发货',3:'已发货',4:'已签收',5:'已取消',6:'交易完成'})[status]||'状态更新中'}}})
+new Vue({
+  el:'#app',
+  data:{order:{},error:'',shipping:null,shippingLoading:false,shippingError:''},
+  created(){if(!util.isLogin()){util.store.set('return-url',location.href);location.href='/login.html';return}this.load()},
+  computed:{progressSteps(){return[
+    {code:'CREATED',title:'订单已创建',time:this.order.createTime},
+    {code:'PAID',title:'支付完成',time:this.order.payTime},
+    {code:'SHIPPED',title:'商品已发货',time:this.order.consignTime},
+    {code:'DELIVERED',title:'订单已签收',time:this.order.endTime}
+  ].filter(step=>step.time)}},
+  methods:{
+    load(){
+      const orderId=util.getUrlParam('orderId');
+      if(!orderId){this.error='缺少订单号，无法查询订单';return}
+      this.error='';
+      axios.get('/orders/'+orderId).then(resp=>{this.order=resp;this.loadShipping(orderId)}).catch(error=>{
+        this.error=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||'订单详情加载失败'
+      })
+    },
+    loadShipping(orderId){
+      this.shippingLoading=true;this.shippingError='';
+      return axios.get('/shipping/orders/by-source',{params:{sourceType:'CASH_ORDER',sourceId:orderId}}).then(resp=>{
+        this.shipping=resp&&Object.prototype.hasOwnProperty.call(resp,'data')?resp.data:resp
+      }).catch(error=>{
+        this.shipping=null;
+        if(!(error.response&&error.response.status===404))this.shippingError='物流进度暂时无法加载，请稍后刷新'
+      }).finally(()=>{this.shippingLoading=false})
+    },
+    money(cent){return((cent||0)/100).toFixed(2)},
+    formatTime(value){return value?value.replace('T',' ').slice(0,19):'-'},
+    statusName(status){return({1:'待付款',2:'已付款，等待发货',3:'已发货',4:'已签收',5:'已取消',6:'交易完成'})[status]||'状态更新中'},
+    shippingStatusName(status){return({READY:'待发货',FULFILLING:'处理中',SHIPPED:'已发货',IN_TRANSIT:'运输中',DELIVERED:'已签收',FAILED:'处理失败',TERMINATED:'已终止'})[status]||'状态更新中'},
+    trackingTypeName(type){return({PICKED_UP:'快递已揽收',IN_TRANSIT:'运输中',OUT_FOR_DELIVERY:'派送中',DELIVERED:'已签收'})[type]||'物流更新'}
+  }
+})
 </script>
 </body>
 </html>

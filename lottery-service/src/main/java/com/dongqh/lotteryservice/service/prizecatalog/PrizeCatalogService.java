@@ -6,8 +6,10 @@ import com.dongqh.lotteryservice.exception.prizecatalog.PrizeCatalogException;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeErrorCode;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeLevel;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import com.dongqh.lotteryservice.domain.model.prizecatalog.RewardPrizeTypeMapping;
 import com.dongqh.lotteryservice.domain.dto.prizecatalog.CreatePrizeCommand;
+import com.dongqh.lotteryservice.domain.dto.prizecatalog.CreateRewardDefinitionCommand;
 import com.dongqh.lotteryservice.domain.dto.prizecatalog.PrizeQuery;
 import com.dongqh.lotteryservice.domain.dto.prizecatalog.UpdatePrizeCommand;
 import com.dongqh.lotteryservice.domain.po.prizecatalog.PrizeRow;
@@ -16,11 +18,13 @@ import com.dongqh.lotteryservice.mapper.prizecatalog.PrizeCatalogMapper;
 import com.dongqh.lotteryservice.mapper.prizecatalog.RewardDefinitionMapper;
 import com.dongqh.lotteryservice.domain.vo.prizecatalog.PageResponse;
 import com.dongqh.lotteryservice.domain.vo.prizecatalog.PrizeView;
+import com.dongqh.lotteryservice.domain.vo.prizecatalog.RewardDefinitionView;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PrizeCatalogService {
@@ -29,18 +33,31 @@ public class PrizeCatalogService {
 
     private final PrizeCatalogMapper mapper;
     private final RewardDefinitionMapper rewards;
+    private final RewardDefinitionAdminService rewardCreator;
 
-    public PrizeCatalogService(PrizeCatalogMapper mapper, RewardDefinitionMapper rewards) {
+    public PrizeCatalogService(PrizeCatalogMapper mapper, RewardDefinitionMapper rewards,
+                               RewardDefinitionAdminService rewardCreator) {
         this.mapper = mapper;
         this.rewards = rewards;
+        this.rewardCreator = rewardCreator;
     }
 
     @Transactional
     public PrizeView create(CreatePrizeCommand command) {
+        String prizeName = command.prizeName().trim();
+        Long targetId = command.targetId();
+        if (command.rewardType() == RewardType.MEMBERSHIP && targetId == null) {
+            var product = rewardCreator.createRewardProduct(command.membershipProductCode(), prizeName,
+                    command.membershipLevel(), command.durationDays());
+            targetId = product.id();
+        }
+        RewardDefinitionView reward = rewardCreator.create(new CreateRewardDefinitionCommand(
+                "PRIZE-" + UUID.randomUUID(), prizeName, command.rewardType(), targetId,
+                command.quantity()));
         PrizeRow prize = new PrizeRow();
-        apply(prize, command.prizeName(), command.prizeType(), command.prizeLevel(),
+        apply(prize, prizeName, RewardPrizeTypeMapping.toPrizeType(command.rewardType()), command.prizeLevel(),
                 command.imageUrl(), command.description(), command.stackable());
-        prize.setRewardDefinitionId(requireCompatibleReward(command.rewardDefinitionId(), command.prizeType()).getId());
+        prize.setRewardDefinitionId(reward.id());
         prize.setStatus(ENABLED);
         mapper.insert(prize);
         return toView(prize);
@@ -68,13 +85,7 @@ public class PrizeCatalogService {
         PrizeRow prize = requirePrize(id);
         apply(prize, command.prizeName(), command.prizeType(), command.prizeLevel(),
                 command.imageUrl(), command.description(), command.stackable());
-        if (command.rewardDefinitionId() != null) {
-            if (prize.getRewardDefinitionId() != null
-                    && !prize.getRewardDefinitionId().equals(command.rewardDefinitionId())) {
-                throw new PrizeCatalogException(PrizeErrorCode.REWARD_BINDING_INVALID);
-            }
-            prize.setRewardDefinitionId(requireCompatibleReward(command.rewardDefinitionId(), command.prizeType()).getId());
-        } else if (prize.getRewardDefinitionId() != null) {
+        if (prize.getRewardDefinitionId() != null) {
             requireCompatibleReward(prize.getRewardDefinitionId(), command.prizeType());
         }
         mapper.updateById(prize);
@@ -124,7 +135,7 @@ public class PrizeCatalogService {
                 ? null : rewards.selectById(prize.getRewardDefinitionId());
         return new PrizeView(prize.getId(), prize.getPrizeName(), prize.getPrizeType(), prize.getPrizeLevel(),
                 prize.getImageUrl(), prize.getDescription(), prize.getStackable(), prize.getStatus(),
-                prize.getCreatedAt(), prize.getUpdatedAt(), prize.getRewardDefinitionId(),
-                reward == null ? null : reward.getRewardType());
+                prize.getCreatedAt(), prize.getUpdatedAt(), reward == null ? null : reward.getRewardType(),
+                reward == null ? null : reward.getTargetId(), reward == null ? null : reward.getQuantity());
     }
 }

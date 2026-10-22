@@ -2,6 +2,8 @@ package com.dongqh.tradeservice.service.impl;
 
 import com.dongqh.tradeservice.domain.po.Order;
 import com.dongqh.tradeservice.mapper.OrderMapper;
+import com.dongqh.tradeservice.messaging.TradeOutboxService;
+import com.dongqh.hmapi.dto.OrderPaidMessage;
 import com.hmall.common.exception.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import static org.mockito.Mockito.*;
 
 class PaySuccessIdempotencyTest {
     private final OrderMapper mapper = mock(OrderMapper.class);
+    private final TradeOutboxService outbox = mock(TradeOutboxService.class);
     private final OrderServiceImpl service = new OrderServiceImpl(
             null, null, null, null, null, null, null, null);
     private final LocalDateTime paidAt = LocalDateTime.of(2026, 9, 17, 12, 30);
@@ -22,6 +25,7 @@ class PaySuccessIdempotencyTest {
     void setUp() {
         reset(mapper);
         ReflectionTestUtils.setField(service, "baseMapper", mapper);
+        ReflectionTestUtils.setField(service, "tradeOutboxService", outbox);
     }
 
     @Test
@@ -33,6 +37,8 @@ class PaySuccessIdempotencyTest {
         service.markOrderPaySuccess(101L, 7L, 8500, paidAt);
 
         verify(mapper).updateById(order);
+        verify(outbox).append(org.mockito.ArgumentMatchers.<OrderPaidMessage>argThat(event -> event.orderId().equals(101L)
+                && event.userId().equals(7L) && event.paidAt().equals(paidAt)));
         org.assertj.core.api.Assertions.assertThat(order.getStatus()).isEqualTo(2);
         org.assertj.core.api.Assertions.assertThat(order.getPayTime()).isEqualTo(paidAt);
     }
@@ -44,6 +50,7 @@ class PaySuccessIdempotencyTest {
         service.markOrderPaySuccess(101L, 7L, 8500, paidAt.plusSeconds(1));
 
         verify(mapper, never()).updateById(any(Order.class));
+        verifyNoInteractions(outbox);
     }
 
     @Test

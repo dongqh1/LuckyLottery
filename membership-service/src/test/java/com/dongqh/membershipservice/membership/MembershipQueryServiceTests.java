@@ -40,11 +40,12 @@ class MembershipQueryServiceTests {
     private final MembershipQueryService service = new MembershipQueryService(products, memberships);
 
     @Test
-    void returnsOnlyEnabledProductsInStablePriceThenIdOrderWithLimit() {
+    void returnsOnlyEnabledAndSaleVisibleProductsInStablePriceThenIdOrderWithLimit() {
         when(products.selectList(any())).thenReturn(List.of(
                 product(2L, "YEAR", 9_900L, 1),
                 product(1L, "DISABLED", 500L, 0),
-                product(3L, "TRIAL", 0L, 1)));
+                product(3L, "TRIAL", 0L, 1),
+                rewardProduct(4L, "LOTTERY-MEMBER", 0L)));
 
         List<MembershipProductView> result = service.listEnabledProducts();
 
@@ -54,7 +55,7 @@ class MembershipQueryServiceTests {
         ArgumentCaptor<LambdaQueryWrapper<MembershipProduct>> query = ArgumentCaptor.forClass(LambdaQueryWrapper.class);
         verify(products).selectList(query.capture());
         assertThat(query.getValue().getSqlSegment())
-                .contains("status =", "price_cent ASC", "id ASC", "LIMIT 100");
+                .contains("status =", "sales_enabled =", "price_cent ASC", "id ASC", "LIMIT 100");
     }
 
     @Test
@@ -104,6 +105,13 @@ class MembershipQueryServiceTests {
         product.setDailyDrawBonus(0);
         product.setPointsMultiplierBasisPoints(10_000);
         product.setStatus(status);
+        product.setSalesEnabled(1);
+        return product;
+    }
+
+    private MembershipProduct rewardProduct(long id, String code, long priceCent) {
+        MembershipProduct product = product(id, code, priceCent, 1);
+        product.setSalesEnabled(0);
         return product;
     }
 }

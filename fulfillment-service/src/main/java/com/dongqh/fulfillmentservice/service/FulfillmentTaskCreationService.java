@@ -42,6 +42,9 @@ public class FulfillmentTaskCreationService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public FulfillmentTaskRecord create(CreateFulfillmentTaskCommand command) {
+        if (command.fulfillmentType() != com.dongqh.fulfillmentservice.enums.FulfillmentType.LOGISTICS) {
+            throw new IllegalArgumentException("物流服务只接受实物发货任务");
+        }
         String payload = serialize(command);
         String fingerprint = fingerprint(command, payload);
         var existing = repository.findByFulfillmentNo(command.fulfillmentNo());

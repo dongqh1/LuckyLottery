@@ -5,6 +5,9 @@ import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
 import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.ResultMap;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -13,21 +16,59 @@ import java.util.List;
 
 public interface UserBenefitMapper extends BaseMapper<UserBenefitRow> {
 
-    @Select("SELECT * FROM user_benefit WHERE id = #{benefitId} FOR UPDATE")
+    @Select("""
+            SELECT b.*, p.prize_type AS current_prize_type, p.prize_name AS current_prize_name,
+                   p.image_url AS current_prize_image_url, rd.id AS current_reward_definition_id,
+                   rd.reward_type AS current_reward_type, rd.target_id AS current_reward_target_id,
+                   rd.quantity AS current_reward_quantity
+            FROM user_benefit b
+            LEFT JOIN marketing_prize p ON p.id = b.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
+            WHERE b.id = #{benefitId} FOR UPDATE
+            """)
+    @Results(id = "benefitWithCurrentPrize", value = {
+            @Result(property = "prizeType", column = "current_prize_type"),
+            @Result(property = "prizeName", column = "current_prize_name"),
+            @Result(property = "prizeImageUrl", column = "current_prize_image_url"),
+            @Result(property = "rewardDefinitionId", column = "current_reward_definition_id"),
+            @Result(property = "rewardType", column = "current_reward_type"),
+            @Result(property = "rewardTargetId", column = "current_reward_target_id"),
+            @Result(property = "rewardQuantity", column = "current_reward_quantity")
+    })
     UserBenefitRow selectByIdForUpdate(@Param("benefitId") long benefitId);
 
     @Select("""
+            SELECT b.*, p.prize_type AS current_prize_type, p.prize_name AS current_prize_name,
+                   p.image_url AS current_prize_image_url, rd.id AS current_reward_definition_id,
+                   rd.reward_type AS current_reward_type, rd.target_id AS current_reward_target_id,
+                   rd.quantity AS current_reward_quantity
+            FROM user_benefit b
+            LEFT JOIN marketing_prize p ON p.id = b.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
+            WHERE b.id = #{benefitId}
+            """)
+    @ResultMap("benefitWithCurrentPrize")
+    UserBenefitRow selectByIdWithCurrentPrize(@Param("benefitId") long benefitId);
+
+    @Select("""
             <script>
-            SELECT * FROM user_benefit
-            WHERE user_id = #{userId}
-            <if test="status != null">AND status = #{status}</if>
-            <if test="prizeType != null">AND prize_type = #{prizeType}</if>
-            <if test="startTime != null">AND obtained_at &gt;= #{startTime}</if>
-            <if test="endTime != null">AND obtained_at &lt; #{endTime}</if>
-            ORDER BY obtained_at DESC, id DESC
+            SELECT b.*, p.prize_type AS current_prize_type, p.prize_name AS current_prize_name,
+                   p.image_url AS current_prize_image_url, rd.id AS current_reward_definition_id,
+                   rd.reward_type AS current_reward_type, rd.target_id AS current_reward_target_id,
+                   rd.quantity AS current_reward_quantity
+            FROM user_benefit b
+            LEFT JOIN marketing_prize p ON p.id = b.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
+            WHERE b.user_id = #{userId}
+            <if test="status != null">AND b.status = #{status}</if>
+            <if test="prizeType != null">AND p.prize_type = #{prizeType}</if>
+            <if test="startTime != null">AND b.obtained_at &gt;= #{startTime}</if>
+            <if test="endTime != null">AND b.obtained_at &lt; #{endTime}</if>
+            ORDER BY b.obtained_at DESC, b.id DESC
             LIMIT #{limit} OFFSET #{offset}
             </script>
             """)
+    @ResultMap("benefitWithCurrentPrize")
     List<UserBenefitRow> selectMinePage(@Param("userId") long userId,
                                         @Param("status") BenefitStatus status,
                                         @Param("prizeType") PrizeType prizeType,
@@ -38,12 +79,14 @@ public interface UserBenefitMapper extends BaseMapper<UserBenefitRow> {
 
     @Select("""
             <script>
-            SELECT COUNT(*) FROM user_benefit
-            WHERE user_id = #{userId}
-            <if test="status != null">AND status = #{status}</if>
-            <if test="prizeType != null">AND prize_type = #{prizeType}</if>
-            <if test="startTime != null">AND obtained_at &gt;= #{startTime}</if>
-            <if test="endTime != null">AND obtained_at &lt; #{endTime}</if>
+            SELECT COUNT(*) FROM user_benefit b
+            LEFT JOIN marketing_prize p ON p.id = b.prize_id
+            LEFT JOIN reward_definition rd ON rd.id = p.reward_definition_id
+            WHERE b.user_id = #{userId}
+            <if test="status != null">AND b.status = #{status}</if>
+            <if test="prizeType != null">AND p.prize_type = #{prizeType}</if>
+            <if test="startTime != null">AND b.obtained_at &gt;= #{startTime}</if>
+            <if test="endTime != null">AND b.obtained_at &lt; #{endTime}</if>
             </script>
             """)
     long countMine(@Param("userId") long userId,
@@ -77,21 +120,6 @@ public interface UserBenefitMapper extends BaseMapper<UserBenefitRow> {
 
     @Update("""
             UPDATE user_benefit
-            SET status = 'AVAILABLE', grant_error = NULL, updated_at = CURRENT_TIMESTAMP(3)
-            WHERE id = #{benefitId} AND status IN ('PENDING','GRANT_FAILED')
-            """)
-    int markAvailableAfterFulfillment(@Param("benefitId") long benefitId);
-
-    @Update("""
-            UPDATE user_benefit
-            SET status = 'GRANT_FAILED', grant_error = #{safeError}, updated_at = CURRENT_TIMESTAMP(3)
-            WHERE id = #{benefitId} AND status IN ('PENDING','GRANT_FAILED')
-            """)
-    int markGrantFailedAfterFulfillment(@Param("benefitId") long benefitId,
-                                        @Param("safeError") String safeError);
-
-    @Update("""
-            UPDATE user_benefit
             SET status = 'CLAIM_PENDING', claim_deadline = #{deadline}, grant_error = NULL,
                 updated_at = CURRENT_TIMESTAMP(3)
             WHERE id = #{benefitId} AND status = #{current}
@@ -121,12 +149,4 @@ public interface UserBenefitMapper extends BaseMapper<UserBenefitRow> {
             """)
     int markClaimExpired(@Param("benefitId") long benefitId, @Param("now") LocalDateTime now);
 
-    @Update("""
-            UPDATE user_benefit
-            SET fulfillment_no = #{fulfillmentNo}, updated_at = CURRENT_TIMESTAMP(3)
-            WHERE id = #{benefitId} AND status IN ('PENDING','GRANT_FAILED')
-              AND (fulfillment_no IS NULL OR fulfillment_no = #{fulfillmentNo})
-            """)
-    int bindFulfillmentNo(@Param("benefitId") long benefitId,
-                          @Param("fulfillmentNo") String fulfillmentNo);
 }

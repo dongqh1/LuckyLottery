@@ -1,8 +1,11 @@
 package com.dongqh.lotteryservice.service.benefit;
 
-import com.dongqh.hmapi.client.FulfillmentClient;
-import com.dongqh.hmapi.dto.CreateFulfillmentShippingOrderRequest;
-import com.dongqh.hmapi.dto.FulfillmentShippingOrderDTO;
+import com.dongqh.hmapi.client.LogisticsClient;
+import com.dongqh.hmapi.dto.CreateShippingOrderRequest;
+import com.dongqh.hmapi.dto.ShippingOrderDTO;
+import com.dongqh.lotteryservice.reward.CurrentLotteryReward;
+import com.dongqh.lotteryservice.reward.LotteryCurrentRewardResolver;
+import com.dongqh.lotteryservice.reward.RewardIdentityMismatchException;
 import com.dongqh.lotteryservice.domain.dto.benefit.ClaimPhysicalBenefitCommand;
 import com.dongqh.lotteryservice.exception.LotteryDomainException;
 import com.dongqh.lotteryservice.domain.po.draworder.DrawOrderRow;
@@ -13,18 +16,15 @@ import com.dongqh.lotteryservice.domain.po.drawtransaction.UserBenefitRow;
 import com.dongqh.lotteryservice.enums.drawtransaction.BenefitStatus;
 import com.dongqh.lotteryservice.mapper.drawtransaction.DrawRecordMapper;
 import com.dongqh.lotteryservice.mapper.drawtransaction.UserBenefitMapper;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.ProductRewardPayload;
 import com.dongqh.lotteryservice.enums.LotteryErrorCode;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
 import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -35,21 +35,21 @@ public class LotteryPhysicalBenefitClaimService {
     private final UserBenefitMapper benefits;
     private final DrawRecordMapper records;
     private final DrawOrderMapper orders;
-    private final FulfillmentClient fulfillment;
-    private final ObjectMapper json;
+    private final LogisticsClient logistics;
+    private final LotteryCurrentRewardResolver currentRewards;
 
     public LotteryPhysicalBenefitClaimService(UserBenefitMapper benefits, DrawRecordMapper records,
-                                              DrawOrderMapper orders, FulfillmentClient fulfillment,
-                                              ObjectMapper json) {
+                                              DrawOrderMapper orders, LogisticsClient logistics,
+                                              LotteryCurrentRewardResolver currentRewards) {
         this.benefits = benefits;
         this.records = records;
         this.orders = orders;
-        this.fulfillment = fulfillment;
-        this.json = json;
+        this.logistics = logistics;
+        this.currentRewards = currentRewards;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public FulfillmentShippingOrderDTO claim(long userId, long benefitId, String authorization,
+    public ShippingOrderDTO claim(long userId, long benefitId, String authorization,
                                              ClaimPhysicalBenefitCommand command) {
         if (userId <= 0 || benefitId <= 0 || authorization == null || authorization.isBlank()) {
             throw error(LotteryErrorCode.BENEFIT_CLAIM_NOT_ALLOWED);
@@ -62,58 +62,72 @@ public class LotteryPhysicalBenefitClaimService {
         if (!Objects.equals(benefit.getUserId(), userId)) {
             throw error(LotteryErrorCode.BENEFIT_ACCESS_DENIED);
         }
-        ProductRewardPayload product = frozenProduct(benefit);
         verifyDrawIdentity(benefit, userId);
-
-        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
-        if (benefit.getShippingOrderId() == null) {
-            if (benefit.getStatus() != BenefitStatus.CLAIM_PENDING) {
+        if (benefit.getShippingOrderId() != null) {
+            if (!claimLifecycle(benefit.getStatus())) {
                 throw error(LotteryErrorCode.BENEFIT_CLAIM_NOT_ALLOWED);
             }
-            if (benefit.getClaimDeadline() == null || !now.isBefore(benefit.getClaimDeadline())) {
-                throw error(LotteryErrorCode.BENEFIT_CLAIM_EXPIRED);
-            }
-        } else if (!claimLifecycle(benefit.getStatus())) {
+            return existingShipping(benefit.getShippingOrderId());
+        }
+
+        CurrentLotteryReward current;
+        try {
+            current = currentRewards.resolve(benefit.getPrizeId());
+        } catch (RewardIdentityMismatchException mismatch) {
+            throw error(LotteryErrorCode.BENEFIT_CLAIM_NOT_ALLOWED);
+        }
+        if (current.prize().getPrizeType() != PrizeType.PHYSICAL
+                || current.definition().getRewardType() != RewardType.PRODUCT
+                || current.item() == null
+                || !Objects.equals(current.item().getId(), current.definition().getTargetId())) {
+            throw error(LotteryErrorCode.BENEFIT_CLAIM_NOT_ALLOWED);
+        }
+        int quantity;
+        try {
+            quantity = Math.toIntExact(current.definition().getQuantity());
+        } catch (ArithmeticException exception) {
+            throw error(LotteryErrorCode.BENEFIT_CLAIM_IDENTITY_CONFLICT);
+        }
+        if (current.item().getStock() == null || current.item().getStock() < quantity) {
             throw error(LotteryErrorCode.BENEFIT_CLAIM_NOT_ALLOWED);
         }
 
-        FulfillmentShippingOrderDTO shipping = fulfillment.createShippingOrder(authorization,
-                new CreateFulfillmentShippingOrderRequest(SOURCE_TYPE, Long.toString(benefitId), userId,
-                        command.addressId(), product.itemId(), itemCode(product.itemId()), product.itemName(),
-                        product.itemImage(), product.quantity(), requestId));
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
+        if (benefit.getStatus() != BenefitStatus.CLAIM_PENDING) {
+            throw error(LotteryErrorCode.BENEFIT_CLAIM_NOT_ALLOWED);
+        }
+        if (benefit.getClaimDeadline() == null || !now.isBefore(benefit.getClaimDeadline())) {
+            throw error(LotteryErrorCode.BENEFIT_CLAIM_EXPIRED);
+        }
+
+        ShippingOrderDTO shipping = logistics.createShippingOrder(authorization,
+                new CreateShippingOrderRequest(SOURCE_TYPE, Long.toString(benefitId), userId,
+                        command.addressId(), current.item().getId(), itemCode(current.item().getId()),
+                        current.item().getName(), current.item().getImage(), quantity, requestId));
         if (shipping == null || shipping.id() == null || shipping.id() <= 0
                 || !("LOGISTICS-" + shipping.id()).equals(shipping.fulfillmentNo())
                 || shipping.shippingNo() == null || shipping.shippingNo().isBlank()
                 || shipping.addressSnapshotId() == null || shipping.addressSnapshotId() <= 0) {
             throw error(LotteryErrorCode.BENEFIT_CLAIM_IDENTITY_CONFLICT);
         }
-        if (benefit.getShippingOrderId() != null && !benefit.getShippingOrderId().equals(shipping.id())) {
-            throw error(LotteryErrorCode.BENEFIT_CLAIM_IDENTITY_CONFLICT);
-        }
-        if (benefit.getShippingOrderId() == null
-                && benefits.markClaimed(benefitId, shipping.id(), now) != 1) {
+        if (benefits.markClaimed(benefitId, shipping.id(), now) != 1) {
             throw error(LotteryErrorCode.BENEFIT_CLAIM_IDENTITY_CONFLICT);
         }
         return shipping;
     }
 
-    private ProductRewardPayload frozenProduct(UserBenefitRow benefit) {
-        if (benefit.getPrizeType() != PrizeType.PHYSICAL || benefit.getRewardType() != RewardType.PRODUCT
-                || benefit.getRewardTargetId() == null || benefit.getRewardQuantity() == null
-                || benefit.getRewardPayload() == null || benefit.getQuantity() == null) {
-            throw error(LotteryErrorCode.BENEFIT_CLAIM_NOT_ALLOWED);
-        }
-        try {
-            ProductRewardPayload product = json.readValue(benefit.getRewardPayload(), ProductRewardPayload.class);
-            if (!Objects.equals(benefit.getRewardTargetId(), product.itemId())
-                    || benefit.getRewardQuantity() != product.quantity()
-                    || !Objects.equals(benefit.getQuantity(), product.quantity())) {
-                throw error(LotteryErrorCode.BENEFIT_CLAIM_IDENTITY_CONFLICT);
-            }
-            return product;
-        } catch (JacksonException | IllegalArgumentException exception) {
+    private ShippingOrderDTO existingShipping(long shippingOrderId) {
+        ShippingOrderDTO shipping = logistics.getShippingOrdersByIds(List.of(shippingOrderId))
+                .stream()
+                .filter(order -> Objects.equals(order.id(), shippingOrderId))
+                .findFirst()
+                .orElse(null);
+        if (shipping == null || !("LOGISTICS-" + shippingOrderId).equals(shipping.fulfillmentNo())
+                || shipping.shippingNo() == null || shipping.shippingNo().isBlank()
+                || shipping.addressSnapshotId() == null || shipping.addressSnapshotId() <= 0) {
             throw error(LotteryErrorCode.BENEFIT_CLAIM_IDENTITY_CONFLICT);
         }
+        return shipping;
     }
 
     private void verifyDrawIdentity(UserBenefitRow benefit, long userId) {
@@ -124,14 +138,7 @@ public class LotteryPhysicalBenefitClaimService {
                 || !Objects.equals(order.getUserId(), userId)
                 || !Objects.equals(record.getUserId(), userId)
                 || !Objects.equals(record.getId(), benefit.getDrawRecordId())
-                || !Objects.equals(record.getPrizeId(), benefit.getPrizeId())
-                || record.getPrizeType() != benefit.getPrizeType()
-                || !Objects.equals(record.getRewardDefinitionId(), benefit.getRewardDefinitionId())
-                || record.getRewardType() != benefit.getRewardType()
-                || !Objects.equals(record.getRewardTargetId(), benefit.getRewardTargetId())
-                || !Objects.equals(record.getRewardQuantity(), benefit.getRewardQuantity())
-                || !Objects.equals(record.getRewardPayload(), benefit.getRewardPayload())
-                || !Objects.equals(record.getRewardFingerprint(), benefit.getRewardFingerprint())) {
+                || !Objects.equals(record.getPrizeId(), benefit.getPrizeId())) {
             throw error(LotteryErrorCode.BENEFIT_CLAIM_IDENTITY_CONFLICT);
         }
     }

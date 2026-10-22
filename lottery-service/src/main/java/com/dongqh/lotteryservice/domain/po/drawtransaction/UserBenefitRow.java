@@ -20,22 +20,20 @@ public class UserBenefitRow {
     private Long userId;
     @TableField("prize_id")
     private Long prizeId;
-    @TableField("prize_type")
+    @TableField(exist = false)
     private PrizeType prizeType;
-    @TableField("reward_definition_id")
+    @TableField(exist = false)
     private Long rewardDefinitionId;
-    @TableField("reward_type")
+    @TableField(exist = false)
     private RewardType rewardType;
-    @TableField("reward_target_id")
+    @TableField(exist = false)
     private Long rewardTargetId;
-    @TableField("reward_quantity")
+    @TableField(exist = false)
     private Long rewardQuantity;
-    @TableField("reward_payload")
-    private String rewardPayload;
-    @TableField("reward_fingerprint")
-    private String rewardFingerprint;
-    @TableField("fulfillment_no")
-    private String fulfillmentNo;
+    @TableField(exist = false)
+    private String prizeName;
+    @TableField(exist = false)
+    private String prizeImageUrl;
     @TableField("quantity")
     private Integer quantity;
     @TableField("status")
@@ -75,12 +73,10 @@ public class UserBenefitRow {
     public void setRewardTargetId(Long rewardTargetId) { this.rewardTargetId = rewardTargetId; }
     public Long getRewardQuantity() { return rewardQuantity; }
     public void setRewardQuantity(Long rewardQuantity) { this.rewardQuantity = rewardQuantity; }
-    public String getRewardPayload() { return rewardPayload; }
-    public void setRewardPayload(String rewardPayload) { this.rewardPayload = rewardPayload; }
-    public String getRewardFingerprint() { return rewardFingerprint; }
-    public void setRewardFingerprint(String rewardFingerprint) { this.rewardFingerprint = rewardFingerprint; }
-    public String getFulfillmentNo() { return fulfillmentNo; }
-    public void setFulfillmentNo(String fulfillmentNo) { this.fulfillmentNo = fulfillmentNo; }
+    public String getPrizeName() { return prizeName; }
+    public void setPrizeName(String prizeName) { this.prizeName = prizeName; }
+    public String getPrizeImageUrl() { return prizeImageUrl; }
+    public void setPrizeImageUrl(String prizeImageUrl) { this.prizeImageUrl = prizeImageUrl; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
     public BenefitStatus getStatus() { return status; }

@@ -181,7 +181,7 @@ public class ActivityAdminService {
 
     private static ActivityView view(ActivityRow row) {
         return new ActivityView(row.getId(), row.getActivityName(), row.getDescription(), row.getStatus(),
-                row.getStartTime(), row.getEndTime(), row.getDailyLimit(), row.getNoWinWeight(),
+                row.getStartTime(), row.getEndTime(), row.getNoWinWeight(),
                 row.getCreatedBy(), row.getCreatedAt(), row.getUpdatedAt());
     }
 }

@@ -35,6 +35,7 @@ spring:
 luckyhub:
   oss:
     enabled: ${OSS_ENABLED:false}
+    local-directory: ${LOTTERY_UPLOAD_DIR:/app/uploads}
     region: ${OSS_REGION:}
     endpoint: ${OSS_ENDPOINT:}
     bucket: ${OSS_BUCKET:}
@@ -42,6 +43,7 @@ luckyhub:
     access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
     public-base-url: ${OSS_PUBLIC_BASE_URL:}
   lottery:
+    admin-user-ids: ${LOTTERY_ADMIN_USER_IDS:1}
     benefit-claim-expiry:
       enabled: ${LOTTERY_BENEFIT_CLAIM_EXPIRY_ENABLED:false}
       refresh-interval: ${LOTTERY_BENEFIT_CLAIM_EXPIRY_INTERVAL:1m}

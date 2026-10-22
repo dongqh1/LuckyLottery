@@ -32,6 +32,8 @@ public interface ShippingOrderRepository {
 
     boolean markFulfilling(long id, String fulfillmentNo);
 
+    boolean updateLogistics(ShippingOrder expected, String carrierCode, String carrierName, String waybillNo);
+
     boolean updateProjection(ShippingOrder expected, ShippingOrder projected);
 
     java.util.List<Long> selectProjectionCandidateIdsAfter(long cursorId, int limit);

@@ -17,8 +17,8 @@ spring:
             url: ${ITEM_SERVICE_BASE_URL:http://localhost:8081}
           user-service:
             url: ${USER_SERVICE_BASE_URL:http://localhost:8083}
-          fulfillment-service:
-            url: ${FULFILLMENT_SERVICE_BASE_URL:http://localhost:8080}
+          logistics-service:
+            url: ${LOGISTICS_SERVICE_BASE_URL:http://localhost:8080}
   datasource:
     url: ${POINTS_DATABASE_URL:}
     username: ${POINTS_DATABASE_USERNAME:}

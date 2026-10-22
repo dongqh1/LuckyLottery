@@ -172,6 +172,19 @@ public class JdbcShippingOrderRepository implements ShippingOrderRepository {
     }
 
     @Override
+    public boolean updateLogistics(ShippingOrder expected, String carrierCode, String carrierName, String waybillNo) {
+        if (expected == null || expected.id() == null || expected.version() == null) {
+            throw new IllegalArgumentException("物流信息修改参数无效");
+        }
+        return jdbc.update("""
+                UPDATE shipping_order
+                SET carrier_code=?, carrier_name=?, waybill_no=?, version=version+1,
+                    updated_at=CURRENT_TIMESTAMP(3)
+                WHERE id=? AND version=? AND status NOT IN ('DELIVERED','TERMINATED')
+                """, carrierCode, carrierName, waybillNo, expected.id(), expected.version()) == 1;
+    }
+
+    @Override
     public boolean updateProjection(ShippingOrder expected, ShippingOrder projected) {
         if (expected == null || projected == null || expected.id() == null
                 || !expected.id().equals(projected.id()) || expected.version() == null

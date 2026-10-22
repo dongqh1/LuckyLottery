@@ -4,6 +4,7 @@ import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingOrderView;
 import com.dongqh.fulfillmentservice.domain.model.shipping.ShippingTrackingView;
 import com.dongqh.fulfillmentservice.persistence.shipping.LogisticsCallbackRepository;
 import com.dongqh.fulfillmentservice.persistence.shipping.ShippingTrackingEvent;
+import com.dongqh.fulfillmentservice.enums.shipping.ShippingSourceType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,16 @@ public class ShippingTrackingQueryService {
     @Transactional(readOnly = true)
     public ShippingTrackingView getForUser(long userId, String shippingNo) {
         ShippingOrderView order = orders.getForUser(userId, shippingNo);
+        return tracking(order);
+    }
+
+    @Transactional(readOnly = true)
+    public ShippingTrackingView getForUserBySource(long userId, ShippingSourceType sourceType, String sourceId) {
+        ShippingOrderView order = orders.getForUserBySource(userId, sourceType, sourceId);
+        return tracking(order);
+    }
+
+    private ShippingTrackingView tracking(ShippingOrderView order) {
         List<ShippingTrackingView.TrackingEvent> tracking = callbacks
                 .findTrackingByShippingOrderId(order.id()).stream()
                 .map(ShippingTrackingQueryService::view)

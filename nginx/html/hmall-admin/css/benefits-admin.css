@@ -1,0 +1,45 @@
+.management-intro { padding: 20px 22px 4px; }
+.management-intro h2 { margin-bottom: 6px; font-size: 20px; }
+.management-intro p { max-width: 950px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.management-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 0 20px; }
+.management-grid .panel { min-width: 0; margin: 20px 0 0; }
+.management-intro + .panel, .management-grid + .panel, .management-intro + .panel + .panel, .management-intro + .panel { margin-left: 20px; margin-right: 20px; }
+.management-grid + .panel { margin-top: 20px; }
+.management-grid .section-heading, .panel > .section-heading { margin-bottom: 16px; }
+.management-grid .section-heading h2, .panel > .section-heading h2 { font-size: 18px; }
+.management-grid .el-form { max-width: 700px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+.form-grid .form-action { grid-column: 1 / -1; }
+.el-tabs--border-card { border-radius: 8px; overflow: hidden; }
+.el-tabs__content { padding: 0 0 20px; }
+.el-tab-pane > .panel { margin: 20px; }
+.el-tab-pane > .panel + .panel { margin-top: 0; }
+.el-tab-pane > .panel .el-table { width: 100%; }
+.field-hint { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.result-card { display: grid; gap: 5px; margin-top: 15px; padding: 12px 14px; border: 1px solid #cde7d3; border-radius: 6px; background: #f3fbf5; color: #24643a; font-size: 13px; }
+.recent-list { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 17px; }
+.recent-list h3 { margin-bottom: 10px; font-size: 15px; }
+.recent-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #eef1f5; font-size: 13px; }
+.recent-row .muted { display: block; margin-top: 4px; }
+.compact-empty { padding: 15px; }
+.management-intro + .management-grid + .panel { margin-left: 20px; margin-right: 20px; }
+.management-intro + .panel { margin-top: 20px; }
+.el-date-editor.el-input, .el-date-editor.el-input__inner { width: 100%; }
+.el-form-item .el-input-number { width: min(100%, 220px); }
+.form-grid .el-form-item { min-width: 0; }
+
+@media (max-width: 900px) {
+  .management-grid { grid-template-columns: 1fr; padding: 0 12px; }
+  .management-intro { padding: 16px 14px 0; }
+  .el-tab-pane > .panel, .management-intro + .panel, .management-grid + .panel,
+  .management-intro + .panel + .panel, .management-intro + .management-grid + .panel { margin-left: 12px; margin-right: 12px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .form-action { grid-column: auto; }
+}
+
+@media (max-width: 560px) {
+  .management-grid .panel, .el-tab-pane > .panel { padding: 14px; }
+  .recent-row { align-items: flex-start; flex-direction: column; }
+  .el-form-item__label { float: none; display: block; text-align: left; width: 100% !important; }
+  .el-form-item__content { margin-left: 0 !important; }
+}

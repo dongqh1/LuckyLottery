@@ -16,7 +16,6 @@ public class RewardDefinitionRow {
     @TableField("reward_type") private RewardType rewardType;
     @TableField("target_id") private Long targetId;
     private Long quantity;
-    @TableField("config_snapshot") private String configSnapshot;
     private Integer status;
     @TableField("created_at") private LocalDateTime createdAt;
     @TableField("updated_at") private LocalDateTime updatedAt;
@@ -33,8 +32,6 @@ public class RewardDefinitionRow {
     public void setTargetId(Long targetId) { this.targetId = targetId; }
     public Long getQuantity() { return quantity; }
     public void setQuantity(Long quantity) { this.quantity = quantity; }
-    public String getConfigSnapshot() { return configSnapshot; }
-    public void setConfigSnapshot(String configSnapshot) { this.configSnapshot = configSnapshot; }
     public Integer getStatus() { return status; }
     public void setStatus(Integer status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }

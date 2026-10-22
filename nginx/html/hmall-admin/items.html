@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>商品管理</title>
   <link href="./css/main.css" rel="stylesheet">
+  <link href="./css/admin-image-upload.css?v=20261022" rel="stylesheet">
   <!-- 引入样式 -->
   <link rel="stylesheet" href="./css/element.css">
 
@@ -11,7 +12,7 @@
 </head>
 <body>
 <div id="app">
-  <h1>商品数据管理 <small style="font-size:14px"><a href="users.html">用户管理</a> · <a href="marketing.html">营销活动</a></small></h1>
+  <h1>商品数据管理 <small style="font-size:14px"><a href="users.html">用户管理</a> · <a href="marketing.html">营销活动</a> · <a href="benefits-admin.html">优惠券、会员与积分</a> · <a href="shipping-admin.html">物流管理</a></small></h1>
   <div class="add-btn" >
     <el-button type="primary" size="small" @click="beginAdd">新增商品</el-button>
     <el-pagination
@@ -112,12 +113,21 @@
         <el-input v-model="item.spec" autocomplete="off"></el-input>
       </el-form-item>
       <el-form-item label="商品图片">
-        <el-input v-model="item.image" autocomplete="off"></el-input>
+        <div class="admin-image-upload">
+        <a href="#" role="button" class="admin-image-upload__link" @click.prevent="chooseItemImage">点击选择本地图片</a>
+        <input ref="itemImageFile" type="file" class="admin-image-upload__input" tabindex="-1" aria-hidden="true"
+               accept="image/jpeg,image/png,image/webp" @change="uploadItemImage">
+        <span class="admin-image-upload__name">{{ itemImageFileName || (item.image ? '已保存图片' : '尚未选择文件') }}</span>
+        <span v-if="imageUploading" class="admin-image-upload__status">正在上传…</span>
+      </div>
+        <div style="color:#758196;font-size:12px;margin-top:6px">选择 JPEG、PNG 或 WebP 图片，最大 5 MiB；选择后会自动上传。</div>
+        <el-image v-if="item.image" :src="item.image" fit="contain"
+                  style="display:block;width:96px;height:96px;margin-top:10px;border:1px solid #dfe5ee;border-radius:6px"></el-image>
       </el-form-item>
     </el-form>
     <div slot="footer" class="dialog-footer">
       <el-button @click="formVisible = false">取 消</el-button>
-      <el-button type="primary" @click="confirmEdit">确 定</el-button>
+      <el-button type="primary" :disabled="imageUploading" @click="confirmEdit">确 定</el-button>
     </div>
   </el-dialog>
 </div>
@@ -125,10 +135,11 @@
 <script src="./js/axios.min.js"></script>
 <!-- 引入组件库 -->
 <script src="./js/element.js"></script>
+<script src="./js/admin-image-upload.js?v=20261022"></script>
 <script>
   // 设置后台服务地址
   axios.defaults.baseURL = "/api";
-  axios.defaults.timeout = 1000;
+  axios.defaults.timeout = 15000;
   // request拦截器
   axios.interceptors.request.use(
     config => {
@@ -160,6 +171,8 @@
       formVisible: false, // 是否显示表单
       formLabelWidth: "100px", // 表单label宽度
       item: {isAD: false, image: ""}, // 表单中的酒店数据
+      imageUploading: false,
+      itemImageFileName: "",
       isEdit: false, // 是否是更新
       lastPage: 1,// 上一次查询的页码
     },
@@ -178,7 +191,29 @@
       beginAdd(){
         this.isEdit = false;
         this.item = {};
+        this.imageUploading = false;
+        this.itemImageFileName = "";
         this.formVisible = true;
+      },
+      chooseItemImage(){
+        const input = this.$refs && this.$refs.itemImageFile;
+        if(input && typeof input.click === "function") input.click();
+      },
+      async uploadItemImage(event){
+        const file = event && event.target && event.target.files && event.target.files[0];
+        if(!file) return;
+        this.imageUploading = true;
+        try{
+          this.item.image = await window.AdminImageUpload.upload(file);
+          this.itemImageFileName = file.name;
+          this.$message({message: '图片上传成功', type: 'success'});
+        }catch(err){
+          const body = err && err.response && err.response.data;
+          this.$message({message: (body && (body.message || body.msg)) || err.message || '图片上传失败', type: 'error'});
+        }finally{
+          this.imageUploading = false;
+          event.target.value = '';
+        }
       },
       query(page){
         this.lastPage = page;

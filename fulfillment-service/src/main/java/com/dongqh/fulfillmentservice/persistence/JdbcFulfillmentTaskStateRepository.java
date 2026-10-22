@@ -45,7 +45,8 @@ public class JdbcFulfillmentTaskStateRepository implements FulfillmentTaskStateR
     @Override
     public Optional<FulfillmentTaskRecord> lockReady(String fulfillmentNo, LocalDateTime now) {
         return jdbc.query(
-                        "SELECT " + TASK_COLUMNS + " FROM fulfillment_task WHERE fulfillment_no=? "
+                        "SELECT " + TASK_COLUMNS + " FROM fulfillment_task "
+                                + "WHERE fulfillment_type='LOGISTICS' AND fulfillment_no=? "
                                 + "AND status='PENDING' AND (next_attempt_at IS NULL OR next_attempt_at<=?) "
                                 + "FOR UPDATE",
                         ROW_MAPPER,
@@ -59,7 +60,7 @@ public class JdbcFulfillmentTaskStateRepository implements FulfillmentTaskStateR
     public List<FulfillmentTaskRecord> lockDue(LocalDateTime now, int limit) {
         return jdbc.query(
                 "SELECT " + TASK_COLUMNS + " FROM fulfillment_task "
-                        + "WHERE status IN ('RETRY_WAITING','RECONCILING') "
+                        + "WHERE fulfillment_type='LOGISTICS' AND status IN ('RETRY_WAITING','RECONCILING') "
                         + "AND (next_attempt_at IS NULL OR next_attempt_at<=?) "
                         + "ORDER BY id LIMIT ? FOR UPDATE SKIP LOCKED",
                 ROW_MAPPER,
@@ -76,7 +77,8 @@ public class JdbcFulfillmentTaskStateRepository implements FulfillmentTaskStateR
     ) {
         return jdbc.query(
                 "SELECT " + TASK_COLUMNS + " FROM fulfillment_task "
-                        + "WHERE status='PENDING' AND (next_attempt_at IS NULL OR next_attempt_at<=?) "
+                        + "WHERE fulfillment_type='LOGISTICS' AND status='PENDING' "
+                        + "AND (next_attempt_at IS NULL OR next_attempt_at<=?) "
                         + "AND created_at<=? ORDER BY id LIMIT ? FOR UPDATE SKIP LOCKED",
                 ROW_MAPPER,
                 Timestamp.valueOf(now),
@@ -191,7 +193,8 @@ public class JdbcFulfillmentTaskStateRepository implements FulfillmentTaskStateR
                 "UPDATE fulfillment_task SET status='RECONCILING', next_attempt_at=NOW(3), lease_token=NULL, "
                         + "lease_until=NULL, last_error_category='UNKNOWN', last_error_code='LEASE_EXPIRED', "
                         + "last_error_message='履约租约过期，转入安全对账' "
-                        + "WHERE status='PROCESSING' AND lease_until<NOW(3) ORDER BY id LIMIT ?",
+                        + "WHERE fulfillment_type='LOGISTICS' AND status='PROCESSING' "
+                        + "AND lease_until<NOW(3) ORDER BY id LIMIT ?",
                 limit
         );
     }

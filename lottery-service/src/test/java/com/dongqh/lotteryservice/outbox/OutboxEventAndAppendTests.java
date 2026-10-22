@@ -9,8 +9,6 @@ import com.dongqh.lotteryservice.outbox.mapper.MessageOutboxMapper;
 import com.dongqh.lotteryservice.outbox.model.MessageOutbox;
 import com.dongqh.lotteryservice.outbox.model.OutboxStatus;
 import com.dongqh.lotteryservice.outbox.service.OutboxService;
-import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
-import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.transaction.annotation.Propagation;
@@ -21,6 +19,7 @@ import tools.jackson.databind.node.ObjectNode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +29,25 @@ import static org.mockito.Mockito.verify;
 
 class OutboxEventAndAppendTests {
     private final ObjectMapper json = JsonMapper.builder().findAndAddModules().build();
+
+    @Test
+    void fulfillmentEventContainsStableIdsAndIgnoresLegacyRewardFields() throws Exception {
+        assertThat(Arrays.stream(PrizeFulfillmentRequestedEvent.class.getRecordComponents())
+                .map(component -> component.getName()).toList())
+                .containsExactly("benefitId", "drawRecordId", "prizeId");
+
+        var legacyPayload = json.readTree("""
+                {"benefitId":51,"drawRecordId":52,"prizeId":53,"legacyDisplay":"old value",
+                 "legacyRewardConfig":{"code":"old-config"}}
+                """);
+        var envelope = new DrawEventEnvelope(UUID.randomUUID(), DrawEventType.PRIZE_FULFILLMENT_REQUESTED, 1,
+                "request-legacy", 21L, 31L, 41L, LocalDateTime.of(2026, 7, 31, 12, 30), legacyPayload);
+
+        PrizeFulfillmentRequestedEvent decoded = envelope.payloadAs(PrizeFulfillmentRequestedEvent.class, json);
+        assertThat(decoded.benefitId()).isEqualTo(51L);
+        assertThat(decoded.drawRecordId()).isEqualTo(52L);
+        assertThat(decoded.prizeId()).isEqualTo(53L);
+    }
 
     @Test
     void envelopeKeepsUuidVersionJsonAndImmutablePayload() throws Exception {
@@ -47,20 +65,16 @@ class OutboxEventAndAppendTests {
     }
 
     @Test
-    void payloadTypesRoundTripAndRewardIdentityMustBeComplete() throws Exception {
+    void payloadTypesRoundTripAndFulfillmentMessageContainsOnlyStableIds() throws Exception {
         assertRoundTrip(DrawEventType.DRAW_CONFIRMED,
                 new DrawConfirmedEvent(10, LocalDate.of(2026, 7, 31)), DrawConfirmedEvent.class);
         assertRoundTrip(DrawEventType.DRAW_RELEASE_REQUESTED,
                 new DrawReleaseRequestedEvent(1, LocalDate.of(2026, 7, 31), "DRAW_TRANSACTION_FAILED"),
                 DrawReleaseRequestedEvent.class);
-        var fulfillment = new PrizeFulfillmentRequestedEvent(51L, 52L, 53L, PrizeType.COUPON,
-                61L, RewardType.COUPON, "c".repeat(64));
+        var fulfillment = new PrizeFulfillmentRequestedEvent(51L, 52L, 53L);
         assertRoundTrip(DrawEventType.PRIZE_FULFILLMENT_REQUESTED, fulfillment,
                 PrizeFulfillmentRequestedEvent.class);
-        assertThatThrownBy(() -> new PrizeFulfillmentRequestedEvent(51L, 52L, 53L,
-                PrizeType.COUPON, 61L, null, null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new PrizeFulfillmentRequestedEvent(51L, 52L, 53L,
-                PrizeType.COUPON, 61L, RewardType.COUPON, "C".repeat(64)))
+        assertThatThrownBy(() -> new PrizeFulfillmentRequestedEvent(null, 52L, 53L))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

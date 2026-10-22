@@ -9,6 +9,17 @@
     .benefit-tabs{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
     .benefit-tabs button{padding:9px 20px;border:1px solid #ddd;background:#fff;cursor:pointer;border-radius:3px}
     .benefit-tabs button.active{color:#fff;background:#e1251b;border-color:#e1251b}
+    .claim-panel{grid-column:2;display:grid;gap:10px;padding:14px;background:#fff8f7;border:1px solid #f1c5c1;border-radius:4px}
+    .claim-panel label{font-weight:600;color:#444}
+    .claim-panel select{width:100%;min-height:38px;padding:7px;border:1px solid #ccc;background:#fff}
+    .claim-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .claim-actions button{padding:8px 15px;border:0;border-radius:3px;color:#fff;background:#e1251b;cursor:pointer}
+    .claim-actions button:disabled{opacity:.6;cursor:wait}
+    .claim-actions a{color:#1677ff}
+    .claim-error{color:#b42318;margin:0}
+    .claim-notice{padding:10px 14px;color:#176b38;background:#eef9f0;border:1px solid #c7e9ce}
+    .tracking-panel{grid-column:2;padding:12px 14px;background:#fafafa;border:1px solid #eee}
+    .tracking-panel ol{padding-left:20px;margin:8px 0}.tracking-panel li{margin:8px 0}.tracking-panel time{display:block;color:#999;font-size:12px}
   </style>
 </head>
 <body>
@@ -34,10 +45,31 @@
         <div class="benefit-tabs">
           <button v-for="category in categories" :key="category.value" :class="{active:activeCategory===category.value}" @click="activeCategory=category.value">{{category.label}}（{{categoryCount(category.value)}}）</button>
         </div>
+        <p v-if="claimNotice" class="claim-notice">{{claimNotice}}</p>
         <div class="benefit-grid" v-if="visibleBenefits.length">
           <article class="benefit-card" v-for="item in visibleBenefits" :key="item.id">
             <div><img v-if="item.prizeImageUrl" class="prize-image" :src="item.prizeImageUrl" :alt="item.prizeName"><span v-else class="no-image">暂无图片</span></div>
-            <div><h3>{{item.prizeName||('权益 #'+item.id)}}</h3><p><span class="type-label">{{typeName(item.rewardType||item.prizeType)}}</span> × {{item.rewardQuantity||item.quantity}}</p><p>权益状态：{{item.status}}</p><p>发放状态：<strong>{{item.fulfillmentStatus||'等待发放'}}</strong></p><p v-if="item.shippingStatus">物流：{{item.shippingStatus}}</p><p class="muted">获得时间：{{item.obtainedAt}}</p></div>
+            <div><h3>{{item.prizeName||('权益 #'+item.id)}}</h3><p><span class="type-label">{{typeName(item.rewardType||item.prizeType)}}</span> × {{item.rewardQuantity||item.quantity}}</p><p>权益状态：<strong>{{item.status}}</strong></p><p v-if="item.shippingStatus">物流：{{item.shippingStatus}} <span v-if="item.shippingNo">（{{item.shippingNo}}）</span></p><p class="muted">获得时间：{{item.obtainedAt}}</p><button v-if="canClaim(item)" class="secondary" @click="beginClaim(item)">领取实物</button><button v-if="item.shippingNo" class="secondary" @click="loadTracking(item)">查看物流</button></div>
+            <div v-if="trackingShippingNo===item.shippingNo" class="tracking-panel">
+              <strong>物流轨迹</strong><p v-if="trackingLoading" class="muted">正在加载…</p><p v-if="trackingError" class="claim-error">{{trackingError}}</p>
+              <ol v-if="trackingEvents.length"><li v-for="(event,index) in trackingEvents" :key="event.eventTime+'-'+index"><span>{{event.description}}</span><time>{{event.eventTime}} · {{event.locationSummary||'地点待更新'}}</time></li></ol>
+              <p v-else-if="!trackingLoading&&!trackingError" class="muted">管理员尚未添加物流节点。</p>
+            </div>
+            <div v-if="claimingBenefitId===item.id" class="claim-panel">
+              <label :for="'claim-address-'+item.id">选择收货地址</label>
+              <select :id="'claim-address-'+item.id" v-model="claimAddressId" :disabled="claimBusy || addressesLoading || claimAddressLocked" @change="changeClaimAddress(item)">
+                <option value="">请选择地址</option>
+                <option v-for="address in addresses" :key="address.id" :value="address.id">{{address.contact}} {{address.mobile}} · {{address.province}} {{address.city}} {{address.town}} {{address.street}}</option>
+              </select>
+              <p v-if="claimAddressLocked" class="muted">这笔领取已提交过，重试会继续使用原收货地址，避免重复创建物流单。</p>
+              <p v-if="!addressesLoading && !addresses.length" class="muted">请先添加收货地址，再领取实物。</p>
+              <p v-if="claimError" class="claim-error">{{claimError}}</p>
+              <div class="claim-actions">
+                <button :disabled="claimBusy || addressesLoading || !addresses.length" @click="submitClaim(item)">{{claimBusy?'提交中…':'确认领取'}}</button>
+                <a href="/address.html">管理收货地址</a>
+                <a href="#" @click.prevent="cancelClaim">取消</a>
+              </div>
+            </div>
           </article>
         </div>
         <div class="empty" v-else>{{page.records.length?'当前分类下暂无权益':'暂无权益，先去参加抽奖吧。'}}</div>
@@ -48,7 +80,95 @@
 </div>
 <script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
 <script>
-new Vue({el:'#app',data:{membership:null,page:{records:[],total:0},activeCategory:'PHYSICAL',categories:[{value:'PHYSICAL',label:'实物'},{value:'POINTS',label:'积分'},{value:'COUPON',label:'优惠券'},{value:'MEMBERSHIP',label:'会员权益'}],error:''},computed:{visibleBenefits(){return this.page.records.filter(item=>this.categoryOf(item)===this.activeCategory)}},created(){if(!util.isLogin()){location.href='/login.html';return}this.load()},methods:{load(){this.error='';Promise.all([axios.get('/marketing/memberships/me'),axios.get('/marketing/benefits',{params:{page:1,size:50}})]).then(r=>{this.membership=r[0].data||null;this.page=r[1].data||{records:[],total:0}}).catch(e=>this.error=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg))||'权益数据加载失败')},categoryOf(item){const type=item.rewardType||item.prizeType;if(type==='PRODUCT'||type==='PHYSICAL')return 'PHYSICAL';if(type==='DRAW_CHANCE')return 'POINTS';return type},categoryCount(category){return this.page.records.filter(item=>this.categoryOf(item)===category).length},typeName(type){return({PRODUCT:'商城商品',PHYSICAL:'商城商品',COUPON:'商城优惠券',POINTS:'商城积分',MEMBERSHIP:'会员权益',DRAW_CHANCE:'抽奖次数'})[type]||type||'-'}}})
+new Vue({
+  el:'#app',
+  data:{membership:null,page:{records:[],total:0},activeCategory:'PHYSICAL',categories:[{value:'PHYSICAL',label:'实物'},{value:'POINTS',label:'积分'},{value:'COUPON',label:'优惠券'},{value:'MEMBERSHIP',label:'会员权益'}],error:'',addresses:[],addressesLoaded:false,addressesLoading:false,claimingBenefitId:null,claimAddressId:'',claimAddressLocked:false,claimBusy:false,claimError:'',claimNotice:'',trackingShippingNo:null,trackingEvents:[],trackingLoading:false,trackingError:''},
+  computed:{visibleBenefits(){return this.page.records.filter(item=>this.categoryOf(item)===this.activeCategory)}},
+  created(){if(!util.isLogin()){location.href='/login.html';return}this.load()},
+  methods:{
+    load(){this.error='';Promise.all([axios.get('/marketing/memberships/me'),axios.get('/marketing/benefits',{params:{page:1,size:50}})]).then(r=>{this.membership=r[0].data||null;this.page=r[1].data||{records:[],total:0}}).catch(e=>this.error=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg))||'权益数据加载失败')},
+    categoryOf(item){const type=item.rewardType||item.prizeType;if(type==='PRODUCT'||type==='PHYSICAL')return 'PHYSICAL';if(type==='DRAW_CHANCE')return 'POINTS';return type},
+    categoryCount(category){return this.page.records.filter(item=>this.categoryOf(item)===category).length},
+    typeName(type){return({PRODUCT:'商城商品',PHYSICAL:'商城商品',COUPON:'商城优惠券',POINTS:'商城积分',MEMBERSHIP:'会员权益',DRAW_CHANCE:'抽奖次数'})[type]||type||'-'},
+    canClaim(item){return this.categoryOf(item)==='PHYSICAL'&&item.status==='CLAIM_PENDING'&&!item.shippingNo},
+    async loadTracking(item){
+      this.trackingShippingNo=item.shippingNo;this.trackingEvents=[];this.trackingError='';this.trackingLoading=true;
+      try{const response=await axios.get('/shipping/orders/'+encodeURIComponent(item.shippingNo)+'/tracking');const body=response&&response.data!==undefined?response.data:response;this.trackingEvents=Array.isArray(body)?body:(body&&Array.isArray(body.tracking)?body.tracking:[])}
+      catch(e){this.trackingError=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg))||'物流轨迹加载失败'}
+      finally{this.trackingLoading=false}
+    },
+    async beginClaim(item){
+      this.claimingBenefitId=item.id;this.claimAddressId='';this.claimAddressLocked=false;this.claimError='';this.claimNotice='';
+      if(this.addressesLoaded){await this.restoreClaimAddress(item);return}
+      this.addressesLoading=true;
+      try{
+        const response=await axios.get('/addresses');
+        const body=response&&Object.prototype.hasOwnProperty.call(response,'data')?response.data:response;
+        this.addresses=Array.isArray(body)?body:(body&&Array.isArray(body.records)?body.records:(body&&Array.isArray(body.data)?body.data:[]));
+        this.addressesLoaded=true;await this.restoreClaimAddress(item);
+      }catch(e){this.claimError=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg))||'收货地址加载失败，请稍后重试'}
+      finally{this.addressesLoading=false}
+    },
+    async restoreClaimAddress(item){
+      const attempt=this.loadClaimAttempt(item.id);
+      if(attempt){
+        this.claimAddressId=attempt.addressId;this.claimAddressLocked=true;
+        if(this.addresses.some(address=>Number(address.id)===Number(attempt.addressId)))return;
+        try{
+          await axios.get('/shipping/orders/by-source',{params:{sourceType:'LOTTERY_BENEFIT',sourceId:String(item.id)}});
+        }catch(e){
+          const body=e.response&&e.response.data;
+          if(e.response&&e.response.status===404&&body&&Number(body.code)===55005){
+            sessionStorage.removeItem(this.claimRequestStorageKey(item.id));
+            this.claimAddressLocked=false;this.claimAddressId='';this.selectDefaultAddress();
+            this.claimError='之前的领取未创建物流单，原收货地址已删除，请选择新地址后重试';
+          }else{
+            this.claimError='暂时无法确认之前是否已创建物流单，重试时会继续使用原收货地址';
+          }
+        }
+        return
+      }
+      this.selectDefaultAddress()
+    },
+    selectDefaultAddress(){const address=this.addresses.find(item=>item.isDefault===1||item.isDefault===true)||this.addresses[0];this.claimAddressId=address?address.id:''},
+    requestId(){if(window.crypto&&typeof window.crypto.randomUUID==='function')return window.crypto.randomUUID();return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16)})},
+    claimRequestStorageKey(benefitId){
+      const user=util.store&&typeof util.store.get==='function'?util.store.get('user-info'):null;
+      const userKey=user&&(user.id||user.userId||user.username)||'current';
+      return 'hmall:shipping-claim:'+encodeURIComponent(userKey)+':'+encodeURIComponent(benefitId)
+    },
+    loadClaimAttempt(benefitId){
+      const value=sessionStorage.getItem(this.claimRequestStorageKey(benefitId));
+      if(!value)return null;
+      try{
+        const attempt=JSON.parse(value);
+        return attempt&&attempt.requestId&&attempt.addressId?attempt:null
+      }catch(e){return null}
+    },
+    changeClaimAddress(item){
+      if(this.claimAddressLocked&&item){const attempt=this.loadClaimAttempt(item.id);if(attempt)this.claimAddressId=attempt.addressId}
+      this.claimError=''
+    },
+    async submitClaim(item){
+      if(!this.claimAddressId){this.claimError='请选择收货地址';return}
+      this.claimBusy=true;this.claimError='';
+      try{
+        const storageKey=this.claimRequestStorageKey(item.id);
+        let attempt=this.loadClaimAttempt(item.id);
+        if(!attempt){attempt={requestId:this.requestId(),addressId:Number(this.claimAddressId)};sessionStorage.setItem(storageKey,JSON.stringify(attempt))}
+        this.claimAddressId=attempt.addressId;this.claimAddressLocked=true;
+        const response=await axios.post('/marketing/benefits/'+encodeURIComponent(item.id)+'/claim',{requestId:attempt.requestId,addressId:attempt.addressId});
+        const result=response&&response.data?response.data:response;
+        sessionStorage.removeItem(storageKey);
+        this.claimAddressLocked=false;
+        this.claimNotice='领取申请已提交'+(result&&result.shippingNo?'，物流单号：'+result.shippingNo:'');
+        this.claimingBenefitId=null;this.claimAddressId='';await this.load();
+      }catch(e){this.claimError=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg))||'领取失败，请检查权益状态和收货地址'}
+      finally{this.claimBusy=false}
+    },
+    cancelClaim(){if(this.claimBusy)return;this.claimingBenefitId=null;this.claimAddressId='';this.claimAddressLocked=false;this.claimError=''}
+  }
+})
 </script>
 </body>
 </html>

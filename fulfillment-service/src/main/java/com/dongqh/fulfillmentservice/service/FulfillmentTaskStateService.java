@@ -14,7 +14,6 @@ import com.dongqh.fulfillmentservice.persistence.FulfillmentQuarantineRecord;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskClaimSnapshot;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskOutcomeUpdate;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskStateRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,20 +32,15 @@ public class FulfillmentTaskStateService {
     private final Clock clock;
     private final Duration baseDelay;
     private final Duration maxDelay;
-    private final FulfillmentTaskReadService taskReadService;
-    private final FulfillmentStatusChangedRecorder statusChangedRecorder;
     private final FulfillmentTransitionPolicy transitionPolicy = new FulfillmentTransitionPolicy();
 
-    @Autowired
     public FulfillmentTaskStateService(
             FulfillmentTaskStateRepository repository,
             Clock fulfillmentClock,
             @org.springframework.beans.factory.annotation.Value("${luckyhub.fulfillment.base-delay:1s}")
             Duration baseDelay,
             @org.springframework.beans.factory.annotation.Value("${luckyhub.fulfillment.max-delay:1m}")
-            Duration maxDelay,
-            FulfillmentTaskReadService taskReadService,
-            FulfillmentStatusChangedRecorder statusChangedRecorder
+            Duration maxDelay
     ) {
         if (baseDelay == null || baseDelay.isZero() || baseDelay.isNegative()
                 || maxDelay == null || maxDelay.compareTo(baseDelay) < 0) {
@@ -56,13 +50,6 @@ public class FulfillmentTaskStateService {
         this.clock = fulfillmentClock;
         this.baseDelay = baseDelay;
         this.maxDelay = maxDelay;
-        this.taskReadService = taskReadService;
-        this.statusChangedRecorder = statusChangedRecorder;
-    }
-
-    public FulfillmentTaskStateService(FulfillmentTaskStateRepository repository, Clock fulfillmentClock,
-                                       Duration baseDelay, Duration maxDelay) {
-        this(repository, fulfillmentClock, baseDelay, maxDelay, null, null);
     }
 
     @Transactional
@@ -175,11 +162,6 @@ public class FulfillmentTaskStateService {
                     result.safeMessage(),
                     finishedAt
             ));
-        }
-        if (statusChangedRecorder != null
-                && (transition.status() == FulfillmentStatus.SUCCEEDED
-                || transition.status() == FulfillmentStatus.QUARANTINED)) {
-            statusChangedRecorder.recordLotteryAssetTask(taskReadService.get(claim.fulfillmentNo()));
         }
     }
 

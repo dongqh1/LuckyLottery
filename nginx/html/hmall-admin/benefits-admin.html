@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>优惠券、会员与积分管理 - 黑马商城</title>
+  <link rel="stylesheet" href="css/element.css">
+  <link rel="stylesheet" href="css/marketing.css">
+  <link rel="stylesheet" href="css/benefits-admin.css">
+</head>
+<body>
+<div id="app" v-cloak>
+  <div v-if="!token" class="login-shell">
+    <div class="login-card">
+      <p class="eyebrow">HMALL / BENEFITS</p>
+      <h1>权益管理</h1>
+      <p class="subtle">登录后管理优惠券、会员商品和积分。</p>
+      <el-input v-model.trim="loginForm.username" placeholder="用户名" autocomplete="username"></el-input>
+      <el-input v-model="loginForm.password" type="password" placeholder="密码" autocomplete="current-password" @keyup.enter.native="login"></el-input>
+      <el-button type="primary" class="full-button" @click="login">登录</el-button>
+    </div>
+  </div>
+
+  <main v-else class="admin-shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">HMALL / BENEFITS</p>
+        <h1>优惠券、会员与积分管理</h1>
+        <p class="subtle">使用现有管理接口创建优惠券模板、会员商品和积分兑换商品，或调整指定用户积分。</p>
+      </div>
+      <nav aria-label="管理页面">
+        <a href="items.html">商品管理</a>
+        <a href="users.html">用户管理</a>
+        <a href="marketing.html">抽奖活动</a>
+        <a href="benefits-admin.html" aria-current="page">权益管理</a>
+        <a href="shipping-admin.html">物流管理</a>
+        <el-button size="small" @click="logout">退出</el-button>
+      </nav>
+    </header>
+
+    <el-tabs v-model="activeTab" type="border-card">
+      <el-tab-pane label="优惠券管理" name="coupons">
+        <div class="management-intro">
+          <h2>优惠券管理</h2>
+          <p>创建优惠券模板后，可按模板 ID 向指定用户发券。当前接口没有模板分页查询，列表只显示本次打开页面后创建的模板。</p>
+        </div>
+        <div class="management-grid">
+          <section class="panel">
+            <div class="section-heading"><div><p class="eyebrow">TEMPLATE</p><h2>创建优惠券模板</h2></div></div>
+            <el-form :model="couponForm" label-width="145px" size="small">
+              <el-form-item label="模板编码"><el-input v-model.trim="couponForm.templateCode" maxlength="64" placeholder="例如 SPRING-100"></el-input></el-form-item>
+              <el-form-item label="模板名称"><el-input v-model.trim="couponForm.templateName" maxlength="100"></el-input></el-form-item>
+              <el-form-item label="优惠券类型"><el-select v-model="couponForm.couponType"><el-option label="无门槛" value="NO_THRESHOLD"></el-option><el-option label="满减券" value="THRESHOLD"></el-option></el-select></el-form-item>
+              <el-form-item label="最低消费（分）"><el-input-number v-model="couponForm.thresholdCent" :min="couponForm.couponType==='NO_THRESHOLD' ? 0 : 1" :max="100000000"></el-input-number><p class="field-hint">100 分 = 1 元；无门槛券会自动设为 0。</p></el-form-item>
+              <el-form-item label="优惠金额（分）"><el-input-number v-model="couponForm.discountCent" :min="1" :max="100000000"></el-input-number></el-form-item>
+              <el-form-item label="使用范围"><el-select v-model="couponForm.scopeType"><el-option label="全部商品" value="ALL"></el-option><el-option label="指定商品" value="ITEM"></el-option><el-option label="指定分类" value="CATEGORY"></el-option><el-option label="指定品牌" value="BRAND"></el-option></el-select></el-form-item>
+              <el-form-item v-if="couponForm.scopeType==='ITEM'" label="适用商品">
+                <el-select v-model="couponForm.hmallItemId" filterable remote clearable
+                           placeholder="输入商品名称关键词搜索" :remote-method="searchCouponItems"
+                           :loading="couponItemSearchLoading" style="width:100%">
+                  <el-option v-for="item in couponItemOptions" :key="item.id"
+                             :label="productOptionLabel(item)" :value="item.id">
+                    <div class="catalog-option product-option">
+                      <img v-if="item.image" :src="item.image" alt="" class="product-option-image">
+                      <span class="catalog-option-main"><strong>{{ item.name }}</strong><small>#{{ item.id }} · 库存 {{ item.stock }}</small></span>
+                      <strong class="catalog-option-price">{{ formatCents(item.price) }}</strong>
+                    </div>
+                  </el-option>
+                </el-select>
+                <p class="field-hint">按商品名称搜索，列表显示售价和库存。</p>
+                <p v-if="couponItemSearchError" class="error" role="alert">{{couponItemSearchError}}</p>
+              </el-form-item>
+              <el-form-item v-if="couponForm.scopeType==='CATEGORY'" label="商品分类"><el-input v-model.trim="couponForm.hmallCategory" maxlength="100"></el-input></el-form-item>
+              <el-form-item v-if="couponForm.scopeType==='BRAND'" label="商品品牌"><el-input v-model.trim="couponForm.hmallBrand" maxlength="100"></el-input></el-form-item>
+              <el-form-item label="有效期"><el-date-picker v-model="couponForm.validFrom" type="datetime" value-format="yyyy-MM-ddTHH:mm:ss" placeholder="开始时间"></el-date-picker><el-date-picker v-model="couponForm.validUntil" type="datetime" value-format="yyyy-MM-ddTHH:mm:ss" placeholder="结束时间"></el-date-picker></el-form-item>
+              <el-form-item label="每人可领"><el-input-number v-model="couponForm.perUserLimit" :min="1" :max="100"></el-input-number></el-form-item>
+              <el-form-item label="可与会员折扣叠加"><el-switch v-model="couponForm.stackableWithMembership"></el-switch></el-form-item>
+              <el-button type="primary" :loading="couponBusy" @click="createCouponTemplate">创建模板</el-button>
+              <p v-if="couponError" class="error" role="alert">{{couponError}}</p>
+            </el-form>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading"><div><p class="eyebrow">ISSUE</p><h2>向用户发券</h2></div></div>
+            <el-form :model="issueForm" label-width="125px" size="small">
+              <el-form-item label="模板 ID"><el-input-number v-model="issueForm.templateId" :min="1" :controls="false"></el-input-number></el-form-item>
+              <el-form-item label="用户 ID"><el-input-number v-model="issueForm.userId" :min="1" :controls="false"></el-input-number></el-form-item>
+              <el-form-item label="发券业务编号"><el-input v-model.trim="issueForm.businessNo" maxlength="64"></el-input></el-form-item>
+              <el-form-item label="优惠券编号"><el-input v-model.trim="issueForm.couponNo" maxlength="64"></el-input></el-form-item>
+              <el-button @click="generateIssueNumbers">生成编号</el-button>
+              <el-button type="primary" :loading="issueBusy" @click="issueCoupon">发放优惠券</el-button>
+              <p class="field-hint">业务编号用于防止重复发券；再次提交相同编号会按接口幂等规则处理。</p>
+              <p v-if="issueError" class="error" role="alert">{{issueError}}</p>
+              <div v-if="lastIssuedCoupon" class="result-card"><strong>发券成功</strong><span>券号：{{lastIssuedCoupon.couponNo}}</span><span>用户：{{lastIssuedCoupon.userId}} · 模板：{{lastIssuedCoupon.templateName}}</span></div>
+            </el-form>
+            <div class="recent-list">
+              <h3>本次创建的模板</h3>
+              <div v-if="!createdTemplates.length" class="empty compact-empty">创建模板后会显示在这里</div>
+              <div v-for="template in createdTemplates" :key="template.id" class="recent-row">
+                <div><strong>{{template.templateName}}</strong><span class="muted"> #{{template.id}} · {{couponTypeText(template.couponType)}} · {{template.discountCent}} 分</span></div>
+                <el-button size="mini" @click="issueForm.templateId=template.id">用于发券</el-button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="会员管理" name="membership">
+        <div class="management-intro">
+          <h2>会员商品管理</h2>
+          <p>当前接口支持创建会员商品并查询已启用商品。会员用户全量查询、停用或人工调整会员状态的接口尚未提供。</p>
+        </div>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">MEMBERSHIP PRODUCTS</p><h2>创建会员商品</h2></div></div>
+          <el-form :model="membershipForm" label-width="155px" size="small" class="form-grid">
+            <el-form-item label="商品编码"><el-input v-model.trim="membershipForm.productCode" maxlength="64"></el-input></el-form-item>
+            <el-form-item label="商品名称"><el-input v-model.trim="membershipForm.productName" maxlength="100"></el-input></el-form-item>
+            <el-form-item label="会员等级"><el-input v-model.trim="membershipForm.membershipLevel" maxlength="30" placeholder="例如 GOLD"></el-input></el-form-item>
+            <el-form-item label="卡类型"><el-select v-model="membershipForm.cardType"><el-option label="月卡" value="MONTH"></el-option><el-option label="季卡" value="QUARTER"></el-option><el-option label="年卡" value="YEAR"></el-option></el-select></el-form-item>
+            <el-form-item label="有效天数"><el-input-number v-model="membershipForm.durationDays" :min="1"></el-input-number></el-form-item>
+            <el-form-item label="售价（分）"><el-input-number v-model="membershipForm.priceCent" :min="0"></el-input-number></el-form-item>
+            <el-form-item label="会员折扣基点"><el-input-number v-model="membershipForm.discountBasisPoints" :min="1" :max="10000"></el-input-number><p class="field-hint">9000 表示 9 折。</p></el-form-item>
+            <el-form-item label="每日额外抽奖次数"><el-input-number v-model="membershipForm.dailyDrawBonus" :min="0"></el-input-number></el-form-item>
+            <el-form-item label="积分倍率基点"><el-input-number v-model="membershipForm.pointsMultiplierBasisPoints" :min="10000"></el-input-number><p class="field-hint">10000 表示 1 倍。</p></el-form-item>
+            <div class="form-action"><el-button type="primary" :loading="membershipBusy" @click="createMembershipProduct">创建会员商品</el-button><el-button @click="loadMembershipProducts">刷新列表</el-button></div>
+          </el-form>
+          <p v-if="membershipError" class="error" role="alert">{{membershipError}}</p>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">ACTIVE PRODUCTS</p><h2>已启用的会员商品</h2></div><span class="subtle">{{membershipProducts.length}} 项</span></div>
+          <el-table :data="membershipProducts" border empty-text="当前没有已启用的会员商品">
+            <el-table-column prop="id" label="ID" width="80"></el-table-column>
+            <el-table-column prop="productName" label="名称" min-width="150"></el-table-column>
+            <el-table-column prop="membershipLevel" label="等级" width="110"></el-table-column>
+            <el-table-column label="卡类型" width="90"><template slot-scope="scope">{{cardTypeText(scope.row.cardType)}}</template></el-table-column>
+            <el-table-column label="期限" width="100"><template slot-scope="scope">{{scope.row.durationDays}} 天</template></el-table-column>
+            <el-table-column label="售价" width="110"><template slot-scope="scope">¥{{money(scope.row.priceCent)}}</template></el-table-column>
+            <el-table-column label="折扣" width="90"><template slot-scope="scope">{{(scope.row.discountBasisPoints/1000).toFixed(1)}} 折</template></el-table-column>
+            <el-table-column prop="dailyDrawBonus" label="每日额外抽奖" width="115"></el-table-column>
+            <el-table-column label="积分倍率" width="100"><template slot-scope="scope">{{(scope.row.pointsMultiplierBasisPoints/10000).toFixed(2)}} 倍</template></el-table-column>
+          </el-table>
+        </section>
+      </el-tab-pane>
+
+      <el-tab-pane label="积分管理" name="points">
+        <div class="management-intro">
+          <h2>积分管理</h2>
+          <p>可创建积分兑换商品、向指定用户增加或扣减积分，以及冲正积分兑换。调整会立即写入积分账户并生成流水。</p>
+        </div>
+        <div class="management-grid">
+          <section class="panel">
+            <div class="section-heading"><div><p class="eyebrow">REDEMPTION OFFER</p><h2>创建积分兑换商品</h2></div></div>
+            <el-form :model="pointsOfferForm" label-width="130px" size="small">
+              <el-form-item label="商城商品">
+                <el-select v-model="pointsOfferForm.hmallItemId" filterable remote clearable
+                           placeholder="输入商品名称关键词搜索" :remote-method="searchPointsItems"
+                           :loading="pointsItemSearchLoading" style="width:100%">
+                  <el-option v-for="item in pointsItemOptions" :key="item.id"
+                             :label="productOptionLabel(item)" :value="item.id">
+                    <div class="catalog-option product-option">
+                      <img v-if="item.image" :src="item.image" alt="" class="product-option-image">
+                      <span class="catalog-option-main"><strong>{{ item.name }}</strong><small>#{{ item.id }} · 库存 {{ item.stock }}</small></span>
+                      <strong class="catalog-option-price">{{ formatCents(item.price) }}</strong>
+                    </div>
+                  </el-option>
+                </el-select>
+                <p class="field-hint">按商品名称搜索，列表显示售价和库存。</p>
+                <p v-if="pointsItemSearchError" class="error" role="alert">{{pointsItemSearchError}}</p>
+              </el-form-item>
+              <el-form-item label="兑换所需积分"><el-input-number v-model="pointsOfferForm.unitPoints" :min="1"></el-input-number></el-form-item>
+              <el-form-item label="可兑换库存"><el-input-number v-model="pointsOfferForm.availableStock" :min="1" :max="1000000"></el-input-number></el-form-item>
+              <el-button type="primary" :loading="pointsOfferBusy" @click="createPointsOffer">创建兑换商品</el-button>
+              <el-button @click="loadPointsOffers">刷新列表</el-button>
+              <p v-if="pointsError" class="error" role="alert">{{pointsError}}</p>
+            </el-form>
+          </section>
+          <section class="panel">
+            <div class="section-heading"><div><p class="eyebrow">POINT ADJUSTMENT</p><h2>调整用户积分</h2></div></div>
+            <el-form :model="adjustmentForm" label-width="120px" size="small">
+              <el-form-item label="用户 ID"><el-input-number v-model="adjustmentForm.userId" :min="1" :controls="false"></el-input-number></el-form-item>
+              <el-form-item label="变动积分"><el-input-number v-model="adjustmentForm.delta" :min="-100000000" :max="100000000"></el-input-number><p class="field-hint">正数为增加，负数为扣减。</p></el-form-item>
+              <el-form-item label="业务编号"><el-input v-model.trim="adjustmentForm.businessId" maxlength="100"></el-input></el-form-item>
+              <el-form-item label="调整原因"><el-input v-model.trim="adjustmentForm.reason" type="textarea" maxlength="500"></el-input></el-form-item>
+              <el-button type="primary" :loading="adjustmentBusy" @click="adjustPoints">提交积分调整</el-button>
+              <div v-if="lastAdjustment" class="result-card"><strong>调整已完成</strong><span>流水 #{{lastAdjustment.id}} · 变动后余额 {{lastAdjustment.balanceAfter}}</span></div>
+              <p v-if="adjustmentError" class="error" role="alert">{{adjustmentError}}</p>
+            </el-form>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">AVAILABLE OFFERS</p><h2>已启用的兑换商品</h2></div><span class="subtle">{{pointsOffers.length}} 项</span></div>
+          <el-table :data="pointsOffers" border empty-text="当前没有可兑换商品">
+            <el-table-column prop="id" label="ID" width="80"></el-table-column>
+            <el-table-column prop="itemName" label="商品" min-width="180"></el-table-column>
+            <el-table-column prop="hmallItemId" label="商城商品 ID" width="130"></el-table-column>
+            <el-table-column label="所需积分" width="110"><template slot-scope="scope">{{scope.row.unitPoints}}</template></el-table-column>
+            <el-table-column prop="availableStock" label="剩余库存" width="110"></el-table-column>
+            <el-table-column label="参考价" width="110"><template slot-scope="scope">¥{{money(scope.row.cashPriceCent)}}</template></el-table-column>
+          </el-table>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">REVERSE REDEMPTION</p><h2>冲正积分兑换</h2></div></div>
+          <p class="field-hint">仅对需要撤销的兑换单提交冲正。冲正会退回对应积分并写入流水。</p>
+          <el-form :model="reverseForm" label-width="140px" size="small" class="form-grid">
+            <el-form-item label="兑换编号"><el-input v-model.trim="reverseForm.redemptionNo" maxlength="64"></el-input></el-form-item>
+            <el-form-item label="冲正业务编号"><el-input v-model.trim="reverseForm.reversalNo" maxlength="64"></el-input></el-form-item>
+            <el-form-item label="冲正原因"><el-input v-model.trim="reverseForm.reason" maxlength="500"></el-input></el-form-item>
+            <div class="form-action"><el-button type="danger" :loading="reverseBusy" @click="reverseRedemption">确认冲正</el-button></div>
+          </el-form>
+          <div v-if="lastReversal" class="result-card"><strong>兑换已冲正</strong><span>兑换单：{{lastReversal.redemptionNo}} · 状态：{{lastReversal.status}}</span></div>
+          <p v-if="reverseError" class="error" role="alert">{{reverseError}}</p>
+        </section>
+      </el-tab-pane>
+    </el-tabs>
+  </main>
+</div>
+<script src="js/vue.js"></script>
+<script src="js/axios.min.js"></script>
+<script src="js/element.js"></script>
+<script src="js/benefits-admin.js?v=20261022b"></script>
+</body>
+</html>

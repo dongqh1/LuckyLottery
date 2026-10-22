@@ -36,6 +36,7 @@ public class MembershipProductAdminService {
         product.setDailyDrawBonus(command.dailyDrawBonus());
         product.setPointsMultiplierBasisPoints(command.pointsMultiplierBasisPoints());
         product.setStatus(1);
+        product.setSalesEnabled(1);
         try {
             products.insert(product);
         } catch (DuplicateKeyException exception) {

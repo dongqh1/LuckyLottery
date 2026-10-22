@@ -8,11 +8,14 @@ import com.dongqh.luckyhub.domain.vo.coupon.UserCouponView;
 import com.hmall.common.domain.R;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -23,11 +26,27 @@ public class CouponAdminController {
         this.coupons = coupons;
     }
 
+    /*
+        根据关键词查询所有优惠券
+     */
+    @GetMapping("/coupon-templates")
+    public R<List<CouponTemplateView>> searchTemplates(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "20") int size) {
+        return R.ok(coupons.searchTemplates(keyword, size));
+    }
+
+    /**
+     * 创建优惠券
+     * @param command
+     * @return
+     */
     @PostMapping("/coupon-templates")
     @ResponseStatus(HttpStatus.CREATED)
     public R<CouponTemplateView> createTemplate(@Valid @RequestBody CreateCouponTemplateCommand command) {
         return R.ok(coupons.createTemplate(command));
     }
+
 
     @PostMapping("/coupons/issues")
     @ResponseStatus(HttpStatus.CREATED)

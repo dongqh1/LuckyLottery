@@ -7,38 +7,27 @@ import com.dongqh.hmapi.client.MembershipClient;
 import com.dongqh.hmapi.dto.CouponRewardTemplateDTO;
 import com.dongqh.hmapi.dto.ItemDTO;
 import com.dongqh.hmapi.dto.MembershipRewardProductDTO;
-import com.dongqh.lotteryservice.enums.activityprize.ActivityStatus;
+import com.dongqh.lotteryservice.config.LotteryProperties;
+import com.dongqh.lotteryservice.domain.model.draweligibility.DrawEligibility;
+import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawPrizeCandidate;
+import com.dongqh.lotteryservice.domain.model.prizecatalog.RewardPrizeTypeMapping;
 import com.dongqh.lotteryservice.domain.po.activityprize.ActivityPrizeRow;
 import com.dongqh.lotteryservice.domain.po.activityprize.ActivityRow;
-import com.dongqh.lotteryservice.mapper.activityprize.ActivityMapper;
-import com.dongqh.lotteryservice.mapper.activityprize.ActivityPrizeMapper;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.CouponRewardPayload;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawChanceRewardPayload;
-import com.dongqh.lotteryservice.domain.model.draweligibility.EligibilitySnapshot;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawPrizeSnapshot;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.MembershipRewardPayload;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.PointsRewardPayload;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.ProductRewardPayload;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.RewardSnapshot;
-import com.dongqh.lotteryservice.exception.LotteryDomainException;
-import com.dongqh.lotteryservice.enums.LotteryErrorCode;
-import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import com.dongqh.lotteryservice.domain.po.prizecatalog.PrizeRow;
 import com.dongqh.lotteryservice.domain.po.prizecatalog.RewardDefinitionRow;
+import com.dongqh.lotteryservice.enums.LotteryErrorCode;
+import com.dongqh.lotteryservice.enums.activityprize.ActivityStatus;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
+import com.dongqh.lotteryservice.exception.LotteryDomainException;
+import com.dongqh.lotteryservice.mapper.activityprize.ActivityMapper;
+import com.dongqh.lotteryservice.mapper.activityprize.ActivityPrizeMapper;
 import com.dongqh.lotteryservice.mapper.prizecatalog.PrizeCatalogMapper;
 import com.dongqh.lotteryservice.mapper.prizecatalog.RewardDefinitionMapper;
-import com.dongqh.lotteryservice.config.LotteryProperties;
 import org.springframework.stereotype.Service;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,13 +46,12 @@ public class DrawEligibilityService {
     private final ItemClient items;
     private final CouponClient coupons;
     private final MembershipClient memberships;
-    private final ObjectMapper json;
     private final Clock clock;
 
     public DrawEligibilityService(ActivityMapper activities, ActivityPrizeMapper activityPrizes,
                                   PrizeCatalogMapper prizes, RewardDefinitionMapper rewardDefinitions,
                                   ItemClient items, CouponClient coupons, MembershipClient memberships,
-                                  ObjectMapper json, LotteryProperties properties) {
+                                  LotteryProperties properties) {
         this.activities = activities;
         this.activityPrizes = activityPrizes;
         this.prizes = prizes;
@@ -71,11 +59,10 @@ public class DrawEligibilityService {
         this.items = items;
         this.coupons = coupons;
         this.memberships = memberships;
-        this.json = json;
         this.clock = Clock.system(properties.zoneId());
     }
 
-    public EligibilitySnapshot load(long activityId) {
+    public DrawEligibility load(long activityId) {
         ActivityRow activity = activities.selectById(activityId);
         if (activity == null) throw error(LotteryErrorCode.ACTIVITY_NOT_FOUND);
         LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.MILLIS);
@@ -98,20 +85,21 @@ public class DrawEligibilityService {
                 : byId(rewardDefinitions.selectByIds(definitionIds), RewardDefinitionRow::getId);
         TargetIndex targets = loadTargets(definitions.values().stream().toList());
 
-        List<DrawPrizeSnapshot> snapshots = relations.stream().map(relation -> {
+        List<DrawPrizeCandidate> candidates = relations.stream().map(relation -> {
             PrizeRow prize = prizeById.get(relation.getPrizeId());
             if (prize == null) throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
-            RewardSnapshot reward = reward(prize, definitions, targets);
-            return new DrawPrizeSnapshot(relation.getId(), prize.getId(), prize.getPrizeName(),
+            RewardDefinitionRow reward = reward(prize, definitions, targets);
+            return new DrawPrizeCandidate(relation.getId(), prize.getId(), prize.getPrizeName(),
                     prize.getPrizeType(), prize.getImageUrl(), relation.getWeight(),
-                    relation.getRemainingStock(), Integer.valueOf(ENABLED).equals(prize.getStatus()), reward);
+                    relation.getRemainingStock(), Integer.valueOf(ENABLED).equals(prize.getStatus()),
+                    reward.getId(), reward.getRewardType(), reward.getTargetId(), reward.getQuantity());
         }).toList();
 
         int noWinWeight = activity.getNoWinWeight() == null ? 0 : activity.getNoWinWeight();
-        if (noWinWeight < 0 || (snapshots.isEmpty() && noWinWeight == 0)) {
+        if (noWinWeight < 0 || (candidates.isEmpty() && noWinWeight == 0)) {
             throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
         }
-        return new EligibilitySnapshot(activityId, noWinWeight, snapshots, now);
+        return new DrawEligibility(activityId, noWinWeight, candidates, now);
     }
 
     private TargetIndex loadTargets(List<RewardDefinitionRow> definitions) {
@@ -122,8 +110,9 @@ public class DrawEligibilityService {
                 Function.identity(), coupons::getRewardTemplate));
         Map<Long, MembershipRewardProductDTO> membershipById = membershipIds.stream().collect(Collectors.toMap(
                 Function.identity(), memberships::getRewardProduct));
-        Map<Long, ItemDTO> itemById = itemIds.isEmpty() ? Map.of()
-                : items.queryItemByIds(itemIds).stream().filter(Objects::nonNull)
+        List<ItemDTO> foundItems = itemIds.isEmpty() ? List.of() : items.queryItemByIds(itemIds);
+        Map<Long, ItemDTO> itemById = foundItems == null ? Map.of() : foundItems.stream()
+                .filter(Objects::nonNull)
                 .filter(item -> item.getId() != null)
                 .collect(Collectors.toMap(ItemDTO::getId, Function.identity(), (left, right) -> left));
         return new TargetIndex(couponById, membershipById, itemById);
@@ -134,76 +123,60 @@ public class DrawEligibilityService {
                 .map(RewardDefinitionRow::getTargetId).filter(Objects::nonNull).distinct().toList();
     }
 
-    private RewardSnapshot reward(PrizeRow prize, Map<Long, RewardDefinitionRow> definitions, TargetIndex targets) {
-        if (prize.getRewardDefinitionId() == null) return null;
+    private RewardDefinitionRow reward(PrizeRow prize, Map<Long, RewardDefinitionRow> definitions,
+                                       TargetIndex targets) {
+        if (prize.getRewardDefinitionId() == null) throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
         RewardDefinitionRow definition = definitions.get(prize.getRewardDefinitionId());
         if (definition == null || !Integer.valueOf(ENABLED).equals(definition.getStatus())
-                || definition.getRewardCode() == null || definition.getRewardCode().isBlank()
                 || definition.getRewardType() == null || definition.getQuantity() == null) {
             throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
         }
-        Object payload;
-        try {
-            payload = payload(definition, targets);
-        } catch (ArithmeticException exception) {
+        if (!RewardPrizeTypeMapping.matches(definition.getRewardType(), prize.getPrizeType())) {
             throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
         }
-        String payloadJson;
-        try {
-            payloadJson = json.writeValueAsString(payload);
-        } catch (JacksonException exception) {
-            throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
-        }
-        String identity = definition.getId() + "\n" + definition.getRewardCode() + "\n"
-                + definition.getRewardType() + "\n" + Objects.toString(definition.getTargetId(), "")
-                + "\n" + definition.getQuantity() + "\n" + payloadJson;
-        return new RewardSnapshot(definition.getId(), definition.getRewardCode(), definition.getRewardType(),
-                definition.getTargetId(), definition.getQuantity(), payloadJson, digest(identity));
+        validateRewardTarget(definition, targets);
+        return definition;
     }
 
-    private Object payload(RewardDefinitionRow definition, TargetIndex targets) {
+    private void validateRewardTarget(RewardDefinitionRow definition, TargetIndex targets) {
         long quantity = definition.getQuantity();
         if (quantity <= 0) throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
-        return switch (definition.getRewardType()) {
+        switch (definition.getRewardType()) {
             case POINTS -> {
                 if (definition.getTargetId() != null) throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
-                yield new PointsRewardPayload(quantity, "抽奖奖励");
             }
             case DRAW_CHANCE -> {
                 requireDiscrete(definition);
                 if (definition.getTargetId() != null) throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
-                yield new DrawChanceRewardPayload(Math.toIntExact(quantity));
             }
             case COUPON -> {
                 requireDiscrete(definition);
                 CouponRewardTemplateDTO template = targets.coupons().get(requiredTarget(definition));
-                if (template == null || !Integer.valueOf(ENABLED).equals(template.status())) {
+                if (template == null || !Integer.valueOf(ENABLED).equals(template.status())
+                        || template.templateCode() == null || template.templateCode().isBlank()) {
                     throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
                 }
-                yield new CouponRewardPayload(template.id(), template.templateCode(), Math.toIntExact(quantity));
             }
             case MEMBERSHIP -> {
                 requireDiscrete(definition);
                 MembershipRewardProductDTO product = targets.memberships().get(requiredTarget(definition));
                 if (product == null || !Integer.valueOf(ENABLED).equals(product.status())
+                        || product.productCode() == null || product.productCode().isBlank()
+                        || product.membershipLevel() == null || product.membershipLevel().isBlank()
                         || product.durationDays() == null || product.durationDays() <= 0) {
                     throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
                 }
-                int count = Math.toIntExact(quantity);
-                yield new MembershipRewardPayload(product.id(), product.productCode(), product.membershipLevel(),
-                        Math.multiplyExact(product.durationDays(), count), count);
             }
             case PRODUCT -> {
                 requireDiscrete(definition);
                 ItemDTO item = targets.items().get(requiredTarget(definition));
                 if (item == null || !Integer.valueOf(ENABLED).equals(item.getStatus())
-                        || item.getStock() == null || item.getStock() <= 0 || item.getPrice() == null) {
+                        || item.getStock() == null || item.getStock() <= 0 || item.getName() == null
+                        || item.getName().isBlank()) {
                     throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
                 }
-                yield new ProductRewardPayload(item.getId(), item.getName(), item.getImage(), item.getPrice(),
-                        Math.toIntExact(quantity));
             }
-        };
+        }
     }
 
     private void requireDiscrete(RewardDefinitionRow definition) {
@@ -217,15 +190,6 @@ public class DrawEligibilityService {
             throw error(LotteryErrorCode.DRAW_WEIGHT_INVALID);
         }
         return definition.getTargetId();
-    }
-
-    private String digest(String value) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException(exception);
-        }
     }
 
     private <T> Map<Long, T> byId(List<T> values, Function<T, Long> idExtractor) {

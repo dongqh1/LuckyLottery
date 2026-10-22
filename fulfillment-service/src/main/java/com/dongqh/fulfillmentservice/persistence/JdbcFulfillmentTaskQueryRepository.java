@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,22 +57,6 @@ public class JdbcFulfillmentTaskQueryRepository implements FulfillmentTaskQueryR
                         fulfillmentNo
                 ).stream()
                 .findFirst();
-    }
-
-    @Override
-    public List<FulfillmentTaskStatus> findLotteryStatusByFulfillmentNos(Collection<String> fulfillmentNos) {
-        if (fulfillmentNos == null || fulfillmentNos.isEmpty()) {
-            return List.of();
-        }
-        List<String> normalized = fulfillmentNos.stream().distinct().toList();
-        if (normalized.size() > 100 || normalized.stream().anyMatch(value -> value == null || value.isBlank())) {
-            throw new IllegalArgumentException("fulfillmentNos must contain at most 100 non-blank values");
-        }
-        String placeholders = String.join(",", java.util.Collections.nCopies(normalized.size(), "?"));
-        return jdbc.query("SELECT fulfillment_no, status FROM fulfillment_task "
-                        + "WHERE source_type='LOTTERY_BENEFIT' AND fulfillment_no IN (" + placeholders + ")",
-                (rs, rowNum) -> new FulfillmentTaskStatus(rs.getString("fulfillment_no"),
-                        FulfillmentStatus.valueOf(rs.getString("status"))), normalized.toArray());
     }
 
     @Override

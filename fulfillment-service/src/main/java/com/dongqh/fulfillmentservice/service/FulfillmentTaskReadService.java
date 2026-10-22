@@ -4,15 +4,14 @@ import com.dongqh.fulfillmentservice.domain.model.FulfillmentPage;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentPayload;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskQuery;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentTaskView;
+import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskDetails;
 import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskQueryRepository;
-import com.dongqh.fulfillmentservice.persistence.FulfillmentTaskStatus;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
-import java.util.Collection;
 
 @Service
 public class FulfillmentTaskReadService {
@@ -30,18 +29,6 @@ public class FulfillmentTaskReadService {
         FulfillmentTaskDetails details = repository.findByFulfillmentNo(normalized)
                 .orElseThrow(() -> new FulfillmentTaskNotFoundException(normalized));
         return view(details);
-    }
-
-    public List<FulfillmentTaskStatus> getLotteryStatuses(Collection<String> fulfillmentNos) {
-        if (fulfillmentNos == null || fulfillmentNos.isEmpty()) {
-            return List.of();
-        }
-        List<String> normalized = fulfillmentNos.stream().distinct().toList();
-        if (normalized.size() > 100 || normalized.stream().anyMatch(value -> value == null || value.isBlank()
-                || value.trim().length() > 64)) {
-            throw new IllegalArgumentException("履约编号列表无效");
-        }
-        return repository.findLotteryStatusByFulfillmentNos(normalized.stream().map(String::trim).toList());
     }
 
     public FulfillmentPage<FulfillmentTaskView> page(FulfillmentTaskQuery query) {
@@ -79,17 +66,12 @@ public class FulfillmentTaskReadService {
     }
 
     private FulfillmentPayload payload(FulfillmentTaskDetails details) {
+        if (details.fulfillmentType() != com.dongqh.fulfillmentservice.enums.FulfillmentType.LOGISTICS) {
+            throw new FulfillmentTaskInvalidPayloadException(details.fulfillmentNo(),
+                    new IllegalArgumentException("物流服务不读取历史虚拟奖励任务"));
+        }
         try {
-            return switch (details.fulfillmentType()) {
-                case COUPON -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload.class);
-                case POINTS -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.domain.model.PointsFulfillmentPayload.class);
-                case MEMBERSHIP -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.domain.model.MembershipFulfillmentPayload.class);
-                case LOGISTICS -> json.readValue(details.requestPayload(),
-                        com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload.class);
-            };
+            return json.readValue(details.requestPayload(), LogisticsFulfillmentPayload.class);
         } catch (JacksonException exception) {
             throw new FulfillmentTaskInvalidPayloadException(details.fulfillmentNo(), exception);
         }

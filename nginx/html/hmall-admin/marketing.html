@@ -1,2 +1,213 @@
-<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>营销活动管理 - 黑马商城</title><link rel="stylesheet" href="css/element.css"><link rel="stylesheet" href="css/main.css"><style>body{background:#f5f7fa}.shell{max-width:1250px;margin:25px auto}.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.login{max-width:420px;margin:80px auto;background:#fff;padding:35px;border-radius:8px}.nav a{margin-right:18px}</style></head><body><div id="app"><div class="login" v-if="!token"><h2>黑马商城管理员登录</h2><el-input v-model="login.username" placeholder="用户名"></el-input><el-input v-model="login.password" type="password" placeholder="密码" style="margin:12px 0"></el-input><el-button type="primary" @click="doLogin">登录</el-button></div><div class="shell" v-else><div class="toolbar"><div><h1>营销活动管理</h1><div class="nav"><a href="items.html">商品管理</a><a href="users.html">用户管理</a><a href="marketing.html">营销活动</a></div></div><div><el-button type="primary" @click="dialog=true">创建活动</el-button><el-button @click="logout">退出</el-button></div></div><el-table :data="activities" border><el-table-column prop="id" label="ID" width="80"></el-table-column><el-table-column prop="activityName" label="活动名称"></el-table-column><el-table-column prop="status" label="状态" width="120"></el-table-column><el-table-column prop="startTime" label="开始时间"></el-table-column><el-table-column prop="endTime" label="结束时间"></el-table-column><el-table-column label="操作" width="260"><template slot-scope="s"><el-button size="mini" @click="loadPool(s.row)">奖池</el-button><el-button size="mini" type="success" @click="publish(s.row.id)">发布</el-button><el-button size="mini" type="danger" @click="disable(s.row.id)">禁用</el-button></template></el-table-column></el-table><el-dialog title="创建活动" :visible.sync="dialog"><el-form :model="form" label-width="100px"><el-form-item label="活动名称"><el-input v-model="form.activityName"></el-input></el-form-item><el-form-item label="说明"><el-input v-model="form.description"></el-input></el-form-item><el-form-item label="开始时间"><el-date-picker v-model="form.startTime" type="datetime" value-format="yyyy-MM-ddTHH:mm:ss"></el-date-picker></el-form-item><el-form-item label="结束时间"><el-date-picker v-model="form.endTime" type="datetime" value-format="yyyy-MM-ddTHH:mm:ss"></el-date-picker></el-form-item><el-form-item label="未中奖权重"><el-input-number v-model="form.noWinWeight" :min="0"></el-input-number></el-form-item></el-form><span slot="footer"><el-button @click="dialog=false">取消</el-button><el-button type="primary" @click="create">保存</el-button></span></el-dialog><el-dialog title="活动奖池" :visible.sync="poolDialog"><el-table :data="pool"><el-table-column prop="prizeId" label="奖品ID"></el-table-column><el-table-column prop="prizeName" label="奖品"></el-table-column><el-table-column prop="weight" label="权重"></el-table-column><el-table-column prop="totalStock" label="总库存"></el-table-column><el-table-column prop="remainingStock" label="剩余"></el-table-column></el-table></el-dialog></div></div><script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/element.js"></script><script>axios.defaults.baseURL='/api';axios.interceptors.request.use(c=>{c.headers.authorization=sessionStorage.getItem("token");return c});new Vue({el:'#app',data:{token:sessionStorage.getItem("token"),login:{username:'Jack',password:'123'},activities:[],dialog:false,poolDialog:false,pool:[],form:{activityName:'',description:'',startTime:'',endTime:'',noWinWeight:100}},created(){if(this.token)this.load()},methods:{doLogin(){axios.post('/users/login',this.login).then(r=>{sessionStorage.setItem("token",r.data.token);sessionStorage.setItem("user-info",JSON.stringify(r.data));this.token=r.data.token;this.load()}).catch(()=>this.$message.error('登录失败'))},logout(){sessionStorage.clear();location.reload()},load(){axios.get('/marketing/admin/activities',{params:{page:1,size:100}}).then(r=>this.activities=r.data.data.records)},create(){axios.post('/marketing/admin/activities',this.form).then(()=>{this.dialog=false;this.load();this.$message.success('创建成功')})},publish(id){axios.patch('/marketing/admin/activities/'+id+'/publish').then(()=>this.load())},disable(id){axios.patch('/marketing/admin/activities/'+id+'/disable').then(()=>this.load())},loadPool(row){axios.get('/marketing/admin/activities/'+row.id+'/prizes').then(r=>{this.pool=r.data.data;this.poolDialog=true})}}})</script></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>抽奖活动管理 - 黑马商城</title>
+  <link rel="stylesheet" href="css/element.css">
+  <link rel="stylesheet" href="css/marketing.css?v=20261022">
+  <link rel="stylesheet" href="css/admin-image-upload.css?v=20261022">
+</head>
+<body>
+<div id="app" v-cloak>
+  <div v-if="!token" class="login-shell">
+    <div class="login-card">
+      <p class="eyebrow">HMALL / LOTTERY</p>
+      <h1>抽奖运营台</h1>
+      <p class="subtle">登录后管理奖品、活动奖池和用户抽奖机会。</p>
+      <el-input v-model.trim="loginForm.username" placeholder="用户名" autocomplete="username"></el-input>
+      <el-input v-model="loginForm.password" type="password" placeholder="密码" autocomplete="current-password" @keyup.enter.native="login"></el-input>
+      <el-button type="primary" class="full-button" @click="login">登录</el-button>
+    </div>
+  </div>
 
+  <main v-else class="admin-shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">HMALL / LOTTERY</p>
+        <h1>抽奖活动管理</h1>
+        <p class="subtle">一次填写奖品和发放内容，再将奖品加入活动奖池。</p>
+      </div>
+      <nav aria-label="管理页面">
+        <a href="items.html">商品管理</a>
+        <a href="users.html">用户管理</a>
+        <a href="marketing.html" aria-current="page">抽奖活动</a>
+        <a href="benefits-admin.html">优惠券、会员与积分</a>
+        <a href="shipping-admin.html">物流管理</a>
+        <el-button size="small" @click="logout">退出</el-button>
+      </nav>
+    </header>
+
+    <section class="workflow" aria-label="抽奖配置顺序">
+      <div><span>01</span><strong>创建奖品</strong><small>填写展示信息和发放内容</small></div>
+      <div><span>02</span><strong>配置奖池</strong><small>设置权重、库存并发布活动</small></div>
+    </section>
+
+    <section class="panel" aria-labelledby="activity-heading">
+      <div class="section-heading">
+        <div><p class="eyebrow">ACTIVITIES</p><h2 id="activity-heading">活动</h2></div>
+        <el-button type="primary" @click="activityDialog = true">创建活动</el-button>
+      </div>
+      <el-table :data="activities" border empty-text="还没有活动，先创建一个活动">
+        <el-table-column prop="id" label="ID" width="90"></el-table-column>
+        <el-table-column prop="activityName" label="活动名称" min-width="160"></el-table-column>
+        <el-table-column label="状态" width="100"><template slot-scope="scope">{{ statusLabel(scope.row.status) }}</template></el-table-column>
+        <el-table-column prop="startTime" label="开始时间" min-width="170"></el-table-column>
+        <el-table-column prop="endTime" label="结束时间" min-width="170"></el-table-column>
+        <el-table-column label="操作" min-width="260">
+          <template slot-scope="scope">
+            <el-button size="mini" @click="openPool(scope.row)">配置奖池</el-button>
+            <el-button size="mini" type="success" :disabled="scope.row.status !== 'DRAFT'" @click="publish(scope.row)">发布</el-button>
+            <el-button size="mini" type="danger" :disabled="scope.row.status === 'DISABLED'" @click="disable(scope.row)">禁用</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </section>
+
+    <section class="panel" aria-labelledby="prize-heading">
+      <div class="section-heading">
+        <div><p class="eyebrow">PRIZE CATALOG</p><h2 id="prize-heading">奖品目录</h2></div>
+        <el-button type="primary" @click="prizeDialog = true">创建奖品</el-button>
+      </div>
+      <div class="search-row">
+        <el-input v-model="prizeSearch" clearable placeholder="按奖品名称搜索" @keyup.enter.native="loadPrizes"></el-input>
+        <el-button @click="loadPrizes">搜索</el-button>
+        <span class="subtle">共 {{ prizeTotal }} 个启用奖品</span>
+      </div>
+      <el-table :data="prizes" border empty-text="还没有奖品，创建奖品时可同时填写发放内容">
+        <el-table-column prop="id" label="奖品 ID" width="100"></el-table-column>
+        <el-table-column prop="prizeName" label="奖品名称" min-width="160"></el-table-column>
+        <el-table-column label="发放内容" width="110"><template slot-scope="scope">{{ rewardTypeLabel(scope.row.rewardType) }}</template></el-table-column>
+        <el-table-column prop="prizeLevel" label="等级" width="120"></el-table-column>
+        <el-table-column prop="quantity" label="发放数量" width="100"></el-table-column>
+      </el-table>
+      <p v-if="prizeTotal > prizes.length" class="subtle">当前显示前 100 个奖品，可按名称搜索其他奖品。</p>
+    </section>
+
+    <el-dialog title="创建活动" :visible.sync="activityDialog" width="560px">
+      <el-form :model="activityForm" label-width="110px">
+        <el-form-item label="活动名称"><el-input v-model="activityForm.activityName" maxlength="100"></el-input></el-form-item>
+        <el-form-item label="说明"><el-input v-model="activityForm.description" type="textarea" maxlength="1000"></el-input></el-form-item>
+        <el-form-item label="开始时间"><el-date-picker v-model="activityForm.startTime" type="datetime" value-format="yyyy-MM-ddTHH:mm:ss" placeholder="选择开始时间"></el-date-picker></el-form-item>
+        <el-form-item label="结束时间"><el-date-picker v-model="activityForm.endTime" type="datetime" value-format="yyyy-MM-ddTHH:mm:ss" placeholder="选择结束时间"></el-date-picker></el-form-item>
+        <el-form-item label="未中奖权重"><el-input-number v-model="activityForm.noWinWeight" :min="0"></el-input-number></el-form-item>
+      </el-form>
+      <span slot="footer"><el-button @click="activityDialog = false">取消</el-button><el-button type="primary" :loading="busy" @click="createActivity">创建活动</el-button></span>
+    </el-dialog>
+
+    <el-dialog title="创建奖品" :visible.sync="prizeDialog" width="600px">
+      <el-form :model="prizeForm" label-width="110px">
+        <el-form-item label="奖品名称"><el-input v-model="prizeForm.prizeName" maxlength="100"></el-input></el-form-item>
+        <el-form-item label="发放内容">
+          <el-select v-model="prizeForm.rewardType" @change="onPrizeTypeChange">
+            <el-option-group label="常用奖励">
+              <el-option label="电商商品" value="PRODUCT"></el-option>
+              <el-option label="积分" value="POINTS"></el-option>
+              <el-option label="会员" value="MEMBERSHIP"></el-option>
+            </el-option-group>
+            <el-option-group label="其他奖励">
+              <el-option label="优惠券" value="COUPON"></el-option>
+              <el-option label="抽奖机会" value="DRAW_CHANCE"></el-option>
+            </el-option-group>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="奖品等级">
+          <el-select v-model="prizeForm.prizeLevel">
+            <el-option label="一等奖" value="FIRST"></el-option><el-option label="二等奖" value="SECOND"></el-option>
+            <el-option label="三等奖" value="THIRD"></el-option><el-option label="安慰奖" value="CONSOLATION"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="prizeForm.rewardType === 'PRODUCT'" label="选择商品">
+          <el-select v-model="prizeForm.targetId" filterable remote clearable
+                     placeholder="输入商品关键词搜索" :remote-method="searchProducts"
+                     :loading="productSearchLoading" style="width:100%">
+            <el-option v-for="item in productOptions" :key="item.id"
+                       :label="productOptionLabel(item)" :value="item.id">
+              <div class="catalog-option product-option">
+                <img v-if="item.image" :src="item.image" alt="" class="product-option-image">
+                <span class="catalog-option-main"><strong>{{ item.name }}</strong><small>#{{ item.id }} · 库存 {{ item.stock }}</small></span>
+                <strong class="catalog-option-price">{{ formatCents(item.price) }}</strong>
+              </div>
+            </el-option>
+          </el-select>
+          <p class="field-hint">输入商品名称关键词，结果会显示售价和库存。</p>
+        </el-form-item>
+        <el-form-item v-if="prizeForm.rewardType === 'COUPON'" label="选择优惠券">
+          <el-select v-model="prizeForm.targetId" filterable remote clearable
+                     placeholder="输入优惠券名称或编码搜索" :remote-method="searchCoupons"
+                     :loading="couponSearchLoading" style="width:100%"
+                     @visible-change="loadCouponsOnOpen">
+            <el-option v-for="coupon in couponOptions" :key="coupon.id"
+                       :label="couponOptionLabel(coupon)" :value="coupon.id">
+              <div class="catalog-option coupon-option">
+                <span class="catalog-option-main">
+                  <strong>{{ coupon.templateName }}</strong>
+                  <small>{{ coupon.templateCode }} · {{ coupon.couponType === 'THRESHOLD' ? '满减券' : '无门槛券' }}</small>
+                </span>
+                <strong class="catalog-option-price">{{ formatCouponValue(coupon) }}</strong>
+              </div>
+            </el-option>
+          </el-select>
+          <p class="field-hint">打开下拉框会加载已启用模板，也可按名称或编码搜索。</p>
+        </el-form-item>
+        <el-form-item v-if="prizeForm.rewardType === 'MEMBERSHIP'" label="会员等级">
+          <el-input v-model.trim="prizeForm.membershipLevel" maxlength="30" placeholder="例如 GOLD、白银会员" @input="prizeForm.membershipProductCode = ''"></el-input>
+        </el-form-item>
+        <el-form-item v-if="prizeForm.rewardType === 'MEMBERSHIP'" label="会员天数">
+          <el-input-number v-model="prizeForm.durationDays" :min="1" :max="36500" :precision="0" @change="prizeForm.membershipProductCode = ''"></el-input-number>
+        </el-form-item>
+        <el-form-item v-if="prizeForm.rewardType !== 'MEMBERSHIP'" :label="rewardQuantityLabel">
+          <el-input-number v-model="prizeForm.quantity" :min="1" :max="prizeForm.rewardType === 'POINTS' ? 100000000 : 100" :precision="0"></el-input-number>
+        </el-form-item>
+        <el-form-item label="奖品图片">
+          <div class="admin-image-upload">
+            <a href="#" role="button" class="admin-image-upload__link" @click.prevent="choosePrizeImage">点击选择本地图片</a>
+            <input ref="prizeImageFile" type="file" class="admin-image-upload__input" tabindex="-1" aria-hidden="true"
+                   accept="image/jpeg,image/png,image/webp" @change="uploadPrizeImage">
+            <span class="admin-image-upload__name">{{ prizeImageFileName || '尚未选择文件' }}</span>
+            <span v-if="imageUploading" class="admin-image-upload__status">正在上传…</span>
+          </div>
+          <div class="field-hint">选择 JPEG、PNG 或 WebP 图片，最大 5 MiB；选择后会自动上传。</div>
+          <el-image v-if="prizeForm.imageUrl" :src="prizeForm.imageUrl" fit="contain" class="prize-image-preview"></el-image>
+        </el-form-item>
+        <el-form-item label="说明"><el-input v-model="prizeForm.description" type="textarea" maxlength="500"></el-input></el-form-item>
+        <el-form-item label="可叠加"><el-switch v-model="prizeForm.stackable"></el-switch></el-form-item>
+      </el-form>
+      <span slot="footer"><el-button @click="prizeDialog = false">取消</el-button><el-button type="primary" :loading="busy" :disabled="imageUploading" @click="createPrize">创建奖品</el-button></span>
+    </el-dialog>
+
+    <el-dialog :title="selectedActivity ? '配置奖池 · ' + selectedActivity.activityName : '配置奖池'" :visible.sync="poolDialog" width="860px">
+      <el-table :data="pool" border empty-text="奖池还没有奖品，请从下方加入">
+        <el-table-column prop="prizeName" label="奖品" min-width="160"></el-table-column>
+        <el-table-column label="类型" width="100"><template slot-scope="scope">{{ prizeTypeLabel(scope.row.prizeType) }}</template></el-table-column>
+        <el-table-column prop="weight" label="权重" width="90"></el-table-column>
+        <el-table-column prop="totalStock" label="总库存" width="100"></el-table-column>
+        <el-table-column prop="remainingStock" label="剩余库存" width="100"></el-table-column>
+        <el-table-column prop="sortOrder" label="顺序" width="80"></el-table-column>
+      </el-table>
+      <div class="pool-form">
+        <h3>加入奖品</h3>
+        <el-form :model="poolForm" label-width="100px">
+          <el-form-item label="选择奖品">
+            <el-select v-model="poolForm.prizeId" filterable placeholder="按名称选择已启用奖品">
+              <el-option v-for="prize in prizes" :key="prize.id" :label="prize.prizeName + ' · #' + prize.id" :value="prize.id"></el-option>
+            </el-select>
+            <el-button type="text" @click="prizeDialog = true">创建新奖品</el-button>
+          </el-form-item>
+          <el-form-item label="中奖权重"><el-input-number v-model="poolForm.weight" :min="1"></el-input-number></el-form-item>
+          <el-form-item label="总库存"><el-input-number v-model="poolForm.totalStock" :min="1"></el-input-number></el-form-item>
+          <el-form-item label="展示顺序"><el-input-number v-model="poolForm.sortOrder" :min="0"></el-input-number></el-form-item>
+        </el-form>
+        <el-button type="primary" :loading="busy" @click="addPrizeToActivity">加入奖池</el-button>
+      </div>
+      <span slot="footer"><el-button @click="poolDialog = false">关闭</el-button></span>
+    </el-dialog>
+  </main>
+</div>
+<script src="js/vue.js"></script>
+<script src="js/axios.min.js"></script>
+<script src="js/element.js"></script>
+<script src="js/admin-image-upload.js?v=20261022"></script>
+<script src="js/marketing.js?v=20261022b"></script>
+</body>
+</html>

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 public record DrawExecutionContext(long orderId, String requestId, long userId, long activityId, int drawCount,
-                                   LocalDate drawDate, int noWinWeight, List<DrawPrizeSnapshot> prizes,
+                                   LocalDate drawDate, int noWinWeight, List<DrawPrizeCandidate> prizes,
                                    LocalDateTime drawTime) {
     public DrawExecutionContext {
         if (orderId <= 0 || userId <= 0 || activityId <= 0) {

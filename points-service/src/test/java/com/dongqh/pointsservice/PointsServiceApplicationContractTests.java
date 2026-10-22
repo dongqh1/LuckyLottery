@@ -1,12 +1,11 @@
 package com.dongqh.pointsservice;
 
 import com.dongqh.hmapi.client.ItemClient;
+import com.dongqh.hmapi.client.LogisticsClient;
 import com.dongqh.hmapi.client.UserClient;
-import com.dongqh.hmsecurity.permission.PermissionMvcConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,13 +21,9 @@ class PointsServiceApplicationContractTests {
     }
 
     @Test
-    void enablesRequiredFeignClientsAndOnlyImportsSharedPermissionConfiguration() {
+    void enablesRequiredFeignClients() {
         EnableFeignClients feignClients = PointsServiceApplication.class.getAnnotation(EnableFeignClients.class);
         assertThat(feignClients).isNotNull();
-        assertThat(feignClients.clients()).contains(ItemClient.class, UserClient.class);
-
-        Import imports = PointsServiceApplication.class.getAnnotation(Import.class);
-        assertThat(imports).isNotNull();
-        assertThat(imports.value()).containsExactly(PermissionMvcConfiguration.class);
+        assertThat(feignClients.clients()).contains(ItemClient.class, UserClient.class, LogisticsClient.class);
     }
 }

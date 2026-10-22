@@ -1,0 +1,20 @@
+.draw-chance-dialog { max-height: 70vh; overflow-y: auto; }
+.draw-chance-balances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.draw-chance-balances > div { min-height: 82px; padding: 14px 18px; border: 1px solid #dde5ee; border-left: 4px solid #c59b43; background: #fbfcfe; display: flex; align-items: center; justify-content: space-between; }
+.draw-chance-balances span { color: #64748b; font-size: 13px; }
+.draw-chance-balances strong { color: #14243d; font: 600 30px Georgia, serif; }
+.draw-chance-adjustment { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 0 14px; padding: 14px; margin-bottom: 20px; background: #f5f7fa; border: 1px solid #dde5ee; }
+.draw-chance-adjustment .el-form-item { margin-bottom: 0; }
+.draw-chance-adjustment .el-form-item:nth-child(3) { flex: 1; min-width: 220px; }
+.draw-chance-adjustment .el-input { width: 100%; }
+.draw-chance-ledger-heading { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 12px; }
+.draw-chance-ledger-heading span { color: #64748b; font-size: 13px; }
+.draw-chance-ledger-pagination { display: flex; justify-content: flex-end; margin-top: 14px; }
+
+@media (max-width: 760px) {
+  .draw-chance-balances { grid-template-columns: 1fr; }
+  .draw-chance-adjustment { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .draw-chance-adjustment .el-form-item,
+  .draw-chance-adjustment .el-form-item:nth-child(3) { width: 100%; min-width: 0; }
+  .draw-chance-ledger-pagination { justify-content: flex-start; }
+}

@@ -11,7 +11,6 @@ public record CreateRewardDefinitionCommand(
         @NotBlank @Size(max = 100) String rewardName,
         @NotNull RewardType rewardType,
         @Positive Long targetId,
-        @NotNull @Positive Long quantity,
-        @Size(max = 2000) String configSnapshot
+        @NotNull @Positive Long quantity
 ) {
 }

@@ -49,7 +49,7 @@ class HmGatewayApplicationTests {
                 Map.entry("coupon-service", "lb://coupon-service"),
                 Map.entry("membership-service", "lb://membership-service"),
                 Map.entry("lottery-service", "lb://lottery-service"),
-                Map.entry("fulfillment-service", "lb://fulfillment-service")
+                Map.entry("logistics-service", "lb://logistics-service")
         ), routes);
         assertEquals(List.of(
                 "item-service",
@@ -61,7 +61,7 @@ class HmGatewayApplicationTests {
                 "coupon-service",
                 "membership-service",
                 "lottery-service",
-                "fulfillment-service"
+                "logistics-service"
         ), routeDefinitions.stream().map(RouteDefinition::getId).toList());
     }
 

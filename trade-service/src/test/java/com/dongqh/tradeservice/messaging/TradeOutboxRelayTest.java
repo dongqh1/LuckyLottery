@@ -1,6 +1,7 @@
 package com.dongqh.tradeservice.messaging;
 
 import com.dongqh.hmapi.dto.OrderCreatedMessage;
+import com.dongqh.hmapi.dto.OrderPaidMessage;
 import com.dongqh.tradeservice.mapper.TradeMessageOutboxMapper;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -47,12 +48,34 @@ class TradeOutboxRelayTest {
         verify(mapper, never()).markSent(anyLong(), anyString(), any());
     }
 
+    @Test
+    void publishesPaidEventsUsingThePaidRoutingContract() throws Exception {
+        TradeMessageOutboxMapper mapper = mock(TradeMessageOutboxMapper.class);
+        OrderCreatedPublisher publisher = mock(OrderCreatedPublisher.class);
+        ObjectMapper json = new ObjectMapper();
+        OrderPaidMessage event = new OrderPaidMessage(UUID.randomUUID(), 101L, 7L, LocalDateTime.now());
+        TradeMessageOutbox row = new TradeMessageOutbox();
+        row.setId(1L);
+        row.setEventType("ORDER_PAID");
+        row.setPayload(json.writeValueAsString(event));
+        row.setRetryCount(0);
+        row.setStatus(TradeOutboxStatus.PENDING);
+        when(mapper.selectRelayCandidates(any(), eq(10))).thenReturn(List.of(row));
+        when(mapper.claim(eq(1L), anyString(), any(), any())).thenReturn(1);
+
+        new TradeOutboxRelay(mapper, publisher, json, 10, Duration.ofSeconds(30)).relay();
+
+        verify(publisher).publish(event);
+        verify(mapper).markSent(eq(1L), anyString(), any());
+    }
+
     private TradeMessageOutbox row(ObjectMapper json) throws Exception {
         OrderCreatedMessage event = new OrderCreatedMessage(
                 UUID.randomUUID(), 101L, 7L, List.of(11L), LocalDateTime.now());
         TradeMessageOutbox row = new TradeMessageOutbox();
         row.setId(1L);
         row.setPayload(json.writeValueAsString(event));
+        row.setEventType("ORDER_CREATED");
         row.setRetryCount(0);
         row.setStatus(TradeOutboxStatus.PENDING);
         return row;

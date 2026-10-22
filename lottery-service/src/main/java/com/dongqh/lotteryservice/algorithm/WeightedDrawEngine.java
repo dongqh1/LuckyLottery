@@ -14,14 +14,14 @@ public class WeightedDrawEngine {
         this.randomSource = randomSource;
     }
 
-    public DrawCandidate select(List<PrizeWeightSnapshot> prizes, int noWinWeight) {
+    public DrawCandidate select(List<WeightedPrize> prizes, int noWinWeight) {
         Objects.requireNonNull(prizes, "prizes must not be null");
         if (noWinWeight < 0) {
             throw new IllegalArgumentException("noWinWeight must not be negative");
         }
 
         long totalWeight = noWinWeight;
-        for (PrizeWeightSnapshot prize : prizes) {
+        for (WeightedPrize prize : prizes) {
             validate(prize);
             try {
                 totalWeight = Math.addExact(totalWeight, prize.weight());
@@ -39,7 +39,7 @@ public class WeightedDrawEngine {
         }
 
         long upperExclusive = 0;
-        for (PrizeWeightSnapshot prize : prizes) {
+        for (WeightedPrize prize : prizes) {
             upperExclusive = Math.addExact(upperExclusive, prize.weight());
             if (selected < upperExclusive) {
                 if (!prize.enabled() || prize.remainingStock() == 0) {
@@ -51,7 +51,7 @@ public class WeightedDrawEngine {
         return DrawCandidate.noWin();
     }
 
-    private void validate(PrizeWeightSnapshot prize) {
+    private void validate(WeightedPrize prize) {
         if (prize == null) {
             throw new IllegalArgumentException("prize must not be null");
         }

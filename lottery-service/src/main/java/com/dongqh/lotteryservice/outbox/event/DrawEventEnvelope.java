@@ -3,9 +3,11 @@ package com.dongqh.lotteryservice.outbox.event;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public record DrawEventEnvelope(UUID eventId, DrawEventType eventType, int eventVersion,
@@ -40,7 +42,14 @@ public record DrawEventEnvelope(UUID eventId, DrawEventType eventType, int event
 
     public <T> T payloadAs(Class<T> payloadType, ObjectMapper objectMapper) {
         try {
-            return objectMapper.treeToValue(payload, payloadType);
+            JsonNode compatiblePayload = payload;
+            if (payloadType == PrizeFulfillmentRequestedEvent.class && payload.isObject()) {
+                ObjectNode fulfillmentPayload = (ObjectNode) payload.deepCopy();
+                Set<String> supportedFields = Set.of("benefitId", "drawRecordId", "prizeId");
+                fulfillmentPayload.retain(supportedFields);
+                compatiblePayload = fulfillmentPayload;
+            }
+            return objectMapper.treeToValue(compatiblePayload, payloadType);
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("Event payload cannot be converted to " + payloadType.getSimpleName(), exception);
         }

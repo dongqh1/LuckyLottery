@@ -1,22 +1,16 @@
 package com.dongqh.fulfillmentservice.worker;
 
-import com.dongqh.fulfillmentservice.enums.AttemptOperation;
-import com.dongqh.fulfillmentservice.enums.FulfillmentType;
-import com.dongqh.fulfillmentservice.domain.model.CouponFulfillmentPayload;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentClaim;
 import com.dongqh.fulfillmentservice.domain.model.FulfillmentGatewayResult;
 import com.dongqh.fulfillmentservice.domain.model.LogisticsFulfillmentPayload;
-import com.dongqh.fulfillmentservice.domain.model.MembershipFulfillmentPayload;
-import com.dongqh.fulfillmentservice.domain.model.PointsFulfillmentPayload;
-import com.dongqh.fulfillmentservice.service.FulfillmentTaskStateService;
-import com.dongqh.fulfillmentservice.service.port.CouponFulfillmentGateway;
-import com.dongqh.fulfillmentservice.service.port.LogisticsFulfillmentGateway;
-import com.dongqh.fulfillmentservice.service.port.MembershipFulfillmentGateway;
-import com.dongqh.fulfillmentservice.service.port.PointsFulfillmentGateway;
+import com.dongqh.fulfillmentservice.domain.model.shipping.LogisticsFulfillmentRequest;
 import com.dongqh.fulfillmentservice.domain.shipping.ShippingDomainException;
 import com.dongqh.fulfillmentservice.domain.shipping.ShippingErrorCode;
+import com.dongqh.fulfillmentservice.enums.AttemptOperation;
+import com.dongqh.fulfillmentservice.enums.FulfillmentType;
 import com.dongqh.fulfillmentservice.integration.shipping.LogisticsRequestAssembler;
-import com.dongqh.fulfillmentservice.domain.model.shipping.LogisticsFulfillmentRequest;
+import com.dongqh.fulfillmentservice.service.FulfillmentTaskStateService;
+import com.dongqh.fulfillmentservice.service.port.LogisticsFulfillmentGateway;
 import com.dongqh.fulfillmentservice.service.shipping.ShippingOrderFulfillmentProjector;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,9 +26,6 @@ import java.util.Optional;
 public class FulfillmentWorker {
 
     private final FulfillmentTaskStateService state;
-    private final CouponFulfillmentGateway coupons;
-    private final PointsFulfillmentGateway points;
-    private final MembershipFulfillmentGateway memberships;
     private final LogisticsFulfillmentGateway logistics;
     private final LogisticsRequestAssembler logisticsAssembler;
     private final ShippingOrderFulfillmentProjector shippingProjector;
@@ -45,9 +36,6 @@ public class FulfillmentWorker {
 
     public FulfillmentWorker(
             FulfillmentTaskStateService state,
-            CouponFulfillmentGateway coupons,
-            PointsFulfillmentGateway points,
-            MembershipFulfillmentGateway memberships,
             LogisticsFulfillmentGateway logistics,
             LogisticsRequestAssembler logisticsAssembler,
             ShippingOrderFulfillmentProjector shippingProjector,
@@ -62,9 +50,6 @@ public class FulfillmentWorker {
         requirePositive(leaseDuration, "leaseDuration");
         requirePositive(compensationGrace, "compensationGrace");
         this.state = state;
-        this.coupons = coupons;
-        this.points = points;
-        this.memberships = memberships;
         this.logistics = logistics;
         this.logisticsAssembler = logisticsAssembler;
         this.shippingProjector = shippingProjector;
@@ -93,9 +78,7 @@ public class FulfillmentWorker {
     }
 
     private void execute(Iterable<FulfillmentClaim> claims) {
-        for (FulfillmentClaim claim : claims) {
-            execute(claim);
-        }
+        for (FulfillmentClaim claim : claims) execute(claim);
     }
 
     private void execute(FulfillmentClaim claim) {
@@ -106,7 +89,7 @@ public class FulfillmentWorker {
         } catch (ShippingDomainException exception) {
             result = classifyShippingException(exception);
         } catch (RuntimeException exception) {
-            result = FulfillmentGatewayResult.retryable("GATEWAY_EXCEPTION", "Gateway调用异常");
+            result = FulfillmentGatewayResult.retryable("GATEWAY_EXCEPTION", "物流网关调用异常");
         }
         long durationMs = Math.max(0, (System.nanoTime() - startedAt) / 1_000_000);
         state.recordResult(claim, result, durationMs);
@@ -116,36 +99,29 @@ public class FulfillmentWorker {
     }
 
     private FulfillmentGatewayResult route(FulfillmentClaim claim) {
+        if (claim.fulfillmentType() != FulfillmentType.LOGISTICS) {
+            return FulfillmentGatewayResult.permanent(
+                    "UNSUPPORTED_TASK_TYPE", "物流服务只处理实物发货任务");
+        }
         if (claim.operation() == AttemptOperation.QUERY) {
-            return switch (claim.fulfillmentType()) {
-                case COUPON -> coupons.query(claim.fulfillmentNo());
-                case POINTS -> points.query(claim.fulfillmentNo());
-                case MEMBERSHIP -> memberships.query(claim.fulfillmentNo());
-                case LOGISTICS -> logistics.query(claim.fulfillmentNo());
-            };
+            return logistics.query(claim.fulfillmentNo());
         }
         try {
-            return switch (claim.fulfillmentType()) {
-                case COUPON -> coupons.execute(claim.fulfillmentNo(), claim.targetUserId(),
-                        json.readValue(claim.requestPayload(), CouponFulfillmentPayload.class));
-                case POINTS -> points.execute(claim.fulfillmentNo(), claim.targetUserId(),
-                        json.readValue(claim.requestPayload(), PointsFulfillmentPayload.class));
-                case MEMBERSHIP -> memberships.execute(claim.fulfillmentNo(), claim.targetUserId(),
-                        json.readValue(claim.requestPayload(), MembershipFulfillmentPayload.class));
-                case LOGISTICS -> logistics.execute(logisticsAssembler.assemble(claim,
-                        json.readValue(claim.requestPayload(), LogisticsFulfillmentPayload.class)));
-            };
+            LogisticsFulfillmentPayload payload = json.readValue(
+                    claim.requestPayload(), LogisticsFulfillmentPayload.class);
+            LogisticsFulfillmentRequest request = logisticsAssembler.assemble(claim, payload);
+            return logistics.execute(request);
         } catch (JacksonException exception) {
-            return FulfillmentGatewayResult.permanent("INVALID_SNAPSHOT", "履约快照无法解析");
+            return FulfillmentGatewayResult.permanent("INVALID_SNAPSHOT", "物流请求数据无效");
         }
     }
 
     private FulfillmentGatewayResult classifyShippingException(ShippingDomainException exception) {
         if (exception.errorCode() == ShippingErrorCode.SHIPPING_REQUEST_INVALID
                 || exception.errorCode() == ShippingErrorCode.SHIPPING_NOT_FOUND) {
-            return FulfillmentGatewayResult.permanent("INVALID_SNAPSHOT", "物流履约快照无法匹配");
+            return FulfillmentGatewayResult.permanent("INVALID_SNAPSHOT", "物流请求与发货单信息不匹配");
         }
-        return FulfillmentGatewayResult.retryable("GATEWAY_EXCEPTION", "Gateway调用异常");
+        return FulfillmentGatewayResult.retryable("GATEWAY_EXCEPTION", "物流网关调用异常");
     }
 
     private void requirePositive(Duration value, String name) {

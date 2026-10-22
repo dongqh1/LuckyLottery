@@ -10,6 +10,7 @@ import com.dongqh.lotteryservice.enums.prizecatalog.PrizeErrorCode;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeLevel;
 import com.dongqh.lotteryservice.enums.prizecatalog.PrizeType;
 import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
+import com.dongqh.lotteryservice.domain.dto.prizecatalog.CreateRewardDefinitionCommand;
 import com.dongqh.lotteryservice.domain.dto.prizecatalog.CreatePrizeCommand;
 import com.dongqh.lotteryservice.domain.dto.prizecatalog.PrizeQuery;
 import com.dongqh.lotteryservice.domain.dto.prizecatalog.UpdatePrizeCommand;
@@ -17,7 +18,10 @@ import com.dongqh.lotteryservice.domain.po.prizecatalog.PrizeRow;
 import com.dongqh.lotteryservice.domain.po.prizecatalog.RewardDefinitionRow;
 import com.dongqh.lotteryservice.mapper.prizecatalog.PrizeCatalogMapper;
 import com.dongqh.lotteryservice.mapper.prizecatalog.RewardDefinitionMapper;
+import com.dongqh.lotteryservice.domain.vo.prizecatalog.RewardDefinitionView;
 import com.dongqh.lotteryservice.service.prizecatalog.PrizeCatalogService;
+import com.dongqh.lotteryservice.service.prizecatalog.RewardDefinitionAdminService;
+import com.dongqh.hmapi.dto.MembershipRewardProductDTO;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +41,7 @@ import static org.mockito.Mockito.when;
 class PrizeCatalogServiceTests {
     private PrizeCatalogMapper mapper;
     private RewardDefinitionMapper rewards;
+    private RewardDefinitionAdminService rewardCreator;
     private PrizeCatalogService service;
 
     @BeforeAll
@@ -48,41 +53,87 @@ class PrizeCatalogServiceTests {
     void setUp() {
         mapper = mock(PrizeCatalogMapper.class);
         rewards = mock(RewardDefinitionMapper.class);
-        service = new PrizeCatalogService(mapper, rewards);
+        rewardCreator = mock(RewardDefinitionAdminService.class);
+        service = new PrizeCatalogService(mapper, rewards, rewardCreator);
     }
 
     @Test
-    void createNormalizesFieldsBindsCompatibleRewardAndStartsEnabled() {
-        when(rewards.selectById(7L)).thenReturn(reward(7L, RewardType.COUPON, 1));
+    void createBuildsRewardAndPrizeFromOneCommand() {
+        when(rewardCreator.create(any(CreateRewardDefinitionCommand.class))).thenReturn(
+                new RewardDefinitionView(7L, "PRIZE-test", "咖啡券", RewardType.COUPON,
+                        31L, 2L, 1, null, null));
+        when(rewards.selectById(7L)).thenReturn(reward(7L, RewardType.COUPON, 1, 31L, 2L));
         when(mapper.insert(any(PrizeRow.class))).thenAnswer(call -> {
             ((PrizeRow) call.getArgument(0)).setId(9L);
             return 1;
         });
 
-        var view = service.create(new CreatePrizeCommand("  咖啡券  ", PrizeType.COUPON,
-                PrizeLevel.FIRST, " https://cdn.example/prize.jpg ", " 说明 ", true, 7L));
+        var view = service.create(new CreatePrizeCommand("  咖啡券  ", RewardType.COUPON,
+                PrizeLevel.FIRST, " https://cdn.example/prize.jpg ", " 说明 ", true,
+                31L, 2L));
 
+        ArgumentCaptor<CreateRewardDefinitionCommand> reward = ArgumentCaptor.forClass(CreateRewardDefinitionCommand.class);
+        verify(rewardCreator).create(reward.capture());
+        assertThat(reward.getValue().rewardCode()).startsWith("PRIZE-");
+        assertThat(reward.getValue().rewardName()).isEqualTo("咖啡券");
+        assertThat(reward.getValue().rewardType()).isEqualTo(RewardType.COUPON);
+        assertThat(reward.getValue().targetId()).isEqualTo(31L);
+        assertThat(reward.getValue().quantity()).isEqualTo(2L);
         ArgumentCaptor<PrizeRow> inserted = ArgumentCaptor.forClass(PrizeRow.class);
         verify(mapper).insert(inserted.capture());
         assertThat(inserted.getValue().getPrizeName()).isEqualTo("咖啡券");
+        assertThat(inserted.getValue().getPrizeType()).isEqualTo(PrizeType.COUPON);
         assertThat(inserted.getValue().getStatus()).isEqualTo(1);
         assertThat(inserted.getValue().getRewardDefinitionId()).isEqualTo(7L);
         assertThat(view.id()).isEqualTo(9L);
         assertThat(view.imageUrl()).isEqualTo("https://cdn.example/prize.jpg");
         assertThat(view.description()).isEqualTo("说明");
         assertThat(view.rewardType()).isEqualTo(RewardType.COUPON);
+        assertThat(view.targetId()).isEqualTo(31L);
+        assertThat(view.quantity()).isEqualTo(2L);
     }
 
     @Test
-    void createRejectsMissingDisabledAndIncompatibleRewards() {
-        var command = create(7L, PrizeType.COUPON);
-        error(() -> service.create(create(null, PrizeType.COUPON)), PrizeErrorCode.REWARD_BINDING_INVALID);
-        error(() -> service.create(command), PrizeErrorCode.REWARD_BINDING_INVALID);
-        when(rewards.selectById(7L)).thenReturn(reward(7L, RewardType.COUPON, 0));
-        error(() -> service.create(command), PrizeErrorCode.REWARD_BINDING_INVALID);
-        when(rewards.selectById(7L)).thenReturn(reward(7L, RewardType.POINTS, 1));
-        error(() -> service.create(command), PrizeErrorCode.REWARD_BINDING_INVALID);
-        verify(mapper, never()).insert(any(PrizeRow.class));
+    void createMapsProductRewardToPhysicalPrize() {
+        when(rewardCreator.create(any(CreateRewardDefinitionCommand.class))).thenReturn(
+                new RewardDefinitionView(12L, "PRIZE-product", "水杯", RewardType.PRODUCT,
+                        88L, 1L, 1, null, null));
+        when(rewards.selectById(12L)).thenReturn(reward(12L, RewardType.PRODUCT, 1, 88L, 1L));
+        when(mapper.insert(any(PrizeRow.class))).thenAnswer(call -> {
+            ((PrizeRow) call.getArgument(0)).setId(13L);
+            return 1;
+        });
+
+        service.create(new CreatePrizeCommand("水杯", RewardType.PRODUCT, PrizeLevel.SECOND,
+                null, null, false, 88L, 1L));
+
+        ArgumentCaptor<PrizeRow> inserted = ArgumentCaptor.forClass(PrizeRow.class);
+        verify(mapper).insert(inserted.capture());
+        assertThat(inserted.getValue().getPrizeType()).isEqualTo(PrizeType.PHYSICAL);
+    }
+
+    @Test
+    void createBuildsMembershipRewardProductFromLevelAndDurationWithoutManualTargetId() {
+        when(rewardCreator.createRewardProduct("LOTTERY-MEMBER-1", "新会员礼", "GOLD", 14))
+                .thenReturn(new MembershipRewardProductDTO(22L, "LOTTERY-MEMBER-1", "GOLD", 14, 1));
+        when(rewardCreator.create(any(CreateRewardDefinitionCommand.class))).thenReturn(
+                new RewardDefinitionView(23L, "PRIZE-membership", "新会员礼", RewardType.MEMBERSHIP,
+                        22L, 1L, 1, null, null));
+        when(rewards.selectById(23L)).thenReturn(reward(23L, RewardType.MEMBERSHIP, 1, 22L, 1L));
+        when(mapper.insert(any(PrizeRow.class))).thenAnswer(call -> {
+            ((PrizeRow) call.getArgument(0)).setId(24L);
+            return 1;
+        });
+
+        var result = service.create(new CreatePrizeCommand("新会员礼", RewardType.MEMBERSHIP,
+                PrizeLevel.THIRD, null, null, false, null, 1L,
+                "LOTTERY-MEMBER-1", "GOLD", 14));
+
+        verify(rewardCreator).createRewardProduct("LOTTERY-MEMBER-1", "新会员礼", "GOLD", 14);
+        ArgumentCaptor<CreateRewardDefinitionCommand> reward = ArgumentCaptor.forClass(CreateRewardDefinitionCommand.class);
+        verify(rewardCreator).create(reward.capture());
+        assertThat(reward.getValue().targetId()).isEqualTo(22L);
+        assertThat(result.targetId()).isEqualTo(22L);
     }
 
     @Test
@@ -128,28 +179,27 @@ class PrizeCatalogServiceTests {
     void updateKeepsStatusAndExistingBindingWhenOmitted() {
         PrizeRow row = prize(2L, 0, 7L);
         when(mapper.selectById(2L)).thenReturn(row);
-        when(rewards.selectById(7L)).thenReturn(reward(7L, RewardType.POINTS, 1));
+        when(rewards.selectById(7L)).thenReturn(reward(7L, RewardType.POINTS, 1, 31L, 50L));
 
         var view = service.update(2L, new UpdatePrizeCommand(" 新奖品 ", PrizeType.POINTS,
-                PrizeLevel.SECOND, "  ", " 新说明 ", false, null));
+                PrizeLevel.SECOND, "  ", " 新说明 ", false));
 
         verify(mapper).updateById(row);
         assertThat(view.prizeName()).isEqualTo("新奖品");
         assertThat(view.imageUrl()).isNull();
         assertThat(view.description()).isEqualTo("新说明");
         assertThat(view.status()).isZero();
-        assertThat(view.rewardDefinitionId()).isEqualTo(7L);
+        assertThat(view.targetId()).isEqualTo(31L);
+        assertThat(row.getRewardDefinitionId()).isEqualTo(7L);
     }
 
     @Test
-    void updateRejectsBindingChangeAndIncompatibleType() {
+    void updateRejectsPrizeTypeThatDoesNotMatchExistingRewardType() {
         PrizeRow row = prize(2L, 1, 7L);
         when(mapper.selectById(2L)).thenReturn(row);
-        error(() -> service.update(2L, new UpdatePrizeCommand("x", PrizeType.POINTS,
-                PrizeLevel.SECOND, null, null, false, 8L)), PrizeErrorCode.REWARD_BINDING_INVALID);
         when(rewards.selectById(7L)).thenReturn(reward(7L, RewardType.COUPON, 1));
         error(() -> service.update(2L, new UpdatePrizeCommand("x", PrizeType.POINTS,
-                PrizeLevel.SECOND, null, null, false, null)), PrizeErrorCode.REWARD_BINDING_INVALID);
+                PrizeLevel.SECOND, null, null, false)), PrizeErrorCode.REWARD_BINDING_INVALID);
         verify(mapper, never()).updateById(any(PrizeRow.class));
     }
 
@@ -166,10 +216,6 @@ class PrizeCatalogServiceTests {
         verify(mapper, never()).updateById(disabled);
     }
 
-    private CreatePrizeCommand create(Long rewardId, PrizeType type) {
-        return new CreatePrizeCommand("奖品", type, PrizeLevel.FIRST, null, null, true, rewardId);
-    }
-
     private PrizeRow prize(long id, int status, Long rewardId) {
         PrizeRow row = new PrizeRow();
         row.setId(id);
@@ -183,10 +229,16 @@ class PrizeCatalogServiceTests {
     }
 
     private RewardDefinitionRow reward(long id, RewardType type, int status) {
+        return reward(id, type, status, null, 1L);
+    }
+
+    private RewardDefinitionRow reward(long id, RewardType type, int status, Long targetId, Long quantity) {
         RewardDefinitionRow row = new RewardDefinitionRow();
         row.setId(id);
         row.setRewardType(type);
         row.setStatus(status);
+        row.setTargetId(targetId);
+        row.setQuantity(quantity);
         return row;
     }
 

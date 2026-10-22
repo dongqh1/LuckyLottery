@@ -1,7 +1,7 @@
 package com.dongqh.lotteryservice.service.drawtransaction;
 
 import com.dongqh.lotteryservice.algorithm.DrawCandidate;
-import com.dongqh.lotteryservice.algorithm.PrizeWeightSnapshot;
+import com.dongqh.lotteryservice.algorithm.WeightedPrize;
 import com.dongqh.lotteryservice.algorithm.WeightedDrawEngine;
 import com.dongqh.lotteryservice.enums.draworder.DrawOrderStatus;
 import com.dongqh.lotteryservice.mapper.draworder.DrawOrderMapper;
@@ -14,9 +14,9 @@ import com.dongqh.lotteryservice.mapper.drawtransaction.DrawRecordMapper;
 import com.dongqh.lotteryservice.mapper.drawtransaction.UserBenefitMapper;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawExecutionContext;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawExecutionResult;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawPrizeSnapshot;
+import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawPrizeCandidate;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawResultItem;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.RewardSnapshot;
+import com.dongqh.lotteryservice.enums.prizecatalog.RewardType;
 import com.dongqh.lotteryservice.exception.LotteryDomainException;
 import com.dongqh.lotteryservice.enums.LotteryErrorCode;
 import com.dongqh.lotteryservice.outbox.event.DrawConfirmedEvent;
@@ -57,8 +57,8 @@ public class DrawTransactionService {
 
     @Transactional(propagation = Propagation.REQUIRED)
     public DrawExecutionResult execute(DrawExecutionContext context) {
-        List<PrizeWeightSnapshot> weights = context.prizes().stream()
-                .map(DrawPrizeSnapshot::toWeightSnapshot)
+        List<WeightedPrize> weights = context.prizes().stream()
+                .map(DrawPrizeCandidate::toWeightedPrize)
                 .toList();
         List<DrawResultItem> results = new ArrayList<>(context.drawCount());
 
@@ -66,7 +66,7 @@ public class DrawTransactionService {
 
             DrawCandidate candidate = drawEngine.select(weights, context.noWinWeight());
 
-            DrawPrizeSnapshot wonPrize = resolveFinalWin(candidate, context.prizes());
+            DrawPrizeCandidate wonPrize = resolveFinalWin(candidate, context.prizes());
 
             results.add(persistResult(context, sequence, wonPrize));
         }
@@ -84,19 +84,20 @@ public class DrawTransactionService {
                 context.drawTime(), results);
     }
 
-    private DrawPrizeSnapshot resolveFinalWin(DrawCandidate candidate, List<DrawPrizeSnapshot> snapshots) {
+    private DrawPrizeCandidate resolveFinalWin(DrawCandidate candidate, List<DrawPrizeCandidate> candidates) {
         if (candidate.type() == DrawCandidate.Type.NO_WIN) {
             return null;
         }
-        DrawPrizeSnapshot snapshot = snapshots.stream()
+        DrawPrizeCandidate selectedCandidate = candidates.stream()
                 .filter(prize -> prize.activityPrizeId() == candidate.activityPrizeId()
                         && prize.prizeId() == candidate.prizeId())
                 .findFirst()
                 .orElseThrow(() -> new LotteryDomainException(LotteryErrorCode.DRAW_TRANSACTION_FAILED));
-        return inventoryMapper.decrementIfAvailable(snapshot.activityPrizeId()) == 1 ? snapshot : null;
+        return inventoryMapper.decrementIfAvailable(selectedCandidate.activityPrizeId()) == 1
+                ? selectedCandidate : null;
     }
 
-    private DrawResultItem persistResult(DrawExecutionContext context, int sequence, DrawPrizeSnapshot prize) {
+    private DrawResultItem persistResult(DrawExecutionContext context, int sequence, DrawPrizeCandidate prize) {
         DrawRecordRow record = new DrawRecordRow();
         record.setOrderId(context.orderId());
         record.setRequestId(context.requestId());
@@ -107,52 +108,27 @@ public class DrawTransactionService {
         record.setDrawTime(context.drawTime());
         if (prize != null) {
             record.setPrizeId(prize.prizeId());
-            record.setPrizeName(prize.prizeName());
-            record.setPrizeType(prize.prizeType());
-            record.setPrizeImageUrl(prize.prizeImageUrl());
-            copyReward(prize.rewardSnapshot(), record);
         }
         recordMapper.insert(record);
 
         Long benefitId = prize == null ? null : persistPendingBenefit(context, record, prize);
         return new DrawResultItem(record.getId(), sequence, record.getResultType(), record.getPrizeId(),
-                record.getPrizeName(), record.getPrizeType(), record.getPrizeImageUrl(), benefitId,
-                prize == null ? null : prize.rewardSnapshot());
+                prize == null ? null : prize.prizeName(), prize == null ? null : prize.prizeType(),
+                prize == null ? null : prize.prizeImageUrl(), benefitId,
+                prize != null && prize.rewardType() == RewardType.PRODUCT ? prize.rewardTargetId() : null);
     }
 
     private Long persistPendingBenefit(DrawExecutionContext context, DrawRecordRow record,
-                                      DrawPrizeSnapshot prize) {
+                                      DrawPrizeCandidate prize) {
         UserBenefitRow benefit = new UserBenefitRow();
         benefit.setDrawRecordId(record.getId());
         benefit.setUserId(context.userId());
         benefit.setPrizeId(prize.prizeId());
-        benefit.setPrizeType(prize.prizeType());
-        copyReward(prize.rewardSnapshot(), benefit);
         benefit.setQuantity(1);
         benefit.setStatus(BenefitStatus.PENDING);
         benefit.setObtainedAt(context.drawTime());
         benefitMapper.insert(benefit);
         return benefit.getId();
-    }
-
-    private void copyReward(RewardSnapshot reward, DrawRecordRow record) {
-        if (reward == null) return;
-        record.setRewardDefinitionId(reward.rewardDefinitionId());
-        record.setRewardType(reward.rewardType());
-        record.setRewardTargetId(reward.targetId());
-        record.setRewardQuantity(reward.quantity());
-        record.setRewardPayload(reward.payloadJson());
-        record.setRewardFingerprint(reward.fingerprint());
-    }
-
-    private void copyReward(RewardSnapshot reward, UserBenefitRow benefit) {
-        if (reward == null) return;
-        benefit.setRewardDefinitionId(reward.rewardDefinitionId());
-        benefit.setRewardType(reward.rewardType());
-        benefit.setRewardTargetId(reward.targetId());
-        benefit.setRewardQuantity(reward.quantity());
-        benefit.setRewardPayload(reward.payloadJson());
-        benefit.setRewardFingerprint(reward.fingerprint());
     }
 
     private void appendConfirmedEvent(DrawExecutionContext context) {
@@ -162,12 +138,8 @@ public class DrawTransactionService {
     }
 
     private void appendFulfillmentEvent(DrawExecutionContext context, DrawResultItem item) {
-        RewardSnapshot reward = item.rewardSnapshot();
         outboxService.append(DrawEventEnvelope.create(DrawEventType.PRIZE_FULFILLMENT_REQUESTED,
                 context.requestId(), context.userId(), context.activityId(), context.orderId(), context.drawTime(),
-                new PrizeFulfillmentRequestedEvent(item.benefitId(), item.recordId(), item.prizeId(), item.prizeType(),
-                        reward == null ? null : reward.rewardDefinitionId(),
-                        reward == null ? null : reward.rewardType(),
-                        reward == null ? null : reward.fingerprint()), objectMapper));
+                new PrizeFulfillmentRequestedEvent(item.benefitId(), item.recordId(), item.prizeId()), objectMapper));
     }
 }

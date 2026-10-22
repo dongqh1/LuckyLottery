@@ -7,7 +7,7 @@ import com.dongqh.lotteryservice.domain.model.drawchance.DrawChanceReservationCo
 import com.dongqh.lotteryservice.domain.model.drawchance.DrawChanceReservationResult;
 import com.dongqh.lotteryservice.service.drawchance.DrawChanceReservationService;
 import com.dongqh.lotteryservice.service.draweligibility.DrawEligibilityService;
-import com.dongqh.lotteryservice.domain.model.draweligibility.EligibilitySnapshot;
+import com.dongqh.lotteryservice.domain.model.draweligibility.DrawEligibility;
 import com.dongqh.lotteryservice.domain.dto.draworder.DrawCommand;
 import com.dongqh.lotteryservice.domain.po.draworder.DrawOrderRow;
 import com.dongqh.lotteryservice.enums.draworder.DrawOrderStatus;
@@ -21,7 +21,6 @@ import com.dongqh.lotteryservice.mapper.drawtransaction.DrawRecordMapper;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawExecutionContext;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawExecutionResult;
 import com.dongqh.lotteryservice.domain.model.drawtransaction.DrawResultItem;
-import com.dongqh.lotteryservice.domain.model.drawtransaction.RewardSnapshot;
 import com.dongqh.lotteryservice.service.drawtransaction.DrawTransactionService;
 import com.dongqh.lotteryservice.enums.LotteryErrorCode;
 import com.dongqh.lotteryservice.lock.DrawLockService;
@@ -75,8 +74,8 @@ public class LotteryDrawService {
         DrawOrderRow existing = orders.selectByRequestId(command.requestId());
         if (existing != null) return resolveExisting(existing, command, userId);
 
-        EligibilitySnapshot snapshot = eligibility.load(command.activityId());
-        LocalDate drawDate = snapshot.snapshotTime().toLocalDate();
+        DrawEligibility drawEligibility = eligibility.load(command.activityId());
+        LocalDate drawDate = drawEligibility.evaluatedAt().toLocalDate();
         DrawOrderRow[] createdOrder = new DrawOrderRow[1];
         try {
             LockedDraw locked = locks.execute(command.activityId(), userId, () -> {
@@ -105,14 +104,14 @@ public class LotteryDrawService {
             DrawOrderRow order = locked.order();
             DrawExecutionResult result = transactions.execute(new DrawExecutionContext(order.getId(),
                     command.requestId(), userId, command.activityId(), command.drawCount(),
-                    locked.drawDate(), snapshot.noWinWeight(), snapshot.prizes(),
-                    snapshot.snapshotTime()));
+                    locked.drawDate(), drawEligibility.noWinWeight(), drawEligibility.prizes(),
+                    drawEligibility.evaluatedAt()));
             return fromExecution(order, result);
         } catch (LotteryDomainException error) {
-            compensateIfNeeded(createdOrder[0], snapshot.snapshotTime());
+            compensateIfNeeded(createdOrder[0], drawEligibility.evaluatedAt());
             throw error;
         } catch (RuntimeException error) {
-            compensateIfNeeded(createdOrder[0], snapshot.snapshotTime());
+            compensateIfNeeded(createdOrder[0], drawEligibility.evaluatedAt());
             throw new LotteryDomainException(LotteryErrorCode.DRAW_TRANSACTION_FAILED);
         }
     }
@@ -158,10 +157,8 @@ public class LotteryDrawService {
     }
 
     private DrawResultView toView(DrawResultItem item) {
-        RewardSnapshot reward = item.rewardSnapshot();
-        Long itemId = reward != null && reward.rewardType() == RewardType.PRODUCT ? reward.targetId() : null;
         return new DrawResultView(item.recordId(), item.sequenceNo(), item.resultType(), item.prizeId(),
-                item.prizeName(), item.prizeType(), item.prizeImageUrl(), item.benefitId(), itemId);
+                item.prizeName(), item.prizeType(), item.prizeImageUrl(), item.benefitId(), item.itemId());
     }
 
     private DrawResultView toView(DrawRecordRow row) {

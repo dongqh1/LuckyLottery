@@ -12,6 +12,7 @@
     .cash-price,.stock{color:#777;font-size:13px}.address-list{display:grid;gap:10px;margin:14px 0}.address-option{display:block;border:1px solid #ddd;border-radius:6px;padding:12px;cursor:pointer}
     .address-option.active{border-color:#e4393c;background:#fff8f8}.order-card{border-top:1px solid #eee;padding:16px 0;display:grid;gap:6px}.status{color:#d66b00;font-weight:600}
     .action{background:#e4393c;color:#fff;border:0;padding:9px 22px;border-radius:4px;cursor:pointer}.action[disabled]{background:#bbb;cursor:not-allowed}.notice{padding:12px;background:#fff8e6;border-radius:5px}.success{color:#168443}
+    .ledger-toolbar{display:flex;gap:8px;padding:14px 15px}.ledger-toolbar .secondary.active{background:#c81623;color:#fff}.ledger-wrap{padding:0 15px 15px;overflow-x:auto}.ledger-wrap .table{min-width:680px}.ledger-wrap .table th,.ledger-wrap .table td{padding:12px}.ledger-amount{font-weight:700;white-space:nowrap}.ledger-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:0 15px 15px}.ledger-pagination .secondary:disabled{border-color:#ddd;color:#aaa;cursor:not-allowed}.ledger-error{padding:0 15px 15px}.tracking-panel{margin-top:8px;padding:12px;background:#fafafa;border:1px solid #eee}.tracking-panel ol{padding-left:20px}.tracking-panel li{margin:8px 0}.tracking-panel time{display:block;color:#999;font-size:12px}.tracking-error{color:#b42318}
   </style>
 </head>
 <body>
@@ -24,6 +25,32 @@
       <div class="panel-title"><h2>我的积分</h2><button class="secondary" @click="loadAll">刷新</button></div>
       <div class="account-summary"><div><div class="metric-label">可用积分</div><div class="metric">{{account.balance || 0}}</div></div></div>
       <p class="error" v-if="error">{{error}}</p><p class="success" v-if="message">{{message}}</p>
+    </section>
+    <section class="panel" aria-labelledby="ledger-heading">
+      <div class="panel-title"><h2 id="ledger-heading">积分流水</h2><span class="muted">共 {{ledgers.total || 0}} 条</span></div>
+      <div class="ledger-toolbar" role="group" aria-label="按收支筛选积分流水">
+        <button type="button" class="secondary" :class="{active:ledgerDirection===''}" @click="setLedgerDirection('')">全部</button>
+        <button type="button" class="secondary" :class="{active:ledgerDirection==='CREDIT'}" @click="setLedgerDirection('CREDIT')">收入</button>
+        <button type="button" class="secondary" :class="{active:ledgerDirection==='DEBIT'}" @click="setLedgerDirection('DEBIT')">支出</button>
+      </div>
+      <p class="error ledger-error" v-if="ledgerError" role="alert">{{ledgerError}} <button type="button" class="secondary" @click="loadLedgers(ledgers.page || 1)">重试</button></p>
+      <div class="empty" v-else-if="ledgerLoading">正在加载积分流水…</div>
+      <div class="ledger-wrap" v-else-if="ledgers.records.length">
+        <table class="table">
+          <thead><tr><th>流水时间</th><th>来源</th><th>业务编号</th><th>积分变动</th><th>变动后余额</th><th>备注</th></tr></thead>
+          <tbody><tr v-for="entry in ledgers.records" :key="entry.id">
+            <td>{{ledgerTime(entry.createdAt)}}</td><td>{{ledgerSource(entry.businessType)}}</td><td>{{entry.businessId || '—'}}</td>
+            <td class="ledger-amount" :class="entry.direction==='CREDIT' ? 'credit' : 'debit'">{{entry.direction==='CREDIT' ? '收入 +' : '支出 -'}}{{entry.amount}}</td>
+            <td>{{entry.balanceAfter}}</td><td>{{entry.remark || '—'}}</td>
+          </tr></tbody>
+        </table>
+      </div>
+      <div class="empty" v-else>暂无积分流水</div>
+      <div class="ledger-pagination" v-if="!ledgerError && ledgers.pages > 1">
+        <button type="button" class="secondary" :disabled="ledgerLoading || ledgers.page <= 1" @click="loadLedgers(ledgers.page - 1)">上一页</button>
+        <span>第 {{ledgers.page}} / {{ledgers.pages}} 页</span>
+        <button type="button" class="secondary" :disabled="ledgerLoading || ledgers.page >= ledgers.pages" @click="loadLedgers(ledgers.page + 1)">下一页</button>
+      </div>
     </section>
     <section class="panel">
       <div class="panel-title"><h2>可兑换商品</h2><span class="muted">商品信息来自黑马商城</span></div>
@@ -54,21 +81,27 @@
       <article class="order-card" v-for="order in redemptions.records" :key="order.id">
         <strong>{{order.productName}} × {{order.quantity}}</strong><span>消耗积分：{{order.totalPoints}}，状态：<span class="status">{{statusText(order.status)}}</span></span>
         <span v-if="order.addressSnapshot">收货信息：{{order.addressSnapshot.receiverMasked}} {{order.addressSnapshot.phoneMasked}} {{order.addressSnapshot.regionMasked}}</span>
-        <span v-if="order.shippingNo">物流单：{{order.shippingNo}}（{{shippingText(order.shippingStatus)}}）</span><span class="muted">兑换编号：{{order.redemptionNo}}</span>
+        <span v-if="order.shippingNo">物流单：{{order.shippingNo}}（{{shippingText(order.shippingStatus)}}） <button type="button" class="secondary" @click="viewShipping(order)">查看物流</button></span><span class="muted">兑换编号：{{order.redemptionNo}}</span>
+        <div v-if="trackingRedemptionId===order.id" class="tracking-panel"><strong>物流轨迹</strong><p v-if="shippingLoading" class="muted">正在加载…</p><p v-if="shippingError" class="tracking-error">{{shippingError}}</p><ol v-if="shippingEvents.length"><li v-for="(event,index) in shippingEvents" :key="event.eventTime+'-'+index"><span>{{event.description}}</span><time>{{event.eventTime}} · {{event.locationSummary||'地点待更新'}}</time></li></ol><p v-else-if="!shippingLoading&&!shippingError" class="muted">管理员尚未添加物流节点。</p></div>
       </article><div class="empty" v-if="!redemptions.records.length">暂无兑换记录</div>
     </section>
   </main>
 </div>
 <script src="js/vue.js"></script><script src="js/axios.min.js"></script><script src="js/common.js"></script><script src="js/top.js"></script><script src="js/marketing-header.js"></script>
 <script>
-new Vue({el:"#app",data:{account:{balance:0},offers:[],addresses:[],redemptions:{records:[],total:0},selectedOffer:null,selectedAddressId:null,submitting:false,error:"",message:""},
+new Vue({el:"#app",data:{account:{balance:0},offers:[],addresses:[],redemptions:{records:[],total:0},ledgers:{records:[],total:0,page:1,size:10,pages:0},ledgerDirection:"",ledgerLoading:false,ledgerError:"",selectedOffer:null,selectedAddressId:null,submitting:false,error:"",message:"",trackingRedemptionId:null,shippingEvents:[],shippingLoading:false,shippingError:""},
 created(){if(!util.isLogin()){location.href="/login.html";return}this.loadAll()},methods:{
 dataOf(response,fallback){return response && response.data !== undefined ? response.data : (response || fallback)},
-loadAll(){this.error="";Promise.all([axios.get("/marketing/points/account"),axios.get("/marketing/points/offers"),axios.get("/addresses"),axios.get("/marketing/points/redemptions",{params:{page:1,size:20}})]).then(result=>{
+loadAll(){this.error="";this.loadLedgers(1);return Promise.all([axios.get("/marketing/points/account"),axios.get("/marketing/points/offers"),axios.get("/addresses"),axios.get("/marketing/points/redemptions",{params:{page:1,size:20}})]).then(result=>{
 this.account=this.dataOf(result[0],{balance:0});this.offers=this.dataOf(result[1],[]);this.addresses=this.dataOf(result[2],[]);this.redemptions=this.dataOf(result[3],{records:[],total:0});const preferred=this.addresses.find(address=>address.isDefault===1)||this.addresses[0];this.selectedAddressId=preferred?preferred.id:null}).catch(this.showError)},
+loadLedgers(page){this.ledgerLoading=true;this.ledgerError="";const params={page:page,size:10};if(this.ledgerDirection)params.direction=this.ledgerDirection;return axios.get("/marketing/points/ledgers",{params}).then(response=>{this.ledgers=this.dataOf(response,{records:[],total:0,page:page,size:10,pages:0})}).catch(error=>{this.ledgerError=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||"积分流水加载失败，请重试"}).finally(()=>{this.ledgerLoading=false})},
+setLedgerDirection(direction){this.ledgerDirection=direction;return this.loadLedgers(1)},
+ledgerSource(type){return {LOTTERY_REWARD:"抽奖奖励",ORDER_REWARD:"订单奖励",MEMBERSHIP_BONUS:"会员奖励",REDEMPTION:"积分兑换",REVERSAL:"积分冲正",MANUAL_ADJUSTMENT:"人工调整"}[type]||type||"—"},
+ledgerTime(value){return value?String(value).replace("T"," ").slice(0,19):"—"},
 openRedeem(offer){this.selectedOffer=offer;this.message="";this.error=""},
 redeem(offer){if(!this.selectedAddressId){this.error="请选择真实收货地址";return}this.submitting=true;this.error="";this.message="";const redemptionNo="HMALL-POINTS-"+Date.now()+"-"+Math.random().toString(16).slice(2,10);
-axios.post("/marketing/points/redemptions",{redemptionNo:redemptionNo,offerId: offer.id,quantity:1,addressId: this.selectedAddressId}).then(()=>{this.message="兑换成功，积分已扣除，商品已进入履约流程";this.selectedOffer=null;return this.loadAll()}).catch(this.showError).finally(()=>this.submitting=false)},
+axios.post("/marketing/points/redemptions",{redemptionNo:redemptionNo,offerId: offer.id,quantity:1,addressId: this.selectedAddressId}).then(()=>{this.message="兑换成功，积分已扣除，商品已进入物流";this.selectedOffer=null;return this.loadAll()}).catch(this.showError).finally(()=>this.submitting=false)},
+viewShipping(order){this.trackingRedemptionId=order.id;this.shippingEvents=[];this.shippingError="";this.shippingLoading=true;return axios.get("/shipping/orders/"+encodeURIComponent(order.shippingNo)+"/tracking").then(response=>{const result=this.dataOf(response,[]);this.shippingEvents=Array.isArray(result)?result:(result&&Array.isArray(result.tracking)?result.tracking:[])}).catch(error=>{this.shippingError=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||"物流轨迹加载失败"}).finally(()=>{this.shippingLoading=false})},
 showError(error){this.error=(error.response&&error.response.data&&(error.response.data.message||error.response.data.msg))||"数据加载失败"},formatMoney(value){return ((value||0)/100).toFixed(2)},statusText(value){return {PROCESSING:"处理中",COMPLETED:"已完成",REVERSED:"已冲正"}[value]||value||"-"},shippingText(value){return {READY:"待履约",FULFILLING:"履约中",SHIPPED:"已发货",IN_TRANSIT:"运输中",DELIVERED:"已送达",FAILED:"履约异常",TERMINATED:"已终止"}[value]||value||"-"}
 }})
 </script>

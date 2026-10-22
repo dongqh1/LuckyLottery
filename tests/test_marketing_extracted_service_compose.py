@@ -10,8 +10,9 @@ NEW_SERVICES = {
     "points-service": ("POINTS", "hm_points", "hm_points_app"),
     "membership-service": ("MEMBERSHIP", "hm_membership", "hm_membership_app"),
     "lottery-service": ("LOTTERY", "hm_lottery", "hm_lottery_app"),
-    "fulfillment-service": ("FULFILLMENT", "hm_fulfillment", "hm_fulfillment_app"),
+    "logistics-service": ("FULFILLMENT", "hm_fulfillment", "hm_fulfillment_app"),
 }
+MODULE_DIRECTORIES = {"logistics-service": "fulfillment-service"}
 
 
 class MarketingExtractedServiceComposeTests(unittest.TestCase):
@@ -28,7 +29,8 @@ class MarketingExtractedServiceComposeTests(unittest.TestCase):
                 service = self.services[service_name]
                 environment = service["environment"]
                 self.assertEqual(["marketing-extraction"], service["profiles"])
-                self.assertEqual(f"{service_name}/Dockerfile", service["build"]["dockerfile"])
+                module_directory = MODULE_DIRECTORIES.get(service_name, service_name)
+                self.assertEqual(f"{module_directory}/Dockerfile", service["build"]["dockerfile"])
                 self.assertEqual(
                     f"jdbc:mysql://mysql:3306/{schema}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai",
                     environment[f"{prefix}_DATABASE_URL"],
@@ -46,11 +48,11 @@ class MarketingExtractedServiceComposeTests(unittest.TestCase):
 
     def test_side_by_side_writers_and_lottery_state_are_isolated(self):
         coupon_environment = self.services["coupon-service"]["environment"]
-        fulfillment_environment = self.services["fulfillment-service"]["environment"]
+        logistics_environment = self.services["logistics-service"]["environment"]
         lottery_environment = self.services["lottery-service"]["environment"]
 
         self.assertEqual("false", coupon_environment["COUPON_MESSAGING_ENABLED"])
-        self.assertEqual("false", fulfillment_environment["FULFILLMENT_MESSAGING_ENABLED"])
+        self.assertEqual("true", logistics_environment["FULFILLMENT_MESSAGING_ENABLED"])
         self.assertEqual("false", lottery_environment["LOTTERY_OUTBOX_ENABLED"])
         self.assertEqual("1", lottery_environment["LOTTERY_REDIS_DATABASE"])
 
@@ -59,6 +61,7 @@ class MarketingExtractedServiceComposeTests(unittest.TestCase):
         nginx_dependencies = self.services["nginx"]["depends_on"]
 
         self.assertNotIn("marketing-service", gateway_dependencies)
+        self.assertNotIn("marketing-data-migration", gateway_dependencies)
         self.assertNotIn("marketing-service", nginx_dependencies)
         for service_name in NEW_SERVICES:
             self.assertNotIn(service_name, gateway_dependencies)

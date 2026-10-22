@@ -1,6 +1,7 @@
 package com.dongqh.tradeservice.messaging;
 
 import com.dongqh.hmapi.dto.OrderCreatedMessage;
+import com.dongqh.hmapi.dto.OrderPaidMessage;
 import com.dongqh.tradeservice.mapper.TradeMessageOutboxMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,18 +21,28 @@ public class TradeOutboxService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void append(OrderCreatedMessage event) {
+        append(event.eventId().toString(), "ORDER_CREATED", event.orderId().toString(), event, event.occurredAt());
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void append(OrderPaidMessage event) {
+        append(event.eventId().toString(), "ORDER_PAID", event.orderId().toString(), event, event.paidAt());
+    }
+
+    private void append(String eventId, String eventType, String aggregateId, Object event,
+                        java.time.LocalDateTime occurredAt) {
         TradeMessageOutbox row = new TradeMessageOutbox();
-        row.setEventId(event.eventId().toString());
-        row.setEventType("ORDER_CREATED");
-        row.setAggregateId(event.orderId().toString());
+        row.setEventId(eventId);
+        row.setEventType(eventType);
+        row.setAggregateId(aggregateId);
         try {
             row.setPayload(objectMapper.writeValueAsString(event));
         } catch (JacksonException exception) {
-            throw new IllegalArgumentException("Order-created event cannot be serialized", exception);
+            throw new IllegalArgumentException("Trade event cannot be serialized", exception);
         }
         row.setStatus(TradeOutboxStatus.PENDING);
         row.setRetryCount(0);
-        row.setCreatedAt(event.occurredAt());
+        row.setCreatedAt(occurredAt);
         mapper.insert(row);
     }
 }
