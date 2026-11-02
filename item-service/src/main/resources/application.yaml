@@ -26,7 +26,7 @@ hm:
   swagger:
     title: 黑马商城商品管理接口文档
     description: 黑马商城商品管理接口文档
-    package: com.dongqh.itemservice.controller
+    package: com.dongqh.item.controller
 seata:
   enabled: ${SEATA_ENABLED:true}
   application-id: ${spring.application.name}

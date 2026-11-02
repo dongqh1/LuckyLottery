@@ -54,9 +54,11 @@ hm:
   swagger:
     title: 黑马商城交易管理接口文档
     description: 黑马商城交易管理接口文档
-    package: com.dongqh.tradeservice.controller
-  marketing:
-    base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+    package: com.dongqh.trade.controller
+  coupon:
+    base-url: ${COUPON_SERVICE_BASE_URL:http://localhost:8080}
+  membership:
+    base-url: ${MEMBERSHIP_SERVICE_BASE_URL:http://localhost:8080}
   messaging:
     publisher-confirm-timeout: 5s
     outbox-interval: 1s

@@ -51,7 +51,11 @@ class RequiredFilesContractTest(unittest.TestCase):
             "user-service/Dockerfile",
             "trade-service/Dockerfile",
             "pay-service/Dockerfile",
-            "marketing-service/Dockerfile",
+            "lottery-service/Dockerfile",
+            "points-service/Dockerfile",
+            "coupon-service/Dockerfile",
+            "membership-service/Dockerfile",
+            "fulfillment-service/Dockerfile",
             "hm-gateway/Dockerfile",
             "nginx/Dockerfile",
             "nginx/nginx.conf",
@@ -101,7 +105,6 @@ class SmokeScriptContractTest(unittest.TestCase):
         for secret_name in (
             "MYSQL_ROOT_PASSWORD",
             "REDIS_PASSWORD",
-            "JWT_SECRET",
             "SHIPPING_ADDRESS_KEY",
         ):
             with self.subTest(secret_name=secret_name):
@@ -146,7 +149,6 @@ class ComposeContractTest(unittest.TestCase):
                 "trade-service",
                 "pay-service",
                 "hm-gateway",
-                "marketing-service",
                 "nginx",
             },
             set(self.services),
@@ -271,43 +273,25 @@ class ComposeContractTest(unittest.TestCase):
                     " ".join(service["healthcheck"]["test"]),
                 )
 
-    def test_marketing_waits_for_its_infrastructure_and_hmall_owners(self):
-        marketing = self.services["marketing-service"]
-        self.assertEqual("service_completed_successfully", marketing["depends_on"]["schema-init"]["condition"])
-        self.assertEqual("service_healthy", marketing["depends_on"]["redis"]["condition"])
-        self.assertEqual("service_healthy", marketing["depends_on"]["item-service"]["condition"])
-        self.assertEqual("service_healthy", marketing["depends_on"]["user-service"]["condition"])
-        self.assertIn("healthcheck", marketing)
-        self.assertTrue(marketing["build"]["dockerfile"].replace("\\", "/").endswith("Dockerfile"))
-        self.assertEqual("mysql", marketing["environment"]["MYSQL_HOST"])
-        self.assertEqual("redis", marketing["environment"]["REDIS_HOST"])
-        self.assertEqual("http://item-service:8081", marketing["environment"]["HMALL_ITEM_BASE_URL"])
-        self.assertEqual("http://user-service:8083", marketing["environment"]["HMALL_USER_BASE_URL"])
-
     def test_nginx_exposes_portal_and_admin(self):
         nginx = self.services["nginx"]
         published = {int(port["published"]): int(port["target"]) for port in nginx["ports"]}
         self.assertEqual(18080, published[18080])
         self.assertEqual(18081, published[18081])
         self.assertEqual("service_healthy", nginx["depends_on"]["hm-gateway"]["condition"])
-        self.assertEqual("service_healthy", nginx["depends_on"]["marketing-service"]["condition"])
+        self.assertEqual({"hm-gateway"}, set(nginx["depends_on"]))
         self.assertIn("healthcheck", nginx)
         healthcheck = " ".join(nginx["healthcheck"]["test"])
         self.assertIn("127.0.0.1:18080", healthcheck)
         self.assertIn("127.0.0.1:18081/items.html", healthcheck)
 
-    def test_nginx_mounts_the_shared_marketing_login_exception_read_only(self):
+    def test_nginx_has_no_legacy_marketing_login_mount(self):
         mounts = [
             mount for mount in self.services["nginx"].get("volumes", [])
             if mount["target"] == "/etc/nginx/snippets/marketing-auth-login.conf"
         ]
-        self.assertEqual(1, len(mounts))
-        self.assertEqual("bind", mounts[0]["type"])
-        self.assertEqual(
-            ROOT / "nginx" / "snippets" / "marketing-auth-login.conf",
-            Path(mounts[0]["source"]),
-        )
-        self.assertTrue(mounts[0]["read_only"])
+        self.assertEqual([], mounts)
+        self.assertFalse((ROOT / "nginx" / "snippets" / "marketing-auth-login.conf").exists())
 
     def test_gateway_joins_the_default_stack_and_waits_for_discovery_and_routes(self):
         gateway = self.services["hm-gateway"]
@@ -320,13 +304,23 @@ class ComposeContractTest(unittest.TestCase):
             "user-service",
             "trade-service",
             "pay-service",
-            "marketing-service",
         ):
             self.assertIn(dependency, gateway["depends_on"])
             self.assertEqual("service_healthy", gateway["depends_on"][dependency]["condition"])
         self.assertEqual("nacos:8848", gateway["environment"]["NACOS_SERVER_ADDR"])
         self.assertIn("healthcheck", gateway)
         self.assertIn("8080", " ".join(gateway["healthcheck"]["test"]))
+
+    def test_http_clients_point_to_split_coupon_and_membership_services(self):
+        expected = {
+            "COUPON_SERVICE_BASE_URL": "http://coupon-service:8080",
+            "MEMBERSHIP_SERVICE_BASE_URL": "http://membership-service:8080",
+        }
+        for service_name in ("trade-service", "pay-service"):
+            with self.subTest(service=service_name):
+                self.assertTrue(expected.items() <= self.services[service_name]["environment"].items())
+        rollback_environment = self.rollback_services["mall-service"]["environment"]
+        self.assertTrue(expected.items() <= rollback_environment.items())
 
 
 class MigrationContractTest(unittest.TestCase):
@@ -524,7 +518,9 @@ class DockerfileContractTest(unittest.TestCase):
                     f"{service}-service/Dockerfile", "17"
                 )
         self.assert_multistage_java_build("mall-backend/hm-service/Dockerfile", "17")
-        self.assert_multistage_java_build("marketing-service/Dockerfile", "17")
+        for service in ("lottery", "points", "coupon", "membership", "fulfillment"):
+            with self.subTest(service=service):
+                self.assert_multistage_java_build(f"{service}-service/Dockerfile", "17")
         self.assert_multistage_java_build("hm-gateway/Dockerfile", "17")
 
     def test_build_context_excludes_secrets_and_build_products(self):
@@ -539,10 +535,10 @@ class DockerfileContractTest(unittest.TestCase):
         self.assertIn("copy html/hmall-portal", dockerfile)
         self.assertIn("copy html/hmall-admin", dockerfile)
 
-    def test_nginx_image_creates_directory_for_shared_snippet_mount(self):
+    def test_nginx_image_has_no_legacy_login_snippet_dependency(self):
         dockerfile = read("nginx/Dockerfile").lower()
-        self.assertRegex(dockerfile, r"(?m)^run\s+mkdir\s+-p\s+/etc/nginx/snippets\s*$")
-        self.assertNotRegex(dockerfile, r"(?m)^copy\s+.*marketing-auth-login\.conf")
+        self.assertNotIn("marketing-auth-login.conf", dockerfile)
+        self.assertNotIn("/etc/nginx/snippets", dockerfile)
 
     def test_gateway_packages_only_the_jwt_verification_certificate(self):
         resources = ROOT / "hm-gateway" / "src" / "main" / "resources"
@@ -576,40 +572,11 @@ class NginxRoutingContractTest(unittest.TestCase):
             self.assertRegex(body, r"rewrite\s+\^/api/marketing/\(\.\*\)\$\s+/api/\$1\s+break;")
             self.assertIn("proxy_pass http://$gateway_backend;", body)
 
-    def test_exact_legacy_marketing_login_stays_on_marketing_until_identity_cutover(self):
-        servers = re.findall(r"(?ms)^    server\s*\{(.*?)^    \}", self.conf)
-        self.assertEqual(2, len(servers))
-        for server in servers:
-            include = "include /etc/nginx/snippets/marketing-auth-login.conf;"
-            self.assertEqual(1, server.count(include))
-            self.assertLess(
-                server.index(include),
-                server.index("location ^~ /api/marketing/"),
-            )
-        snippet_path = ROOT / "nginx" / "snippets" / "marketing-auth-login.conf"
-        self.assertTrue(snippet_path.is_file(), "shared marketing login snippet must exist")
-        snippet = read("nginx/snippets/marketing-auth-login.conf")
-        locations = re.findall(
-            r"location\s*=\s*/api/marketing/auth/login\s*\{([^}]+)\}",
-            snippet,
-            re.S,
-        )
-        self.assertEqual(1, len(locations))
-        self.assertEqual(1, len(re.findall(r"location\s", snippet)))
-        body = locations[0]
-        self.assertIn("set $marketing_backend marketing-service:8080;", body)
-        self.assertIn("rewrite ^/api/marketing/auth/login$ /api/auth/login break;", body)
-        self.assertIn("proxy_pass http://$marketing_backend;", body)
-        for header in (
-            "proxy_set_header Host $host;",
-            "proxy_set_header X-Real-IP $remote_addr;",
-            "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
-            "proxy_set_header X-Forwarded-Proto $scheme;",
-            'proxy_set_header user-info "";',
-        ):
-            self.assertIn(header, body)
-        self.assertNotIn("/callbacks/payments", self.conf)
-        self.assertNotIn("/callbacks/payments", snippet)
+    def test_legacy_marketing_auth_route_and_snippet_are_removed(self):
+        self.assertNotIn("/api/marketing/auth/login", self.conf)
+        self.assertNotIn("marketing-service", self.conf)
+        self.assertNotIn("marketing-auth-login.conf", self.conf)
+        self.assertFalse((ROOT / "nginx" / "snippets" / "marketing-auth-login.conf").exists())
 
     def test_hmall_api_routes_are_sent_through_the_authenticating_gateway(self):
         self.assertEqual(4, len(re.findall(r"location\s+\^~\s+/api/", self.conf)))
@@ -637,19 +604,17 @@ class NginxRoutingContractTest(unittest.TestCase):
             self.conf,
             r"resolver\s+127\.0\.0\.11\s+valid=10s\s+ipv6=off;",
         )
-        snippet = read("nginx/snippets/marketing-auth-login.conf")
-        for content, backend, upstream, count in (
-            (self.conf, "gateway_backend", "hm-gateway:8080", 4),
-            (snippet, "marketing_backend", "marketing-service:8080", 1),
+        for backend, upstream, count in (
+            ("gateway_backend", "hm-gateway:8080", 4),
         ):
             with self.subTest(backend=backend):
                 self.assertEqual(
                     count,
-                    len(re.findall(rf"set\s+\${backend}\s+{re.escape(upstream)};", content)),
+                    len(re.findall(rf"set\s+\${backend}\s+{re.escape(upstream)};", self.conf)),
                 )
                 self.assertEqual(
                     count,
-                    len(re.findall(rf"proxy_pass\s+http://\${backend};", content)),
+                    len(re.findall(rf"proxy_pass\s+http://\${backend};", self.conf)),
                 )
         self.assertEqual(
             4,
@@ -669,16 +634,8 @@ class NginxRoutingContractTest(unittest.TestCase):
             r"rewrite\s+\^/api/\(\?!admin/shipping/\|shipping/\)\(\.\*\)\$\s+/\$1\s+break;\s*"
             r"proxy_pass\s+http://\$gateway_backend;"
         )
-        login_location = (
-            r"location\s*=\s*/api/marketing/auth/login\s*\{\s*"
-            r"set\s+\$marketing_backend\s+marketing-service:8080;\s*"
-            r"rewrite\s+\^/api/marketing/auth/login\$\s+/api/auth/login\s+break;\s*"
-            r"proxy_pass\s+http://\$marketing_backend;"
-        )
         self.assertEqual(2, len(re.findall(marketing_location, self.conf)))
         self.assertEqual(2, len(re.findall(gateway_location, self.conf)))
-        snippet = read("nginx/snippets/marketing-auth-login.conf")
-        self.assertEqual(1, len(re.findall(login_location, snippet)))
 
     def test_gateway_routes_logistics_and_excludes_signed_shipping_callback(self):
         application = read("hm-gateway/src/main/resources/application.yaml")
@@ -687,29 +644,6 @@ class NginxRoutingContractTest(unittest.TestCase):
         self.assertIn("- POST /api/shipping/callbacks/logistics", application)
         self.assertNotIn("marketing-payment-callback-compat", application)
         self.assertNotIn("marketing-legacy", application)
-
-
-class MarketingHmallAdapterContractTest(unittest.TestCase):
-    def test_marketing_local_run_loads_the_root_dotenv_and_compose_password_name(self):
-        application = read("marketing-service/src/main/resources/application.yaml")
-        self.assertIn("optional:file:.env[.properties]", application)
-        self.assertIn("optional:file:../.env[.properties]", application)
-        self.assertIn("${MYSQL_PASSWORD:${LUCKYHUB_DB_PASSWORD:}}", application)
-
-    def test_catalog_and_address_adapters_have_independent_owner_urls(self):
-        application = read("marketing-service/src/main/resources/application.yaml")
-        catalog = read(
-            "marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallCatalogClient.java"
-        )
-        address = read(
-            "marketing-service/src/main/java/com/dongqh/luckyhub/integration/hmall/HttpHmallAddressClient.java"
-        )
-        self.assertIn("catalog-base-url: ${HMALL_ITEM_BASE_URL:http://localhost:8081}", application)
-        self.assertIn("address-base-url: ${HMALL_USER_BASE_URL:http://localhost:8083}", application)
-        self.assertIn("luckyhub.integration.hmall.catalog-base-url", catalog)
-        self.assertIn("luckyhub.integration.hmall.address-base-url", address)
-        self.assertNotIn("luckyhub.integration.hmall.base-url", catalog)
-        self.assertNotIn("luckyhub.integration.hmall.base-url", address)
 
 
 if __name__ == "__main__":

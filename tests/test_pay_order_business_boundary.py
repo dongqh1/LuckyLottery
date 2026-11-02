@@ -24,7 +24,7 @@ class PayOrderBusinessBoundaryTest(unittest.TestCase):
 
     def test_trade_service_has_no_payment_persistence_dependency(self):
         service = self.read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/service/impl/OrderServiceImpl.java"
+            "trade-service/src/main/java/com/dongqh/trade/service/impl/OrderServiceImpl.java"
         )
         self.assertIn("import com.dongqh.hmapi.client.PayClient;", service)
         self.assertIn("private final PayClient payClient;", service)
@@ -40,7 +40,7 @@ class PayOrderBusinessBoundaryTest(unittest.TestCase):
 
     def test_pay_controller_delegates_pending_amount_sync(self):
         controller = self.read(
-            "pay-service/src/main/java/com/dongqh/payservice/controller/PayController.java"
+            "pay-service/src/main/java/com/dongqh/pay/controller/PayController.java"
         )
         self.assertIn('@PutMapping("/biz/{orderId}/pending-amount")', controller)
         self.assertIn("public void syncPendingAmount(", controller)
@@ -50,13 +50,13 @@ class PayOrderBusinessBoundaryTest(unittest.TestCase):
 
     def test_pay_service_owns_lock_validation_and_update(self):
         interface = self.read(
-            "pay-service/src/main/java/com/dongqh/payservice/service/IPayOrderService.java"
+            "pay-service/src/main/java/com/dongqh/pay/service/IPayOrderService.java"
         )
         implementation = self.read(
-            "pay-service/src/main/java/com/dongqh/payservice/service/impl/PayOrderServiceImpl.java"
+            "pay-service/src/main/java/com/dongqh/pay/service/impl/PayOrderServiceImpl.java"
         )
         mapper = self.read(
-            "pay-service/src/main/java/com/dongqh/payservice/mapper/PayOrderMapper.java"
+            "pay-service/src/main/java/com/dongqh/pay/mapper/PayOrderMapper.java"
         )
 
         self.assertIn(
@@ -77,15 +77,15 @@ class PayOrderBusinessBoundaryTest(unittest.TestCase):
 
     def test_service_applications_enable_feign_and_scan_local_mappers(self):
         trade_application = self.read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/TradeServiceApplication.java"
+            "trade-service/src/main/java/com/dongqh/trade/TradeServiceApplication.java"
         )
         pay_application = self.read(
-            "pay-service/src/main/java/com/dongqh/payservice/PayServiceApplication.java"
+            "pay-service/src/main/java/com/dongqh/pay/PayServiceApplication.java"
         )
 
-        self.assertIn('@MapperScan("com.dongqh.tradeservice.mapper")', trade_application)
+        self.assertIn('@MapperScan("com.dongqh.trade.mapper")', trade_application)
         self.assertIn('basePackages = "com.dongqh.hmapi.client"', trade_application)
-        self.assertIn('@MapperScan("com.dongqh.payservice.mapper")', pay_application)
+        self.assertIn('@MapperScan("com.dongqh.pay.mapper")', pay_application)
         self.assertIn('basePackages = "com.dongqh.hmapi.client"', pay_application)
 
 

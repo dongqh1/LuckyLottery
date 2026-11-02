@@ -17,7 +17,7 @@ def test_payment_success_event_contains_reliable_delivery_snapshot():
 
 def test_pay_flow_uses_outbox_instead_of_direct_rabbit_or_coupon_http():
     source = read(
-        "pay-service/src/main/java/com/dongqh/payservice/service/impl/PayOrderServiceImpl.java"
+        "pay-service/src/main/java/com/dongqh/pay/service/impl/PayOrderServiceImpl.java"
     )
     assert "PayOutboxService" in source
     assert "rabbitTemplate.convertAndSend" not in source
@@ -31,7 +31,7 @@ def test_pay_outbox_schema_and_topology_are_declared():
     assert "idx_pay_outbox_relay" in migration
 
     topology = read(
-        "pay-service/src/main/java/com/dongqh/payservice/messaging/PayMessaging.java"
+        "pay-service/src/main/java/com/dongqh/pay/messaging/PayMessaging.java"
     )
     assert 'EVENT_EXCHANGE = "pay.direct"' in topology
     assert 'PAY_SUCCESS_KEY = "pay.success"' in topology
@@ -42,22 +42,30 @@ def test_pay_outbox_schema_and_topology_are_declared():
     assert "< /migrations/V010__add_pay_message_outbox.sql" in compose
 
 
-def test_trade_and_marketing_have_independent_queues_and_dead_letters():
+def test_trade_and_coupon_services_have_independent_queues_and_dead_letters():
     trade = read(
-        "trade-service/src/main/java/com/dongqh/tradeservice/config/PayMessagingConfiguration.java"
+        "trade-service/src/main/java/com/dongqh/trade/config/PayMessagingConfiguration.java"
     )
-    marketing = read(
-        "marketing-service/src/main/java/com/dongqh/luckyhub/coupon/config/PayCouponMessagingConfiguration.java"
+    coupon_config = read(
+        "coupon-service/src/main/java/com/dongqh/coupon/config/CouponMessagingConfiguration.java"
+    )
+    coupon_topology = read(
+        "coupon-service/src/main/java/com/dongqh/coupon/messaging/CouponMessagingTopology.java"
     )
     assert "trade.pay.success.queue" in trade
     assert "trade.pay.success.dlq" in trade
-    assert "marketing.pay.coupon-use.queue" in marketing
-    assert "marketing.pay.coupon-use.dlq" in marketing
+    assert "CouponMessagingTopology.QUEUE" in coupon_config
+    assert "marketing.pay.coupon-use.queue" in coupon_topology
+    assert "marketing.pay.coupon-use.dlq" in coupon_topology
 
 
 def test_pay_success_consumers_use_bounded_retry_then_dead_letter():
-    for service in ("trade-service", "marketing-service"):
-        application = read(f"{service}/src/main/resources/application.yaml")
+    application_paths = (
+        "trade-service/src/main/resources/application.yaml",
+        "coupon-service/src/main/resources/application.yml",
+    )
+    for application_path in application_paths:
+        application = read(application_path)
         assert "default-requeue-rejected: false" in application
         assert "retry:" in application
         assert "enabled: true" in application

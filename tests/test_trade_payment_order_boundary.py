@@ -31,13 +31,13 @@ class TradePaymentOrderBoundaryTest(unittest.TestCase):
 
     def test_trade_service_owns_snapshot_and_conditional_order_update(self):
         controller = self.read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/controller/OrderController.java"
+            "trade-service/src/main/java/com/dongqh/trade/controller/OrderController.java"
         )
         interface = self.read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/service/IOrderService.java"
+            "trade-service/src/main/java/com/dongqh/trade/service/IOrderService.java"
         )
         implementation = self.read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/service/impl/OrderServiceImpl.java"
+            "trade-service/src/main/java/com/dongqh/trade/service/impl/OrderServiceImpl.java"
         )
 
         self.assertIn('@GetMapping("/{orderId}/payment")', controller)
@@ -58,7 +58,7 @@ class TradePaymentOrderBoundaryTest(unittest.TestCase):
 
     def test_pay_service_uses_dto_and_never_trade_order_po(self):
         implementation = self.read(
-            "pay-service/src/main/java/com/dongqh/payservice/service/impl/PayOrderServiceImpl.java"
+            "pay-service/src/main/java/com/dongqh/pay/service/impl/PayOrderServiceImpl.java"
         )
         self.assertIn("import com.dongqh.hmapi.client.TradeClient;", implementation)
         self.assertIn("import com.dongqh.hmapi.dto.OrderPaymentDTO;", implementation)
@@ -78,7 +78,7 @@ class TradePaymentOrderBoundaryTest(unittest.TestCase):
         java_root = ROOT / "pay-service/src/main/java"
         offenders = []
         for path in java_root.rglob("*.java"):
-            if "com.dongqh.tradeservice" in path.read_text(encoding="utf-8"):
+            if "com.dongqh.trade" in path.read_text(encoding="utf-8"):
                 offenders.append(str(path.relative_to(ROOT)))
         self.assertEqual([], offenders)
 

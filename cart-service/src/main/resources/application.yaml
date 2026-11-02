@@ -58,7 +58,7 @@ hm:
   swagger:
     title: 黑马商城购物车管理接口文档
     description: 黑马商城购物车管理接口文档
-    package: com.dongqh.cartservice.controller
+    package: com.dongqh.cart.controller
 seata:
   enabled: ${SEATA_ENABLED:true}
   application-id: ${spring.application.name}

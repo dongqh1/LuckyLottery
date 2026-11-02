@@ -31,7 +31,6 @@
         <module>coupon-service</module>
         <module>membership-service</module>
         <module>fulfillment-service</module>
-        <module>marketing-service</module>
     </modules>
 
     <properties>

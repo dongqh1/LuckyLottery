@@ -7,11 +7,11 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 MAVEN_NAMESPACE = {"m": "http://maven.apache.org/POM/4.0.0"}
 SERVICES = {
-    "item-service": ("com.dongqh.itemservice.controller", "黑马商城商品管理接口文档", "hm_item"),
-    "cart-service": ("com.dongqh.cartservice.controller", "黑马商城购物车管理接口文档", "hm_cart"),
-    "user-service": ("com.dongqh.userservice.controller", "黑马商城用户管理接口文档", "hm_user"),
-    "trade-service": ("com.dongqh.tradeservice.controller", "黑马商城交易管理接口文档", "hm_trade"),
-    "pay-service": ("com.dongqh.payservice.controller", "黑马商城支付管理接口文档", "hm_pay"),
+    "item-service": ("com.dongqh.item.controller", "黑马商城商品管理接口文档", "hm_item"),
+    "cart-service": ("com.dongqh.cart.controller", "黑马商城购物车管理接口文档", "hm_cart"),
+    "user-service": ("com.dongqh.user.controller", "黑马商城用户管理接口文档", "hm_user"),
+    "trade-service": ("com.dongqh.trade.controller", "黑马商城交易管理接口文档", "hm_trade"),
+    "pay-service": ("com.dongqh.pay.controller", "黑马商城支付管理接口文档", "hm_pay"),
 }
 CONFIG_IMPORTS = (
     "optional:nacos:shared.jdbc.yaml?group=DEFAULT_GROUP&refreshEnabled=true",
@@ -99,7 +99,7 @@ class NacosSharedConfigContractTest(unittest.TestCase):
     def test_unrelated_services_are_not_opted_into_shared_config(self):
         unrelated_poms = (
             "hm-gateway/pom.xml",
-            "marketing-service/pom.xml",
+            "hm-security/pom.xml",
             "mall-backend/hm-service/pom.xml",
         )
         for pom in unrelated_poms:

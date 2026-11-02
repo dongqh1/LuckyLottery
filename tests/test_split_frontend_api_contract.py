@@ -12,7 +12,7 @@ def read(relative_path: str) -> str:
 class SplitFrontendApiContractTest(unittest.TestCase):
     def test_item_service_owns_every_search_route_used_by_frontend(self):
         controller_path = ROOT / (
-            "item-service/src/main/java/com/dongqh/itemservice/controller/"
+            "item-service/src/main/java/com/dongqh/item/controller/"
             "SearchController.java"
         )
         self.assertTrue(controller_path.is_file())
@@ -24,7 +24,7 @@ class SplitFrontendApiContractTest(unittest.TestCase):
 
     def test_user_service_owns_every_user_route_used_by_frontend(self):
         controller = read(
-            "user-service/src/main/java/com/dongqh/userservice/controller/UserController.java"
+            "user-service/src/main/java/com/dongqh/user/controller/UserController.java"
         )
         for route in (
             '@GetMapping("/page")',
@@ -38,10 +38,10 @@ class SplitFrontendApiContractTest(unittest.TestCase):
 
     def test_trade_and_pay_own_the_status_routes_used_by_checkout(self):
         trade = read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/controller/OrderController.java"
+            "trade-service/src/main/java/com/dongqh/trade/controller/OrderController.java"
         )
         pay = read(
-            "pay-service/src/main/java/com/dongqh/payservice/controller/PayController.java"
+            "pay-service/src/main/java/com/dongqh/pay/controller/PayController.java"
         )
         checkout = read("nginx/html/hmall-portal/pay.html")
         self.assertIn('@GetMapping("/{orderId}/status")', trade)

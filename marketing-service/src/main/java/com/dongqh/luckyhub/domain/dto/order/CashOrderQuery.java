@@ -1,1 +1,0 @@
-package com.dongqh.luckyhub.domain.dto.order; import com.dongqh.luckyhub.enums.order.CashOrderStatus; import jakarta.validation.constraints.*; import lombok.Getter; import lombok.Setter; @Getter @Setter public class CashOrderQuery { @Min(1) private long page=1; @Min(1) @Max(100) private long size=20; private CashOrderStatus status; }

@@ -1,0 +1,8 @@
+package com.dongqh.fulfillment.service;
+
+public class FulfillmentTaskNotFoundException extends RuntimeException {
+
+    public FulfillmentTaskNotFoundException(String fulfillmentNo) {
+        super("履约任务不存在: " + fulfillmentNo);
+    }
+}

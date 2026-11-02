@@ -56,19 +56,18 @@ class MarketingExtractedServiceComposeTests(unittest.TestCase):
         self.assertEqual("false", lottery_environment["LOTTERY_OUTBOX_ENABLED"])
         self.assertEqual("1", lottery_environment["LOTTERY_REDIS_DATABASE"])
 
-    def test_gateway_does_not_require_legacy_marketing_or_extracted_services(self):
+    def test_gateway_does_not_require_optional_domain_services(self):
         gateway_dependencies = self.services["hm-gateway"]["depends_on"]
         nginx_dependencies = self.services["nginx"]["depends_on"]
 
-        self.assertNotIn("marketing-service", gateway_dependencies)
         self.assertNotIn("marketing-data-migration", gateway_dependencies)
-        self.assertNotIn("marketing-service", nginx_dependencies)
         for service_name in NEW_SERVICES:
             self.assertNotIn(service_name, gateway_dependencies)
             self.assertNotIn(service_name, nginx_dependencies)
 
-    def test_legacy_marketing_is_opt_in_so_the_extracted_stack_stays_lightweight(self):
-        self.assertEqual(["legacy-marketing"], self.services["marketing-service"]["profiles"])
+    def test_integrated_marketing_service_has_been_removed(self):
+        self.assertNotIn("marketing-service", self.services)
+        self.assertFalse((ROOT / "marketing-service").exists())
 
     def test_database_provisioning_uses_each_service_schema_and_account(self):
         migration_path = ROOT / "mysql/migrations/V011__create_marketing_domain_service_databases.sql"

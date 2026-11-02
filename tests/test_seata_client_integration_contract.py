@@ -12,7 +12,6 @@ SERVICES = (
     "user-service",
     "trade-service",
     "pay-service",
-    "marketing-service",
 )
 
 
@@ -56,11 +55,6 @@ class SeataClientDependencyContractTest(unittest.TestCase):
                     pom,
                 )
 
-    def test_marketing_supplies_nacos_client_for_seata_registry(self):
-        pom = read("marketing-service/pom.xml")
-        self.assertIn("<artifactId>nacos-client</artifactId>", pom)
-
-
 class SeataClientConfigurationContractTest(unittest.TestCase):
     def test_all_database_services_share_at_transaction_group(self):
         required = (
@@ -102,18 +96,6 @@ class SeataUndoLogContractTest(unittest.TestCase):
                 self.assertIn("unique key `ux_undo_log` (`xid`, `branch_id`)", sql)
                 self.assertIn("key `ix_log_created` (`log_created`)", sql)
 
-    def test_luckyhub_flyway_provisions_undo_log(self):
-        sql = re.sub(
-            r"\s+",
-            " ",
-            read("marketing-service/src/main/resources/db/migration/"
-                 "V27__add_seata_undo_log.sql"),
-        ).lower()
-        self.assertRegex(sql, r"create table if not exists `undo_log`")
-        self.assertIn("unique key `ux_undo_log` (`xid`, `branch_id`)", sql)
-        self.assertIn("key `ix_log_created` (`log_created`)", sql)
-
-
 class SeataComposeClientContractTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -151,7 +133,7 @@ class SeataTransactionBoundaryContractTest(unittest.TestCase):
 
     def test_trade_write_orchestrations_start_global_transactions(self):
         source = read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/"
+            "trade-service/src/main/java/com/dongqh/trade/"
             "service/impl/OrderServiceImpl.java"
         )
         for method in ("createOrder", "applyCheckoutCoupon", "cancelOrder"):
@@ -160,27 +142,22 @@ class SeataTransactionBoundaryContractTest(unittest.TestCase):
 
     def test_balance_payment_starts_global_transaction(self):
         source = read(
-            "pay-service/src/main/java/com/dongqh/payservice/"
+            "pay-service/src/main/java/com/dongqh/pay/"
             "service/impl/PayOrderServiceImpl.java"
         )
         self.assert_global_transaction(source, "tryPayOrderByBalance")
 
 
 class SeataHttpPropagationContractTest(unittest.TestCase):
-    def test_common_and_marketing_register_http_client_customizers(self):
+    def test_common_module_registers_http_client_customizers(self):
         common = read(
             "mall-backend/hm-common/src/main/java/com/hmall/common/config/"
             "SeataHttpClientAutoConfiguration.java"
         )
-        marketing = read(
-            "marketing-service/src/main/java/com/dongqh/luckyhub/config/"
-            "SeataHttpClientConfiguration.java"
-        )
-        for source in (common, marketing):
-            self.assertIn("RootContext.getXID()", source)
-            self.assertIn("RootContext.KEY_XID", source)
-            self.assertIn("RestTemplateCustomizer", source)
-            self.assertIn("RestClientCustomizer", source)
+        self.assertIn("RootContext.getXID()", common)
+        self.assertIn("RootContext.KEY_XID", common)
+        self.assertIn("RestTemplateCustomizer", common)
+        self.assertIn("RestClientCustomizer", common)
 
 
 if __name__ == "__main__":

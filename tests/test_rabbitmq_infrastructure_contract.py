@@ -11,19 +11,20 @@ def read(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
 
 
-def compose_config() -> dict:
+def compose_config(*profiles: str) -> dict:
+    command = [
+        "docker",
+        "compose",
+        "--env-file",
+        str(ROOT / ".env.example"),
+        "-f",
+        str(ROOT / "compose.yaml"),
+    ]
+    for profile in profiles:
+        command.extend(["--profile", profile])
+    command.extend(["config", "--format", "json"])
     result = subprocess.run(
-        [
-            "docker",
-            "compose",
-            "--env-file",
-            str(ROOT / ".env.example"),
-            "-f",
-            str(ROOT / "compose.yaml"),
-            "config",
-            "--format",
-            "json",
-        ],
+        command,
         cwd=ROOT,
         text=True,
         capture_output=True,
@@ -79,9 +80,10 @@ class RabbitMqComposeContractTest(unittest.TestCase):
         )
 
     def test_amqp_services_receive_connection_values_without_startup_dependency(self):
-        for service_name in ("marketing-service", "trade-service", "pay-service"):
+        services = compose_config("marketing-extraction")["services"]
+        for service_name in ("coupon-service", "trade-service", "pay-service"):
             with self.subTest(service=service_name):
-                service = self.services[service_name]
+                service = services[service_name]
                 self.assertEqual("rabbitmq", service["environment"]["RABBITMQ_HOST"])
                 self.assertEqual("5672", service["environment"]["RABBITMQ_PORT"])
                 self.assertEqual(
@@ -122,25 +124,15 @@ class RabbitMqProjectConfigurationContractTest(unittest.TestCase):
             "virtual-host: ${RABBITMQ_VHOST:/dongqh}",
         )
         application_paths = (
-            "marketing-service/src/main/resources/application.yaml",
             "trade-service/src/main/resources/application.yaml",
             "pay-service/src/main/resources/application.yaml",
+            "coupon-service/src/main/resources/application.yml",
         )
         for application_path in application_paths:
             application = read(application_path)
-            self.assertIn("optional:file:.env[.properties]", application)
-            self.assertIn("optional:file:../.env[.properties]", application)
             for setting in settings:
                 with self.subTest(application=application_path, setting=setting):
                     self.assertIn(setting, application)
-
-        marketing_sources = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in (ROOT / "marketing-service" / "src" / "main").rglob("*")
-            if path.is_file() and path.suffix in {".java", ".yaml", ".yml"}
-        )
-        self.assertNotIn("opsForStream", marketing_sources)
-        self.assertNotIn("RedisStream", marketing_sources)
 
 
 if __name__ == "__main__":

@@ -1,1 +1,0 @@
-package com.dongqh.luckyhub.domain.dto.membership; import jakarta.validation.constraints.*; public record PurchaseMembershipCommand(@NotBlank @Size(max=64) String businessNo,@NotNull @Positive Long membershipProductId,@NotNull @Positive Long userId) {}

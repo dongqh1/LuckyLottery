@@ -251,7 +251,8 @@ services:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: "6379"
       SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
-      MARKETING_BASE_URL: http://marketing-service:8080
+      COUPON_SERVICE_BASE_URL: http://coupon-service:8080
+      MEMBERSHIP_SERVICE_BASE_URL: http://membership-service:8080
       TZ: Asia/Shanghai
     depends_on:
       schema-init:
@@ -333,7 +334,6 @@ services:
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
       SEATA_ENABLED: ${SEATA_ENABLED:-true}
-      MARKETING_BASE_URL: http://marketing-service:8080
       TZ: Asia/Shanghai
     healthcheck:
       <<: *java-healthcheck
@@ -363,7 +363,8 @@ services:
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
       SEATA_ENABLED: ${SEATA_ENABLED:-true}
-      MARKETING_BASE_URL: http://marketing-service:8080
+      COUPON_SERVICE_BASE_URL: http://coupon-service:8080
+      MEMBERSHIP_SERVICE_BASE_URL: http://membership-service:8080
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: "5672"
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
@@ -396,7 +397,8 @@ services:
       NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
       NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
       SEATA_ENABLED: ${SEATA_ENABLED:-true}
-      MARKETING_BASE_URL: http://marketing-service:8080
+      COUPON_SERVICE_BASE_URL: http://coupon-service:8080
+      MEMBERSHIP_SERVICE_BASE_URL: http://membership-service:8080
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: "5672"
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
@@ -647,60 +649,6 @@ services:
       pay-service:
         condition: service_healthy
 
-  marketing-service:
-    profiles: ["legacy-marketing"]
-    build:
-      context: .
-      dockerfile: marketing-service/Dockerfile
-    restart: unless-stopped
-    environment:
-      MYSQL_HOST: mysql
-      MYSQL_PORT: "3306"
-      MYSQL_DATABASE: luckyhub
-      MYSQL_USER: luckyhub
-      MYSQL_PASSWORD: ${LUCKYHUB_DB_PASSWORD:?set LUCKYHUB_DB_PASSWORD in .env}
-      NACOS_SERVER_ADDR: nacos:8848
-      NACOS_USERNAME: ${NACOS_USERNAME:-nacos}
-      NACOS_PASSWORD: ${NACOS_PASSWORD:-nacos}
-      SEATA_ENABLED: ${SEATA_ENABLED:-true}
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: "5672"
-      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?set RABBITMQ_USERNAME in .env}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/dongqh}
-      HMALL_ITEM_BASE_URL: http://item-service:8081
-      HMALL_USER_BASE_URL: http://user-service:8083
-      BCRYPT_STRENGTH: ${BCRYPT_STRENGTH:-12}
-      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-720000}
-      SHIPPING_ADDRESS_KEY: ${SHIPPING_ADDRESS_KEY:?set SHIPPING_ADDRESS_KEY in .env}
-      SHIPPING_CALLBACK_SECRET: ${SHIPPING_CALLBACK_SECRET:?set SHIPPING_CALLBACK_SECRET in .env}
-      OSS_ENABLED: ${OSS_ENABLED:-false}
-      OSS_REGION: ${OSS_REGION:-}
-      OSS_ENDPOINT: ${OSS_ENDPOINT:-}
-      OSS_BUCKET: ${OSS_BUCKET:-}
-      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
-      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
-      OSS_PUBLIC_BASE_URL: ${OSS_PUBLIC_BASE_URL:-}
-      TZ: Asia/Shanghai
-    healthcheck:
-      <<: *java-healthcheck
-      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
-    depends_on:
-      schema-init:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-      seata-server:
-        condition: service_healthy
-      item-service:
-        condition: service_healthy
-      user-service:
-        condition: service_healthy
-
   nginx:
     build:
       context: ./nginx
@@ -710,7 +658,6 @@ services:
       - "${PORTAL_PORT:-18080}:18080"
       - "${ADMIN_PORT:-18081}:18081"
     volumes:
-      - ./nginx/snippets/marketing-auth-login.conf:/etc/nginx/snippets/marketing-auth-login.conf:ro
       - lottery-image-data:/usr/share/nginx/html/uploads:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:18080/ && wget -q -O /dev/null http://127.0.0.1:18081/items.html"]

@@ -7,8 +7,10 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
 MODULES = (
-    "mall-backend", "item-service", "hm-api", "hm-gateway", "cart-service",
-    "user-service", "trade-service", "pay-service", "marketing-service",
+    "hm-security", "mall-backend", "item-service", "hm-api", "hm-gateway",
+    "cart-service", "user-service", "trade-service", "pay-service",
+    "lottery-service", "points-service", "coupon-service", "membership-service",
+    "fulfillment-service",
 )
 SCRATCH_DIRS = {".codex-progress", ".superpowers"}
 ROOT_PLATFORM_PROPERTIES = {
@@ -50,8 +52,8 @@ ROOT_MANAGED_DEPENDENCIES = {
 ROOT_PARENT = ("com.dongqh", "hmall-lottery", "1.0.0-SNAPSHOT", "../pom.xml")
 HMALL_PARENT = ("com.heima", "hmall", "1.0.0", "../mall-backend/pom.xml")
 MODULE_PARENT_CHAINS = {
+    "hm-security/pom.xml": ROOT_PARENT,
     "mall-backend/pom.xml": ROOT_PARENT,
-    "marketing-service/pom.xml": ROOT_PARENT,
     "item-service/pom.xml": HMALL_PARENT,
     "hm-api/pom.xml": HMALL_PARENT,
     "hm-gateway/pom.xml": HMALL_PARENT,
@@ -59,6 +61,11 @@ MODULE_PARENT_CHAINS = {
     "user-service/pom.xml": HMALL_PARENT,
     "trade-service/pom.xml": HMALL_PARENT,
     "pay-service/pom.xml": HMALL_PARENT,
+    "lottery-service/pom.xml": ROOT_PARENT,
+    "points-service/pom.xml": ROOT_PARENT,
+    "coupon-service/pom.xml": ROOT_PARENT,
+    "membership-service/pom.xml": ROOT_PARENT,
+    "fulfillment-service/pom.xml": ROOT_PARENT,
     "mall-backend/hm-common/pom.xml": ("com.heima", "hmall", "1.0.0", "../pom.xml"),
     "mall-backend/hm-service/pom.xml": ("com.heima", "hmall", "1.0.0", "../pom.xml"),
 }
@@ -205,7 +212,9 @@ class Java17Boot4UpgradeContractTest(unittest.TestCase):
             "mall-backend/hm-service/Dockerfile", "item-service/Dockerfile",
             "cart-service/Dockerfile", "user-service/Dockerfile",
             "trade-service/Dockerfile", "pay-service/Dockerfile",
-            "marketing-service/Dockerfile",
+            "lottery-service/Dockerfile", "points-service/Dockerfile",
+            "coupon-service/Dockerfile", "membership-service/Dockerfile",
+            "fulfillment-service/Dockerfile",
         ]
         for path in dockerfiles:
             with self.subTest(path=path):

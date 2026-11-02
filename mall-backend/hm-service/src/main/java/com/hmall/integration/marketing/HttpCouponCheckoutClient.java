@@ -28,8 +28,8 @@ public class HttpCouponCheckoutClient implements CouponCheckoutClient {
     @Autowired
     public HttpCouponCheckoutClient(
             RestTemplateBuilder builder,
-            @Value("${hm.marketing.base-url}") String marketingBaseUrl) {
-        this(builder.build(), stripTrailingSlash(marketingBaseUrl) + "/api/coupons/checkout");
+            @Value("${hm.coupon.base-url}") String couponServiceBaseUrl) {
+        this(builder.build(), stripTrailingSlash(couponServiceBaseUrl) + "/api/coupons/checkout");
     }
 
     HttpCouponCheckoutClient(RestTemplate restTemplate, String checkoutUrl) {

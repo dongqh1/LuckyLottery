@@ -1,15 +1,16 @@
-# HMall Lottery 融合工程
+# HMall Lottery 微服务工程
 
-本目录是黑马商城与 LuckyHub 营销核心的隔离融合工作区，原始四个来源目录保持不变。
+本仓库将黑马商城与 LuckyHub 业务按领域拆分为独立微服务；旧的整合版营销服务已移除。
 
 ## 当前目录
 
-- `mall-backend/`：黑马商城 Java 后端原始副本（`hm-common` + `hm-service`）。
-- `marketing-service/`：LuckyHub Java 17 后端源码快照，后续只保留并适配营销核心。
-- `mysql/`：黑马商城原始 MySQL 配置和初始化数据。
-- `nginx/`：黑马商城 Portal/Admin 静态前端和 Nginx 配置。
-- `tests/`：融合工作区结构与集成契约测试。
-
+- item-service、cart-service、user-service、trade-service、pay-service：商城微服务。
+- coupon-service、points-service、membership-service、lottery-service、fulfillment-service：营销与履约领域微服务。
+- hm-api、hm-gateway、hm-security：服务契约、网关和安全组件。
+- mall-backend：共享 hm-common，以及仅用于回滚诊断的旧 hm-service。
+- mysql：数据库初始化、分库迁移和历史业务数据迁移。
+- nginx：Portal/Admin 静态前端和 Nginx 配置。
+- tests：融合工作区结构与集成契约测试。
 ## 本地运行与验证
 
 本仓库统一使用 JDK 17、Spring Boot 4.0.8 和 Maven 3.9+。运行 `mvn -version` 时必须显示 Java 17；IDEA 的 Project SDK、Maven Runner JRE 和各 Spring Boot 运行配置也应选择 JDK 17。
@@ -61,9 +62,9 @@ docker compose logs --tail 100 seata-server
 `global_table`、`branch_table`、`lock_table`、
 `distributed_lock` 和 `vgroup_table`。
 
-商品、购物车、用户、交易、支付和 Marketing 六个服务均已接入 Seata AT 客户端，
-统一使用事务组 `hmall_tx_group`，并通过 Nacos 发现 `seata-server`。五个 HMall 业务库
-由初始化迁移创建各自的 `undo_log`，Marketing 则由 Flyway V27 创建该表。
+商品、购物车、用户、交易和支付服务均已接入 Seata AT 客户端，
+统一使用事务组 hmall_tx_group，并通过 Nacos 发现 seata-server。五个 HMall 业务库
+由初始化迁移创建各自的 undo_log。
 交易创建、结算优惠券、订单取消和余额支付是当前全局事务入口；AT 只回滚同一 XID
 下的关系型数据库写入，Redis、消息队列、Outbox 及外部 HTTP 副作用仍需业务补偿或最终一致性处理。
 

@@ -40,8 +40,10 @@ knife4j:
         api-rule-resources:
           - com.hmall.controller
 hm:
-  marketing:
-    base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+  coupon:
+    base-url: ${COUPON_SERVICE_BASE_URL:http://localhost:8080}
+  membership:
+    base-url: ${MEMBERSHIP_SERVICE_BASE_URL:http://localhost:8080}
   jwt:
     location: classpath:hmall.jks
     alias: hmall

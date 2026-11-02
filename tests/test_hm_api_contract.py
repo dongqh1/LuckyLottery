@@ -81,12 +81,12 @@ class HmApiContractTest(unittest.TestCase):
             for node in cart.findall("m:dependencies/m:dependency", NS)
         }
         self.assertIn(("com.heima", "hm-api"), dependencies)
-        self.assertFalse((ROOT / "cart-service/src/main/java/com/dongqh/cartservice/client/ItemClient.java").exists())
-        self.assertFalse((ROOT / "cart-service/src/main/java/com/dongqh/cartservice/domain/dto/ItemDTO.java").exists())
+        self.assertFalse((ROOT / "cart-service/src/main/java/com/dongqh/cart/client/ItemClient.java").exists())
+        self.assertFalse((ROOT / "cart-service/src/main/java/com/dongqh/cart/domain/dto/ItemDTO.java").exists())
 
-        application = (ROOT / "cart-service/src/main/java/com/dongqh/cartservice/CartServiceApplication.java").read_text("utf-8")
-        service = (ROOT / "cart-service/src/main/java/com/dongqh/cartservice/service/impl/CartServiceImpl.java").read_text("utf-8")
-        test = (ROOT / "cart-service/src/test/java/com/dongqh/cartservice/CartServiceApplicationTests.java").read_text("utf-8")
+        application = (ROOT / "cart-service/src/main/java/com/dongqh/cart/CartServiceApplication.java").read_text("utf-8")
+        service = (ROOT / "cart-service/src/main/java/com/dongqh/cart/service/impl/CartServiceImpl.java").read_text("utf-8")
+        test = (ROOT / "cart-service/src/test/java/com/dongqh/cart/CartServiceApplicationTests.java").read_text("utf-8")
         self.assertIn('basePackages = "com.dongqh.hmapi.client"', application)
         self.assertIn("com.dongqh.hmapi.client.ItemClient", service)
         self.assertIn("com.dongqh.hmapi.dto.ItemDTO", service)

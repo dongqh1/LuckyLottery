@@ -1,0 +1,1 @@
+package com.dongqh.coupon.domain.dto.coupon; import jakarta.validation.constraints.*; public record IssueCouponCommand(@NotBlank @Size(max=64) String businessNo,@NotBlank @Size(max=64) String couponNo,@NotNull @Positive Long templateId,@NotNull @Positive Long userId) {}

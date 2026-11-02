@@ -23,8 +23,8 @@ public class HttpMembershipBenefitClient implements MembershipBenefitClient {
     @Autowired
     public HttpMembershipBenefitClient(
             RestTemplateBuilder builder,
-            @Value("${hm.marketing.base-url}") String marketingBaseUrl) {
-        this(builder.build(), stripTrailingSlash(marketingBaseUrl) + "/api/memberships/me");
+            @Value("${hm.membership.base-url}") String membershipServiceBaseUrl) {
+        this(builder.build(), stripTrailingSlash(membershipServiceBaseUrl) + "/api/memberships/me");
     }
 
     HttpMembershipBenefitClient(RestTemplate restTemplate, String membershipUrl) {
@@ -57,7 +57,7 @@ public class HttpMembershipBenefitClient implements MembershipBenefitClient {
 
     private static String stripTrailingSlash(String value) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("营销服务地址不能为空");
+            throw new IllegalArgumentException("会员服务地址不能为空");
         }
         String normalized = value.trim();
         while (normalized.endsWith("/")) {

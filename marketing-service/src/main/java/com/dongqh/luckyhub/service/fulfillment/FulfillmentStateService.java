@@ -1,3 +1,0 @@
-package com.dongqh.luckyhub.service.fulfillment;
-import com.dongqh.luckyhub.domain.model.fulfillment.FulfillmentClaim;import com.dongqh.luckyhub.domain.gateway.integration.GatewayResult;import java.time.Duration;import java.util.List;import java.util.Optional;
-public interface FulfillmentStateService {Optional<FulfillmentClaim> claimReady(String fulfillmentNo,Duration leaseDuration);List<FulfillmentClaim> claimCompensationDue(int limit,Duration leaseDuration,Duration pendingGrace);List<FulfillmentClaim> claimDue(int limit,Duration leaseDuration);void recordResult(FulfillmentClaim claim,GatewayResult result,long durationMs);int recoverExpiredLeases(int limit);}

@@ -14,10 +14,10 @@ class SharedOrderDetailDtoContractTest(unittest.TestCase):
             (ROOT / "hm-api/src/main/java/com/dongqh/hmapi/dto/OrderDetailDTO.java").is_file()
         )
         self.assertFalse(
-            (ROOT / "trade-service/src/main/java/com/dongqh/tradeservice/domain/dto/OrderDetailDTO.java").exists()
+            (ROOT / "trade-service/src/main/java/com/dongqh/trade/domain/dto/OrderDetailDTO.java").exists()
         )
         self.assertFalse(
-            (ROOT / "item-service/src/main/java/com/dongqh/itemservice/domain/dto/OrderDetailDTO.java").exists()
+            (ROOT / "item-service/src/main/java/com/dongqh/item/domain/dto/OrderDetailDTO.java").exists()
         )
 
     def test_shared_dto_has_no_swagger_dependency(self):
@@ -28,16 +28,16 @@ class SharedOrderDetailDtoContractTest(unittest.TestCase):
 
     def test_item_and_trade_consumers_import_the_shared_type(self):
         consumers = (
-            "trade-service/src/main/java/com/dongqh/tradeservice/domain/dto/OrderFormDTO.java",
-            "trade-service/src/main/java/com/dongqh/tradeservice/controller/OrderController.java",
-            "trade-service/src/main/java/com/dongqh/tradeservice/service/IOrderService.java",
-            "trade-service/src/main/java/com/dongqh/tradeservice/service/impl/OrderServiceImpl.java",
-            "trade-service/src/main/java/com/dongqh/tradeservice/marketing/CouponCheckoutClient.java",
-            "trade-service/src/main/java/com/dongqh/tradeservice/marketing/HttpCouponCheckoutClient.java",
-            "item-service/src/main/java/com/dongqh/itemservice/controller/ItemController.java",
-            "item-service/src/main/java/com/dongqh/itemservice/service/IItemService.java",
-            "item-service/src/main/java/com/dongqh/itemservice/service/impl/ItemServiceImpl.java",
-            "item-service/src/main/java/com/dongqh/itemservice/mapper/ItemMapper.java",
+            "trade-service/src/main/java/com/dongqh/trade/domain/dto/OrderFormDTO.java",
+            "trade-service/src/main/java/com/dongqh/trade/controller/OrderController.java",
+            "trade-service/src/main/java/com/dongqh/trade/service/IOrderService.java",
+            "trade-service/src/main/java/com/dongqh/trade/service/impl/OrderServiceImpl.java",
+            "trade-service/src/main/java/com/dongqh/trade/marketing/CouponCheckoutClient.java",
+            "trade-service/src/main/java/com/dongqh/trade/marketing/HttpCouponCheckoutClient.java",
+            "item-service/src/main/java/com/dongqh/item/controller/ItemController.java",
+            "item-service/src/main/java/com/dongqh/item/service/IItemService.java",
+            "item-service/src/main/java/com/dongqh/item/service/impl/ItemServiceImpl.java",
+            "item-service/src/main/java/com/dongqh/item/mapper/ItemMapper.java",
         )
         shared_import = "import com.dongqh.hmapi.dto.OrderDetailDTO;"
         for relative_path in consumers:
@@ -53,7 +53,7 @@ class SharedOrderDetailDtoContractTest(unittest.TestCase):
         self.assertIn('@PutMapping("/items/stock/deduct")', client)
 
         service = self.read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/service/impl/OrderServiceImpl.java"
+            "trade-service/src/main/java/com/dongqh/trade/service/impl/OrderServiceImpl.java"
         )
         self.assertNotIn("itemService.queryItemByIds(ids)", service)
         self.assertIn("itemClient.queryItemByIds(ids)", service)
@@ -64,10 +64,10 @@ class SharedOrderDetailDtoContractTest(unittest.TestCase):
 
     def test_order_service_imports_logistics_entity_used_by_builder(self):
         service = self.read(
-            "trade-service/src/main/java/com/dongqh/tradeservice/service/impl/OrderServiceImpl.java"
+            "trade-service/src/main/java/com/dongqh/trade/service/impl/OrderServiceImpl.java"
         )
         self.assertIn(
-            "import com.dongqh.tradeservice.domain.po.OrderLogistics;",
+            "import com.dongqh.trade.domain.po.OrderLogistics;",
             service,
         )
 

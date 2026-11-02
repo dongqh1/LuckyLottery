@@ -12,7 +12,7 @@ def read(relative_path: str) -> str:
 class PaySuccessRabbitMqContractTest(unittest.TestCase):
     def test_pay_publishes_one_typed_event_without_duplicate_feign_call(self):
         source = read(
-            "pay-service/src/main/java/com/dongqh/payservice/service/impl/"
+            "pay-service/src/main/java/com/dongqh/pay/service/impl/"
             "PayOrderServiceImpl.java"
         )
 

@@ -1,3 +1,0 @@
-package com.dongqh.luckyhub.service.fulfillment;
-import com.dongqh.luckyhub.common.result.PageResponse; import com.dongqh.luckyhub.domain.dto.fulfillment.*; import com.dongqh.luckyhub.domain.vo.fulfillment.FulfillmentTaskView;
-public interface FulfillmentTaskService {FulfillmentTaskView create(CreateFulfillmentTaskCommand command);FulfillmentTaskView get(String fulfillmentNo);PageResponse<FulfillmentTaskView> page(FulfillmentTaskQuery query);FulfillmentTaskView retryQuarantined(String fulfillmentNo,long operatorUserId,String note);FulfillmentTaskView terminate(String fulfillmentNo,long operatorUserId,String note);}

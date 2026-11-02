@@ -29,9 +29,7 @@ hm:
   swagger:
     title: 黑马商城用户管理接口文档
     description: 黑马商城用户管理接口文档
-    package: com.dongqh.userservice.controller
-  marketing:
-    base-url: ${MARKETING_BASE_URL:http://localhost:8080}
+    package: com.dongqh.user.controller
   jwt:
     location: classpath:hmall.jks
     alias: hmall

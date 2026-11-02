@@ -1,0 +1,1 @@
+package com.dongqh.coupon.mapper.coupon; import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.dongqh.coupon.domain.po.coupon.CouponIssueRecord; public interface CouponIssueRecordMapper extends BaseMapper<CouponIssueRecord> {}
